@@ -3,7 +3,8 @@ const {
     GraphQLInputObjectType,
     GraphQLList,
     GraphQLInt,
-    GraphQLNonNull
+    GraphQLNonNull,
+    GraphQLString
 } = require('graphql');
 const {
     resolver,
@@ -13,13 +14,21 @@ const {
 } = require('graphql-sequelize');
 
 let options = {
-    exclude: [],
-    includeAttributes: [],
-    auth: function(){
+    exclude: [ ],
+    includeArguments: { },
+    authorizer: function(){
         return new Promise((resolve, reject) => {
             resolve();
         });
     }
+};
+
+const includeArguments = () => {
+    let includeArguments = {};
+    for(let argument in options.includeArguments){
+        includeArguments[argument] = { type: options.includeArguments[argument] === 'int' ? GraphQLInt : GraphQLString }
+    }
+    return includeArguments;
 };
 
 /**
@@ -105,19 +114,22 @@ const queryResolver = (model, inputTypeName, source, args, context, info) => {
 
     const type = 'fetch';
 
-    if(model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)){
-        return model.graphql.overwrite[type](source, args, context, info);
-    }else{
-        return execBefore(model, source, args, context, info, type).then(src => {
-            return resolver(model)(source, args, context, info).then(data => {
-                if(model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)){
-                    return model.graphql.extend[type](data, source, args, context, info);
-                }else{
-                    return data;
-                }
+    return options.authorizer(source, args, context, info).then(_ => {
+        if(model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)){
+            return model.graphql.overwrite[type](source, args, context, info);
+        }else{
+            return execBefore(model, source, args, context, info, type).then(src => {
+                return resolver(model)(source, args, context, info).then(data => {
+                    if(model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)){
+                        return model.graphql.extend[type](data, source, args, context, info);
+                    }else{
+                        return data;
+                    }
+                });
             });
-        });
-    }
+        }
+    });
+
 };
 
 /**
@@ -144,7 +156,7 @@ const generateQueryRootType = (models, outputTypes) => {
             if(models[modelType.name].graphql.excludeQueries.indexOf('query') === -1){
                 queries[modelType.name] = {
                     type: new GraphQLList(modelType),
-                    args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs()),
+                    args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments()),
                     resolve: (source, args, context, info) => {
                         return queryResolver(models[modelType.name], modelType.name, source, args, context, info)
                     }
@@ -159,20 +171,22 @@ const generateQueryRootType = (models, outputTypes) => {
 
 const mutationResolver = (model, inputTypeName, source, args, context, info, type, where) => {
 
-    if(model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)){
-        return model.graphql.overwrite[type](source, args, context, info, where);
-    }else{
-        return execBefore(model, source, args, context, info, type, where).then(src => {
-            source = src;
-            return model[type](type === 'destroy' ? { where } : args[inputTypeName], { where }).then(data => {
-                if(model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)){
-                    return model.graphql.extend[type](data, source, args, context, info, where);
-                }else{
-                    return data;
-                }
+    return options.authorizer(source, args, context, info).then(_ => {
+        if(model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)){
+            return model.graphql.overwrite[type](source, args, context, info, where);
+        }else{
+            return execBefore(model, source, args, context, info, type, where).then(src => {
+                source = src;
+                return model[type](type === 'destroy' ? { where } : args[inputTypeName], { where }).then(data => {
+                    if(model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)){
+                        return model.graphql.extend[type](data, source, args, context, info, where);
+                    }else{
+                        return data;
+                    }
+                });
             });
-        });
-    }
+        }
+    });
 
 };
 
@@ -196,9 +210,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
                 mutations[inputTypeName + 'Create'] = {
                     type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
                     description: 'Create a ' + inputTypeName,
-                    args: {
-                        [inputTypeName]: { type: inputType }
-                    },
+                    args: Object.assign({ [inputTypeName]: { type: inputType } }, includeArguments()),
                     resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create')
                 };
             }
@@ -207,9 +219,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
                 mutations[inputTypeName + 'Update'] = {
                     type: outputTypes[inputTypeName],
                     description: 'Update a ' + inputTypeName,
-                    args: {
-                        [inputTypeName]: { type: inputType }
-                    },
+                    args: Object.assign({ [inputTypeName]: { type: inputType } }, includeArguments()),
                     resolve: (source, args, context, info) => {
                         const where = { [key]: args[inputTypeName][key] };
                         return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', where)
@@ -225,9 +235,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
                 mutations[inputTypeName + 'Delete'] = {
                     type: GraphQLInt,
                     description: 'Delete a ' + inputTypeName,
-                    args: {
-                        [key]: { type: new GraphQLNonNull(GraphQLInt) }
-                    },
+                    args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments()),
                     resolve: (value, where) => models[inputTypeName].destroy({ where }) // Returns the number of rows affected (0 or 1)
                 };
             }
@@ -242,10 +250,17 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
 
 // This function is exported
 const generateSchema = (models, types) => {
-    const modelTypes = types || generateModelTypes(models);
+    let availableModels = {};
+    for (let modelName in models){
+        if(options.exclude.indexOf(modelName) === -1){
+            availableModels[modelName] = models[modelName];
+        }
+    }
+
+    const modelTypes = types || generateModelTypes(availableModels);
     return {
-        query: generateQueryRootType(models, modelTypes.outputTypes),
-        mutation: generateMutationRootType(models, modelTypes.inputTypes, modelTypes.outputTypes)
+        query: generateQueryRootType(availableModels, modelTypes.outputTypes),
+        mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.outputTypes)
     };
 };
 

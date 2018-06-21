@@ -1,7 +1,7 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
 
-    const Product = sequelize.define('Product', {
+    const Product = sequelize.define('Product2', {
         name: DataTypes.STRING,
         accountId: DataTypes.INTEGER,   // Cash account id
         clientId: DataTypes.INTEGER,    // Client who created/opened the Product
@@ -18,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
         attributes: {
             exclude: ['description']
         },
-        excludeMutations: [],
+        excludeMutations: ['delete', 'update', 'create'],
         excludeQueries: [],
         // this will be executed after mutations/queries
         extend: {
