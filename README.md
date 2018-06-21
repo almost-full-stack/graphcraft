@@ -1,7 +1,7 @@
 # sequelize-graphql-schema
 
 A helper function that automatically generates `GraphQLSchema` from Sequelize models.
-Extended Romain Pellerin's https://github.com/alirizwan/sequelize-graphql-schema
+Extended Romain Pellerin's https://github.com/rpellerin/graphql-sequelize-schema-generator
 
 ## Installation
 
