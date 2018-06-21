@@ -27,11 +27,21 @@ var schema = generateSchema(models, types) // Generates the schema by reusing th
 ### Example with Express
 
 ```javascript
-var { GraphQLSchema } = require('graphql')
-const express = require('express')
-const graphqlHTTP = require('express-graphql')
-const {generateSchema} = require('sequelize-graphql-schema')
-const models = require('./models')
+var { GraphQLSchema } = require('graphql');
+const express = require('express');
+const graphqlHTTP = require('express-graphql');
+const {generateSchema} = require('../src/sequelize-graphql-schema')({
+    exclude: [ 'Product2' ],
+    includeArguments: {
+        scopeId: 'int'
+    },
+    authorizer: () => {
+        return new Promise((resolve, reject) => {
+            throw new Error("No auth");
+        });
+    }
+});
+const models = require('./models');
 
 var app = express()
 
