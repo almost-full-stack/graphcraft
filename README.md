@@ -34,11 +34,6 @@ const {generateSchema} = require('../src/sequelize-graphql-schema')({
     exclude: [ 'Product2' ],
     includeArguments: {
         scopeId: 'int'
-    },
-    authorizer: () => {
-        return new Promise((resolve, reject) => {
-            throw new Error("No auth");
-        });
     }
 });
 const models = require('./models');
