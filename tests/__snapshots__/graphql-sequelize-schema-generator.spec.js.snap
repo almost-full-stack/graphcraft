@@ -1,0 +1,1491 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`outputs the correct schema (build version) 1`] = `
+"Object{
+  query: GraphQLObjectType{
+    name: \\"Root_Query\\",
+    description: undefined,
+    astNode: undefined,
+    extensionASTNodes: [],
+    isTypeOf: undefined,
+    _typeConfig: Object{
+      name: \\"Root_Query\\",
+      fields: Object{
+        Department: Object{
+          type: GraphQLList{
+            ofType: GraphQLObjectType{
+              name: \\"Department\\",
+              description: undefined,
+              astNode: undefined,
+              extensionASTNodes: [],
+              isTypeOf: undefined,
+              _typeConfig: Object{
+                name: \\"Department\\",
+                fields: #function#
+              }
+            }
+          },
+          args: Object{
+            id: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            where: Object{
+              type: GraphQLScalarType{
+                name: \\"SequelizeJSON\\",
+                description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"SequelizeJSON\\",
+                  description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              },
+              description: \\"A JSON object conforming the the shape specified in http://docs.sequelizejs.com/en/latest/docs/querying/\\"
+            },
+            limit: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            order: Object{
+              type: GraphQLScalarType{
+                name: \\"String\\",
+                description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"String\\",
+                  description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            offset: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        Group: Object{
+          type: GraphQLList{
+            ofType: GraphQLObjectType{
+              name: \\"Group\\",
+              description: undefined,
+              astNode: undefined,
+              extensionASTNodes: [],
+              isTypeOf: undefined,
+              _typeConfig: Object{
+                name: \\"Group\\",
+                fields: #function#
+              }
+            }
+          },
+          args: Object{
+            id: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            where: Object{
+              type: GraphQLScalarType{
+                name: \\"SequelizeJSON\\",
+                description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"SequelizeJSON\\",
+                  description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              },
+              description: \\"A JSON object conforming the the shape specified in http://docs.sequelizejs.com/en/latest/docs/querying/\\"
+            },
+            limit: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            order: Object{
+              type: GraphQLScalarType{
+                name: \\"String\\",
+                description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"String\\",
+                  description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            offset: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        Torrent: Object{
+          type: GraphQLList{
+            ofType: GraphQLObjectType{
+              name: \\"Torrent\\",
+              description: undefined,
+              astNode: undefined,
+              extensionASTNodes: [],
+              isTypeOf: undefined,
+              _typeConfig: Object{
+                name: \\"Torrent\\",
+                fields: #function#
+              }
+            }
+          },
+          args: Object{
+            id: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            where: Object{
+              type: GraphQLScalarType{
+                name: \\"SequelizeJSON\\",
+                description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"SequelizeJSON\\",
+                  description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              },
+              description: \\"A JSON object conforming the the shape specified in http://docs.sequelizejs.com/en/latest/docs/querying/\\"
+            },
+            limit: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            order: Object{
+              type: GraphQLScalarType{
+                name: \\"String\\",
+                description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"String\\",
+                  description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            offset: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        User: Object{
+          type: GraphQLList{
+            ofType: GraphQLObjectType{
+              name: \\"User\\",
+              description: undefined,
+              astNode: undefined,
+              extensionASTNodes: [],
+              isTypeOf: undefined,
+              _typeConfig: Object{
+                name: \\"User\\",
+                fields: #function#
+              }
+            }
+          },
+          args: Object{
+            id: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            where: Object{
+              type: GraphQLScalarType{
+                name: \\"SequelizeJSON\\",
+                description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"SequelizeJSON\\",
+                  description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              },
+              description: \\"A JSON object conforming the the shape specified in http://docs.sequelizejs.com/en/latest/docs/querying/\\"
+            },
+            limit: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            order: Object{
+              type: GraphQLScalarType{
+                name: \\"String\\",
+                description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"String\\",
+                  description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            offset: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        }
+      }
+    }
+  },
+  mutation: GraphQLObjectType{
+    name: \\"Root_Mutations\\",
+    description: undefined,
+    astNode: undefined,
+    extensionASTNodes: [],
+    isTypeOf: undefined,
+    _typeConfig: Object{
+      name: \\"Root_Mutations\\",
+      fields: Object{
+        DepartmentCreate: Object{
+          type: GraphQLObjectType{
+            name: \\"Department\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Department\\",
+              fields: #function#
+            }
+          },
+          description: \\"Create a Department\\",
+          args: Object{
+            Department: Object{
+              type: GraphQLInputObjectType{
+                name: \\"DepartmentInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"DepartmentInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        DepartmentUpdate: Object{
+          type: GraphQLObjectType{
+            name: \\"Department\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Department\\",
+              fields: #function#
+            }
+          },
+          description: \\"Update a Department\\",
+          args: Object{
+            Department: Object{
+              type: GraphQLInputObjectType{
+                name: \\"DepartmentInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"DepartmentInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        DepartmentDelete: Object{
+          type: GraphQLScalarType{
+            name: \\"Int\\",
+            description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+            astNode: undefined,
+            _scalarConfig: Object{
+              name: \\"Int\\",
+              description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+              serialize: #function#,
+              parseValue: #function#,
+              parseLiteral: #function#
+            }
+          },
+          description: \\"Delete a Department\\",
+          args: Object{
+            id: Object{
+              type: GraphQLNonNull{
+                ofType: GraphQLScalarType{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  astNode: undefined,
+                  _scalarConfig: Object{
+                    name: \\"Int\\",
+                    description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                    serialize: #function#,
+                    parseValue: #function#,
+                    parseLiteral: #function#
+                  }
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        GroupCreate: Object{
+          type: GraphQLObjectType{
+            name: \\"Group\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Group\\",
+              fields: #function#
+            }
+          },
+          description: \\"Create a Group\\",
+          args: Object{
+            Group: Object{
+              type: GraphQLInputObjectType{
+                name: \\"GroupInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"GroupInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        GroupUpdate: Object{
+          type: GraphQLObjectType{
+            name: \\"Group\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Group\\",
+              fields: #function#
+            }
+          },
+          description: \\"Update a Group\\",
+          args: Object{
+            Group: Object{
+              type: GraphQLInputObjectType{
+                name: \\"GroupInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"GroupInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        GroupDelete: Object{
+          type: GraphQLScalarType{
+            name: \\"Int\\",
+            description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+            astNode: undefined,
+            _scalarConfig: Object{
+              name: \\"Int\\",
+              description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+              serialize: #function#,
+              parseValue: #function#,
+              parseLiteral: #function#
+            }
+          },
+          description: \\"Delete a Group\\",
+          args: Object{
+            id: Object{
+              type: GraphQLNonNull{
+                ofType: GraphQLScalarType{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  astNode: undefined,
+                  _scalarConfig: Object{
+                    name: \\"Int\\",
+                    description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                    serialize: #function#,
+                    parseValue: #function#,
+                    parseLiteral: #function#
+                  }
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        TorrentCreate: Object{
+          type: GraphQLObjectType{
+            name: \\"Torrent\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Torrent\\",
+              fields: #function#
+            }
+          },
+          description: \\"Create a Torrent\\",
+          args: Object{
+            Torrent: Object{
+              type: GraphQLInputObjectType{
+                name: \\"TorrentInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"TorrentInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        TorrentUpdate: Object{
+          type: GraphQLObjectType{
+            name: \\"Torrent\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Torrent\\",
+              fields: #function#
+            }
+          },
+          description: \\"Update a Torrent\\",
+          args: Object{
+            Torrent: Object{
+              type: GraphQLInputObjectType{
+                name: \\"TorrentInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"TorrentInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        TorrentDelete: Object{
+          type: GraphQLScalarType{
+            name: \\"Int\\",
+            description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+            astNode: undefined,
+            _scalarConfig: Object{
+              name: \\"Int\\",
+              description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+              serialize: #function#,
+              parseValue: #function#,
+              parseLiteral: #function#
+            }
+          },
+          description: \\"Delete a Torrent\\",
+          args: Object{
+            id: Object{
+              type: GraphQLNonNull{
+                ofType: GraphQLScalarType{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  astNode: undefined,
+                  _scalarConfig: Object{
+                    name: \\"Int\\",
+                    description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                    serialize: #function#,
+                    parseValue: #function#,
+                    parseLiteral: #function#
+                  }
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        UserCreate: Object{
+          type: GraphQLObjectType{
+            name: \\"User\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"User\\",
+              fields: #function#
+            }
+          },
+          description: \\"Create a User\\",
+          args: Object{
+            User: Object{
+              type: GraphQLInputObjectType{
+                name: \\"UserInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"UserInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        UserUpdate: Object{
+          type: GraphQLObjectType{
+            name: \\"User\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"User\\",
+              fields: #function#
+            }
+          },
+          description: \\"Update a User\\",
+          args: Object{
+            User: Object{
+              type: GraphQLInputObjectType{
+                name: \\"UserInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"UserInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        UserDelete: Object{
+          type: GraphQLScalarType{
+            name: \\"Int\\",
+            description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+            astNode: undefined,
+            _scalarConfig: Object{
+              name: \\"Int\\",
+              description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+              serialize: #function#,
+              parseValue: #function#,
+              parseLiteral: #function#
+            }
+          },
+          description: \\"Delete a User\\",
+          args: Object{
+            id: Object{
+              type: GraphQLNonNull{
+                ofType: GraphQLScalarType{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  astNode: undefined,
+                  _scalarConfig: Object{
+                    name: \\"Int\\",
+                    description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                    serialize: #function#,
+                    parseValue: #function#,
+                    parseLiteral: #function#
+                  }
+                }
+              }
+            }
+          },
+          resolve: #function#
+        }
+      }
+    }
+  }
+}"
+`;
+
+exports[`outputs the correct schema 1`] = `
+"Object{
+  query: GraphQLObjectType{
+    name: \\"Root_Query\\",
+    description: undefined,
+    astNode: undefined,
+    extensionASTNodes: [],
+    isTypeOf: undefined,
+    _typeConfig: Object{
+      name: \\"Root_Query\\",
+      fields: Object{
+        Department: Object{
+          type: GraphQLList{
+            ofType: GraphQLObjectType{
+              name: \\"Department\\",
+              description: undefined,
+              astNode: undefined,
+              extensionASTNodes: [],
+              isTypeOf: undefined,
+              _typeConfig: Object{
+                name: \\"Department\\",
+                fields: #function#
+              }
+            }
+          },
+          args: Object{
+            id: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            where: Object{
+              type: GraphQLScalarType{
+                name: \\"SequelizeJSON\\",
+                description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"SequelizeJSON\\",
+                  description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              },
+              description: \\"A JSON object conforming the the shape specified in http://docs.sequelizejs.com/en/latest/docs/querying/\\"
+            },
+            limit: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            order: Object{
+              type: GraphQLScalarType{
+                name: \\"String\\",
+                description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"String\\",
+                  description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            offset: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        Group: Object{
+          type: GraphQLList{
+            ofType: GraphQLObjectType{
+              name: \\"Group\\",
+              description: undefined,
+              astNode: undefined,
+              extensionASTNodes: [],
+              isTypeOf: undefined,
+              _typeConfig: Object{
+                name: \\"Group\\",
+                fields: #function#
+              }
+            }
+          },
+          args: Object{
+            id: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            where: Object{
+              type: GraphQLScalarType{
+                name: \\"SequelizeJSON\\",
+                description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"SequelizeJSON\\",
+                  description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              },
+              description: \\"A JSON object conforming the the shape specified in http://docs.sequelizejs.com/en/latest/docs/querying/\\"
+            },
+            limit: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            order: Object{
+              type: GraphQLScalarType{
+                name: \\"String\\",
+                description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"String\\",
+                  description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            offset: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        Torrent: Object{
+          type: GraphQLList{
+            ofType: GraphQLObjectType{
+              name: \\"Torrent\\",
+              description: undefined,
+              astNode: undefined,
+              extensionASTNodes: [],
+              isTypeOf: undefined,
+              _typeConfig: Object{
+                name: \\"Torrent\\",
+                fields: #function#
+              }
+            }
+          },
+          args: Object{
+            id: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            where: Object{
+              type: GraphQLScalarType{
+                name: \\"SequelizeJSON\\",
+                description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"SequelizeJSON\\",
+                  description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              },
+              description: \\"A JSON object conforming the the shape specified in http://docs.sequelizejs.com/en/latest/docs/querying/\\"
+            },
+            limit: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            order: Object{
+              type: GraphQLScalarType{
+                name: \\"String\\",
+                description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"String\\",
+                  description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            offset: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        User: Object{
+          type: GraphQLList{
+            ofType: GraphQLObjectType{
+              name: \\"User\\",
+              description: undefined,
+              astNode: undefined,
+              extensionASTNodes: [],
+              isTypeOf: undefined,
+              _typeConfig: Object{
+                name: \\"User\\",
+                fields: #function#
+              }
+            }
+          },
+          args: Object{
+            id: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            where: Object{
+              type: GraphQLScalarType{
+                name: \\"SequelizeJSON\\",
+                description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"SequelizeJSON\\",
+                  description: \\"The \`JSON\` scalar type represents raw JSON as values.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              },
+              description: \\"A JSON object conforming the the shape specified in http://docs.sequelizejs.com/en/latest/docs/querying/\\"
+            },
+            limit: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            order: Object{
+              type: GraphQLScalarType{
+                name: \\"String\\",
+                description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"String\\",
+                  description: \\"The \`String\` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.\\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            },
+            offset: Object{
+              type: GraphQLScalarType{
+                name: \\"Int\\",
+                description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                astNode: undefined,
+                _scalarConfig: Object{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  serialize: #function#,
+                  parseValue: #function#,
+                  parseLiteral: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        }
+      }
+    }
+  },
+  mutation: GraphQLObjectType{
+    name: \\"Root_Mutations\\",
+    description: undefined,
+    astNode: undefined,
+    extensionASTNodes: [],
+    isTypeOf: undefined,
+    _typeConfig: Object{
+      name: \\"Root_Mutations\\",
+      fields: Object{
+        DepartmentCreate: Object{
+          type: GraphQLObjectType{
+            name: \\"Department\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Department\\",
+              fields: #function#
+            }
+          },
+          description: \\"Create a Department\\",
+          args: Object{
+            Department: Object{
+              type: GraphQLInputObjectType{
+                name: \\"DepartmentInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"DepartmentInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        DepartmentUpdate: Object{
+          type: GraphQLObjectType{
+            name: \\"Department\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Department\\",
+              fields: #function#
+            }
+          },
+          description: \\"Update a Department\\",
+          args: Object{
+            Department: Object{
+              type: GraphQLInputObjectType{
+                name: \\"DepartmentInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"DepartmentInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        DepartmentDelete: Object{
+          type: GraphQLScalarType{
+            name: \\"Int\\",
+            description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+            astNode: undefined,
+            _scalarConfig: Object{
+              name: \\"Int\\",
+              description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+              serialize: #function#,
+              parseValue: #function#,
+              parseLiteral: #function#
+            }
+          },
+          description: \\"Delete a Department\\",
+          args: Object{
+            id: Object{
+              type: GraphQLNonNull{
+                ofType: GraphQLScalarType{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  astNode: undefined,
+                  _scalarConfig: Object{
+                    name: \\"Int\\",
+                    description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                    serialize: #function#,
+                    parseValue: #function#,
+                    parseLiteral: #function#
+                  }
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        GroupCreate: Object{
+          type: GraphQLObjectType{
+            name: \\"Group\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Group\\",
+              fields: #function#
+            }
+          },
+          description: \\"Create a Group\\",
+          args: Object{
+            Group: Object{
+              type: GraphQLInputObjectType{
+                name: \\"GroupInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"GroupInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        GroupUpdate: Object{
+          type: GraphQLObjectType{
+            name: \\"Group\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Group\\",
+              fields: #function#
+            }
+          },
+          description: \\"Update a Group\\",
+          args: Object{
+            Group: Object{
+              type: GraphQLInputObjectType{
+                name: \\"GroupInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"GroupInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        GroupDelete: Object{
+          type: GraphQLScalarType{
+            name: \\"Int\\",
+            description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+            astNode: undefined,
+            _scalarConfig: Object{
+              name: \\"Int\\",
+              description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+              serialize: #function#,
+              parseValue: #function#,
+              parseLiteral: #function#
+            }
+          },
+          description: \\"Delete a Group\\",
+          args: Object{
+            id: Object{
+              type: GraphQLNonNull{
+                ofType: GraphQLScalarType{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  astNode: undefined,
+                  _scalarConfig: Object{
+                    name: \\"Int\\",
+                    description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                    serialize: #function#,
+                    parseValue: #function#,
+                    parseLiteral: #function#
+                  }
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        TorrentCreate: Object{
+          type: GraphQLObjectType{
+            name: \\"Torrent\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Torrent\\",
+              fields: #function#
+            }
+          },
+          description: \\"Create a Torrent\\",
+          args: Object{
+            Torrent: Object{
+              type: GraphQLInputObjectType{
+                name: \\"TorrentInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"TorrentInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        TorrentUpdate: Object{
+          type: GraphQLObjectType{
+            name: \\"Torrent\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"Torrent\\",
+              fields: #function#
+            }
+          },
+          description: \\"Update a Torrent\\",
+          args: Object{
+            Torrent: Object{
+              type: GraphQLInputObjectType{
+                name: \\"TorrentInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"TorrentInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        TorrentDelete: Object{
+          type: GraphQLScalarType{
+            name: \\"Int\\",
+            description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+            astNode: undefined,
+            _scalarConfig: Object{
+              name: \\"Int\\",
+              description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+              serialize: #function#,
+              parseValue: #function#,
+              parseLiteral: #function#
+            }
+          },
+          description: \\"Delete a Torrent\\",
+          args: Object{
+            id: Object{
+              type: GraphQLNonNull{
+                ofType: GraphQLScalarType{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  astNode: undefined,
+                  _scalarConfig: Object{
+                    name: \\"Int\\",
+                    description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                    serialize: #function#,
+                    parseValue: #function#,
+                    parseLiteral: #function#
+                  }
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        UserCreate: Object{
+          type: GraphQLObjectType{
+            name: \\"User\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"User\\",
+              fields: #function#
+            }
+          },
+          description: \\"Create a User\\",
+          args: Object{
+            User: Object{
+              type: GraphQLInputObjectType{
+                name: \\"UserInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"UserInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        UserUpdate: Object{
+          type: GraphQLObjectType{
+            name: \\"User\\",
+            description: undefined,
+            astNode: undefined,
+            extensionASTNodes: [],
+            isTypeOf: undefined,
+            _typeConfig: Object{
+              name: \\"User\\",
+              fields: #function#
+            }
+          },
+          description: \\"Update a User\\",
+          args: Object{
+            User: Object{
+              type: GraphQLInputObjectType{
+                name: \\"UserInput\\",
+                description: undefined,
+                astNode: undefined,
+                _typeConfig: Object{
+                  name: \\"UserInput\\",
+                  fields: #function#
+                }
+              }
+            }
+          },
+          resolve: #function#
+        },
+        UserDelete: Object{
+          type: GraphQLScalarType{
+            name: \\"Int\\",
+            description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+            astNode: undefined,
+            _scalarConfig: Object{
+              name: \\"Int\\",
+              description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+              serialize: #function#,
+              parseValue: #function#,
+              parseLiteral: #function#
+            }
+          },
+          description: \\"Delete a User\\",
+          args: Object{
+            id: Object{
+              type: GraphQLNonNull{
+                ofType: GraphQLScalarType{
+                  name: \\"Int\\",
+                  description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                  astNode: undefined,
+                  _scalarConfig: Object{
+                    name: \\"Int\\",
+                    description: \\"The \`Int\` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. \\",
+                    serialize: #function#,
+                    parseValue: #function#,
+                    parseLiteral: #function#
+                  }
+                }
+              }
+            }
+          },
+          resolve: #function#
+        }
+      }
+    }
+  }
+}"
+`;

@@ -1,0 +1,4 @@
+node_modules/
+.eslintcache
+coverage/
+tests/database.db
