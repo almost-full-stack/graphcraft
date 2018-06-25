@@ -26,6 +26,18 @@ var options = {
     }
 };
 
+var defaultModelGraphqlOptions = {
+    attributes: {
+        exclude: [],
+        include: {}
+    },
+    excludeMutations: [],
+    excludeQueries: [],
+    extend: {},
+    before: {},
+    overwrite: {}
+};
+
 var includeArguments = function includeArguments() {
     var includeArguments = {};
     for (var argument in options.includeArguments) {
@@ -74,10 +86,16 @@ var generateGraphQLType = function generateGraphQLType(model, types) {
     var isInput = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
     var GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
+    var includeAttributes = {};
+    if (isInput && model.graphql.attributes.include) {
+        for (var attribute in model.graphql.attributes.include) {
+            includeAttributes[attribute] = { type: model.graphql.attributes.include[attribute] === 'int' ? GraphQLInt : GraphQLString };
+        }
+    }
     return new GraphQLClass({
         name: isInput ? model.name + 'Input' : model.name,
         fields: function fields() {
-            return Object.assign(attributeFields(model, Object.assign({ allowNull: !!isInput }, model.graphql.attributes || {})), generateAssociationFields(model.associations, types, isInput));
+            return Object.assign(attributeFields(model, Object.assign({ allowNull: !!isInput }, model.graphql.attributes || {}), includeAttributes), generateAssociationFields(model.associations, types, isInput));
         }
     });
 };
@@ -235,14 +253,15 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
                 };
             }
 
-            if (models[inputTypeName].graphql.excludeMutations.indexOf('delete') === -1) {
+            if (models[inputTypeName].graphql.excludeMutations.indexOf('destroy') === -1) {
                 mutations[inputTypeName + 'Delete'] = {
                     type: GraphQLInt,
                     description: 'Delete a ' + inputTypeName,
                     args: Object.assign(_defineProperty({}, key, { type: new GraphQLNonNull(GraphQLInt) }), includeArguments()),
-                    resolve: function resolve(value, where) {
-                        return models[inputTypeName].destroy({ where: where });
-                    } // Returns the number of rows affected (0 or 1)
+                    resolve: function resolve(source, args, context, info) {
+                        var where = _defineProperty({}, key, args[inputTypeName][key]);
+                        return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'destroy', where);
+                    }
                 };
             }
 
@@ -257,6 +276,9 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
 var generateSchema = function generateSchema(models, types) {
     var availableModels = {};
     for (var modelName in models) {
+        models[modelName].graphql = models[modelName].graphql || defaultModelGraphqlOptions;
+        models[modelName].graphql.attributes = Object.assign(defaultModelGraphqlOptions.attributes, models[modelName].graphql.attributes);
+        models[modelName].graphql = Object.assign(defaultModelGraphqlOptions, models[modelName].graphql || {});
         if (options.exclude.indexOf(modelName) === -1) {
             availableModels[modelName] = models[modelName];
         }
@@ -270,7 +292,7 @@ var generateSchema = function generateSchema(models, types) {
 };
 
 module.exports = function (_options) {
-    options = _options;
+    options = Object.assign(options, _options);
     return {
         generateGraphQLType: generateGraphQLType,
         generateModelTypes: generateModelTypes,

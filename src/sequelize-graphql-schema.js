@@ -23,10 +23,22 @@ let options = {
     }
 };
 
+const defaultModelGraphqlOptions = {
+    attributes: {
+        exclude: [],
+        include: {}
+    },
+    excludeMutations: [],
+    excludeQueries: [],
+    extend: { },
+    before: { },
+    overwrite: { }
+};
+
 const includeArguments = () => {
     let includeArguments = {};
     for(let argument in options.includeArguments){
-        includeArguments[argument] = { type: options.includeArguments[argument] === 'int' ? GraphQLInt : GraphQLString }
+        includeArguments[argument] = { type: options.includeArguments[argument] === 'int' ? GraphQLInt : GraphQLString };
     }
     return includeArguments;
 };
@@ -70,9 +82,15 @@ const generateAssociationFields = (associations, types, isInput = false) => {
  */
 const generateGraphQLType = (model, types, isInput = false) => {
     const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
+    let includeAttributes = {};
+    if(isInput && model.graphql.attributes.include){
+        for(let attribute in model.graphql.attributes.include){
+            includeAttributes[attribute] = { type: model.graphql.attributes.include[attribute] === 'int' ? GraphQLInt : GraphQLString };
+        }
+    }
     return new GraphQLClass({
         name: isInput ? `${model.name}Input` : model.name,
-        fields: () => Object.assign(attributeFields(model, Object.assign({ allowNull: !!isInput }, model.graphql.attributes || {})), generateAssociationFields(model.associations, types, isInput))
+        fields: () => Object.assign(attributeFields(model, Object.assign({ allowNull: !!isInput }, model.graphql.attributes || {}), includeAttributes), generateAssociationFields(model.associations, types, isInput))
     });
 };
 
@@ -231,12 +249,15 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
                 };
             }
 
-            if(models[inputTypeName].graphql.excludeMutations.indexOf('delete') === -1){
+            if(models[inputTypeName].graphql.excludeMutations.indexOf('destroy') === -1){
                 mutations[inputTypeName + 'Delete'] = {
                     type: GraphQLInt,
                     description: 'Delete a ' + inputTypeName,
                     args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments()),
-                    resolve: (value, where) => models[inputTypeName].destroy({ where }) // Returns the number of rows affected (0 or 1)
+                    resolve: (source, args, context, info) => {
+                        const where = { [key]: args[inputTypeName][key] };
+                        return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'destroy', where);
+                    }
                 };
             }
 
@@ -252,6 +273,9 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
 const generateSchema = (models, types) => {
     let availableModels = {};
     for (let modelName in models){
+        models[modelName].graphql = models[modelName].graphql || defaultModelGraphqlOptions;
+        models[modelName].graphql.attributes = Object.assign(defaultModelGraphqlOptions.attributes, models[modelName].graphql.attributes);
+        models[modelName].graphql = Object.assign(defaultModelGraphqlOptions, models[modelName].graphql || {});
         if(options.exclude.indexOf(modelName) === -1){
             availableModels[modelName] = models[modelName];
         }
@@ -265,7 +289,7 @@ const generateSchema = (models, types) => {
 };
 
 module.exports = _options => {
-    options = _options;
+    options = Object.assign(options, _options);
     return {
         generateGraphQLType,
         generateModelTypes,

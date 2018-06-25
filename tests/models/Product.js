@@ -31,13 +31,6 @@ module.exports = (sequelize, DataTypes) => {
                 console.log('Running extension.');
                 return data;
             }
-        },
-        // this will execute before mutations/queries
-        before: {
-
-        },
-        overwrite: {
-
         }
     };
 
