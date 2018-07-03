@@ -16,6 +16,8 @@ var _require2 = require('graphql-sequelize'),
     defaultListArgs = _require2.defaultListArgs,
     defaultArgs = _require2.defaultArgs;
 
+var camelCase = require('camelcase');
+
 var options = {
     exclude: [],
     includeArguments: {},
@@ -44,6 +46,73 @@ var includeArguments = function includeArguments() {
         includeArguments[argument] = { type: options.includeArguments[argument] === 'int' ? GraphQLInt : GraphQLString };
     }
     return includeArguments;
+};
+
+var execBefore = function execBefore(model, source, args, context, info, type, where) {
+    return new Promise(function (resolve, reject) {
+        if (model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)) {
+            return model.graphql.before[type](source, args, context, info, where).then(function (src) {
+                resolve(src);
+            });
+        } else {
+            resolve(source);
+        }
+    });
+};
+
+var findOneRecord = function findOneRecord(model, where) {
+    if (where) {
+        return model.findOne({ where: where }).then(function (data) {
+            return data;
+        });
+    } else {
+        return new Promise(function (resolve) {
+            return resolve;
+        });
+    }
+};
+
+var queryResolver = function queryResolver(model, inputTypeName, source, args, context, info) {
+
+    var type = 'fetch';
+
+    return options.authorizer(source, args, context, info).then(function (_) {
+        if (model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)) {
+            return model.graphql.overwrite[type](source, args, context, info);
+        } else {
+            return execBefore(model, source, args, context, info, type).then(function (src) {
+                return resolver(model)(source, args, context, info).then(function (data) {
+                    if (model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)) {
+                        return model.graphql.extend[type](data, source, args, context, info);
+                    } else {
+                        return data;
+                    }
+                });
+            });
+        }
+    });
+};
+
+var mutationResolver = function mutationResolver(model, inputTypeName, source, args, context, info, type, where) {
+
+    return options.authorizer(source, args, context, info).then(function (_) {
+        if (model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)) {
+            return model.graphql.overwrite[type](source, args, context, info, where);
+        } else {
+            return execBefore(model, source, args, context, info, type, where).then(function (src) {
+                source = src;
+                return findOneRecord(model, type === 'destroy' ? where : null).then(function (preData) {
+                    return model[type](type === 'destroy' ? { where: where } : args[inputTypeName], { where: where }).then(function (data) {
+                        if (model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)) {
+                            return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
+                        } else {
+                            return data;
+                        }
+                    });
+                });
+            });
+        }
+    });
 };
 
 /**
@@ -122,39 +191,6 @@ var generateModelTypes = function generateModelTypes(models) {
     return { outputTypes: outputTypes, inputTypes: inputTypes };
 };
 
-var execBefore = function execBefore(model, source, args, context, info, type, where) {
-    return new Promise(function (resolve, reject) {
-        if (model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)) {
-            return model.graphql.before[type](source, args, context, info, where).then(function (src) {
-                resolve(src);
-            });
-        } else {
-            resolve(source);
-        }
-    });
-};
-
-var queryResolver = function queryResolver(model, inputTypeName, source, args, context, info) {
-
-    var type = 'fetch';
-
-    return options.authorizer(source, args, context, info).then(function (_) {
-        if (model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)) {
-            return model.graphql.overwrite[type](source, args, context, info);
-        } else {
-            return execBefore(model, source, args, context, info, type).then(function (src) {
-                return resolver(model)(source, args, context, info).then(function (data) {
-                    if (model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)) {
-                        return model.graphql.extend[type](data, source, args, context, info);
-                    } else {
-                        return data;
-                    }
-                });
-            });
-        }
-    });
-};
-
 /**
  * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
  *
@@ -177,7 +213,7 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes) 
             });
 
             if (models[modelType.name].graphql.excludeQueries.indexOf('query') === -1) {
-                queries[modelType.name] = {
+                queries[camelCase(modelType.name + 'get')] = {
                     type: new GraphQLList(modelType),
                     args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments()),
                     resolve: function resolve(source, args, context, info) {
@@ -188,26 +224,6 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes) 
 
             return Object.assign(fields, queries);
         }, {})
-    });
-};
-
-var mutationResolver = function mutationResolver(model, inputTypeName, source, args, context, info, type, where) {
-
-    return options.authorizer(source, args, context, info).then(function (_) {
-        if (model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)) {
-            return model.graphql.overwrite[type](source, args, context, info, where);
-        } else {
-            return execBefore(model, source, args, context, info, type, where).then(function (src) {
-                source = src;
-                return model[type](type === 'destroy' ? { where: where } : args[inputTypeName], { where: where }).then(function (data) {
-                    if (model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)) {
-                        return model.graphql.extend[type](data, source, args, context, info, where);
-                    } else {
-                        return data;
-                    }
-                });
-            });
-        }
     });
 };
 
@@ -228,7 +244,7 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
             });
 
             if (models[inputTypeName].graphql.excludeMutations.indexOf('create') === -1) {
-                mutations[inputTypeName + 'Create'] = {
+                mutations[camelCase(inputTypeName + 'Add')] = {
                     type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
                     description: 'Create a ' + inputTypeName,
                     args: Object.assign(_defineProperty({}, inputTypeName, { type: inputType }), includeArguments()),
@@ -239,7 +255,7 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
             }
 
             if (models[inputTypeName].graphql.excludeMutations.indexOf('update') === -1) {
-                mutations[inputTypeName + 'Update'] = {
+                mutations[camelCase(inputTypeName + 'Edit')] = {
                     type: outputTypes[inputTypeName],
                     description: 'Update a ' + inputTypeName,
                     args: Object.assign(_defineProperty({}, inputTypeName, { type: inputType }), includeArguments()),
@@ -254,7 +270,7 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
             }
 
             if (models[inputTypeName].graphql.excludeMutations.indexOf('destroy') === -1) {
-                mutations[inputTypeName + 'Delete'] = {
+                mutations[camelCase(inputTypeName + 'Delete')] = {
                     type: GraphQLInt,
                     description: 'Delete a ' + inputTypeName,
                     args: Object.assign(_defineProperty({}, key, { type: new GraphQLNonNull(GraphQLInt) }), includeArguments()),

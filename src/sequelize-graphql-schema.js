@@ -13,6 +13,8 @@ const {
     defaultArgs
 } = require('graphql-sequelize');
 
+const camelCase = require('camelcase');
+
 let options = {
     exclude: [ ],
     includeArguments: { },
@@ -41,6 +43,71 @@ const includeArguments = () => {
         includeArguments[argument] = { type: options.includeArguments[argument] === 'int' ? GraphQLInt : GraphQLString };
     }
     return includeArguments;
+};
+
+const execBefore = function(model, source, args, context, info, type, where){
+    return new Promise((resolve, reject) => {
+        if(model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)){
+            return model.graphql.before[type](source, args, context, info, where).then(src => {
+                resolve(src);
+            });
+        }else{
+            resolve(source);
+        }
+    });
+};
+
+const findOneRecord = (model, where) => {
+    if(where){
+        return model.findOne({ where}).then(data => data);
+    }else{
+        return new Promise(resolve => resolve);
+    }
+};
+
+const queryResolver = (model, inputTypeName, source, args, context, info) => {
+
+    const type = 'fetch';
+
+    return options.authorizer(source, args, context, info).then(_ => {
+        if(model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)){
+            return model.graphql.overwrite[type](source, args, context, info);
+        }else{
+            return execBefore(model, source, args, context, info, type).then(src => {
+                return resolver(model)(source, args, context, info).then(data => {
+                    if(model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)){
+                        return model.graphql.extend[type](data, source, args, context, info);
+                    }else{
+                        return data;
+                    }
+                });
+            });
+        }
+    });
+
+};
+
+const mutationResolver = (model, inputTypeName, source, args, context, info, type, where) => {
+
+    return options.authorizer(source, args, context, info).then(_ => {
+        if(model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)){
+            return model.graphql.overwrite[type](source, args, context, info, where);
+        }else{
+            return execBefore(model, source, args, context, info, type, where).then(src => {
+                source = src;
+                return findOneRecord(model, type === 'destroy' ? where : null).then(preData => {
+                    return model[type](type === 'destroy' ? { where } : args[inputTypeName], { where }).then(data => {
+                        if(model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)){
+                            return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
+                        }else{
+                            return data;
+                        }
+                    });
+                });
+            });
+        }
+    });
+
 };
 
 /**
@@ -116,40 +183,6 @@ const generateModelTypes = models => {
     return { outputTypes, inputTypes };
 };
 
-const execBefore = function(model, source, args, context, info, type, where){
-    return new Promise((resolve, reject) => {
-        if(model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)){
-            return model.graphql.before[type](source, args, context, info, where).then(src => {
-                resolve(src);
-            });
-        }else{
-            resolve(source);
-        }
-    });
-};
-
-const queryResolver = (model, inputTypeName, source, args, context, info) => {
-
-    const type = 'fetch';
-
-    return options.authorizer(source, args, context, info).then(_ => {
-        if(model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)){
-            return model.graphql.overwrite[type](source, args, context, info);
-        }else{
-            return execBefore(model, source, args, context, info, type).then(src => {
-                return resolver(model)(source, args, context, info).then(data => {
-                    if(model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)){
-                        return model.graphql.extend[type](data, source, args, context, info);
-                    }else{
-                        return data;
-                    }
-                });
-            });
-        }
-    });
-
-};
-
 /**
  * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
  *
@@ -172,7 +205,7 @@ const generateQueryRootType = (models, outputTypes) => {
             };
 
             if(models[modelType.name].graphql.excludeQueries.indexOf('query') === -1){
-                queries[modelType.name] = {
+                queries[camelCase(modelType.name + 'Get')] = {
                     type: new GraphQLList(modelType),
                     args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments()),
                     resolve: (source, args, context, info) => {
@@ -185,27 +218,6 @@ const generateQueryRootType = (models, outputTypes) => {
 
         }, { })
     });
-};
-
-const mutationResolver = (model, inputTypeName, source, args, context, info, type, where) => {
-
-    return options.authorizer(source, args, context, info).then(_ => {
-        if(model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)){
-            return model.graphql.overwrite[type](source, args, context, info, where);
-        }else{
-            return execBefore(model, source, args, context, info, type, where).then(src => {
-                source = src;
-                return model[type](type === 'destroy' ? { where } : args[inputTypeName], { where }).then(data => {
-                    if(model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)){
-                        return model.graphql.extend[type](data, source, args, context, info, where);
-                    }else{
-                        return data;
-                    }
-                });
-            });
-        }
-    });
-
 };
 
 const generateMutationRootType = (models, inputTypes, outputTypes) => {
@@ -225,7 +237,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
             };
 
             if(models[inputTypeName].graphql.excludeMutations.indexOf('create') === -1){
-                mutations[inputTypeName + 'Create'] = {
+                mutations[camelCase(inputTypeName + 'Add')] = {
                     type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
                     description: 'Create a ' + inputTypeName,
                     args: Object.assign({ [inputTypeName]: { type: inputType } }, includeArguments()),
@@ -234,7 +246,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
             }
 
             if(models[inputTypeName].graphql.excludeMutations.indexOf('update') === -1){
-                mutations[inputTypeName + 'Update'] = {
+                mutations[camelCase(inputTypeName + 'Edit')] = {
                     type: outputTypes[inputTypeName],
                     description: 'Update a ' + inputTypeName,
                     args: Object.assign({ [inputTypeName]: { type: inputType } }, includeArguments()),
@@ -250,7 +262,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
             }
 
             if(models[inputTypeName].graphql.excludeMutations.indexOf('destroy') === -1){
-                mutations[inputTypeName + 'Delete'] = {
+                mutations[camelCase(inputTypeName + 'Delete')] = {
                     type: GraphQLInt,
                     description: 'Delete a ' + inputTypeName,
                     args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments()),

@@ -39,6 +39,7 @@
   },
   "homepage": "https://github.com/alirizwan/sequelize-graphql-schema#readme",
   "dependencies": {
+    "camelcase": "^5.0.0",
     "express": "^4.16.3",
     "express-graphql": "^0.6.12",
     "graphql": "^0.13.2",
@@ -64,6 +65,9 @@
   "peerDependencies": {
     "graphql": "^0.13.2",
     "sequelize": "^4.37.10"
+  },
+  "resolutions": {
+    "graphql": "^0.13.2"
   },
   "jest": {
     "testEnvironment": "node",
