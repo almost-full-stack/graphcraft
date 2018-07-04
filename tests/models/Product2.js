@@ -18,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
         attributes: {
             exclude: ['description']
         },
-        excludeMutations: ['delete', 'update', 'create'],
+        excludeMutations: [],
         excludeQueries: [],
         // this will be executed after mutations/queries
         extend: {

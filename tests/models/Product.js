@@ -18,8 +18,21 @@ module.exports = (sequelize, DataTypes) => {
         attributes: {
             exclude: ['description']
         },
+        alias: {
+          create: 'instrumentStatus'
+        },
         excludeMutations: [],
         excludeQueries: [],
+        types: {
+            InstrumentStatusInput: { id: 'int', scopeId: 'int', isApproved: 'string' }
+        },
+        mutations: {
+          updateStatus: {
+            input: 'InstrumentStatusInput',
+            output: 'Product',
+            resolver: function(){}
+          }
+        },
         // this will be executed after mutations/queries
         extend: {
             create: (data, source, args, context, info) => {
