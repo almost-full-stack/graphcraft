@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
     }, { });
 
     Product.associate = function(models) {
-    // associations can be defined here
+      Product.hasMany(models.Attribute);
     };
 
     // extensions to replace or extend existing graphql implementations (available options would be create, destroy, update, query)
@@ -18,30 +18,20 @@ module.exports = (sequelize, DataTypes) => {
         attributes: {
             exclude: ['description']
         },
-        alias: {
-          create: 'instrumentStatus'
-        },
         excludeMutations: [],
         excludeQueries: [],
-        types: {
-            InstrumentStatusInput: { id: 'int', scopeId: 'int', isApproved: 'string' }
-        },
-        mutations: {
-          updateStatus: {
-            input: 'InstrumentStatusInput',
-            output: 'Product',
-            resolver: function(){}
-          }
-        },
         // this will be executed after mutations/queries
+        overwrite: {
+
+        },
         extend: {
             create: (data, source, args, context, info) => {
-                console.log(data.toJSON());
-                console.log('Running extension.');
+                //console.log(data.toJSON());
+                //console.log('Running extension.');
                 return data;
             },
             fetch: (data, source, args, context, info) => {
-                console.log('Running extension.');
+                //console.log('Running extension.');
                 return data;
             }
         }

@@ -1,25 +1,21 @@
-var { GraphQLSchema } = require('graphql')
-const express = require('express')
-const graphqlHTTP = require('express-graphql')
+var { GraphQLSchema, introspectionQuery } = require('graphql');
+const express = require('express');
+const graphqlHTTP = require('express-graphql');
 const {generateSchema} = require('../src/sequelize-graphql-schema')({
     exclude: [ ],
     includeArguments: {
         scopeId: 'int'
-    },
-    authorizer: () => {
-        return new Promise((resolve, reject) => {
-            throw new Error("No auth");
-        });
     }
 });
-const models = require('./models')
+const models = require('./models');
+const schema = new GraphQLSchema(generateSchema(models));
 
-var app = express()
+var app = express();
 
 app.use(
   '/',
   graphqlHTTP({
-    schema: new GraphQLSchema(generateSchema(models)),
+    schema: schema,
     graphiql: true
   })
 )

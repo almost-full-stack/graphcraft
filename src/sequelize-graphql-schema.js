@@ -19,9 +19,7 @@ let options = {
   exclude: [ ],
   includeArguments: { },
   authorizer: function(){
-    return new Promise((resolve, reject) => {
-      resolve();
-    });
+    return Promise.resolve();
   }
 };
 
@@ -37,6 +35,12 @@ const defaultModelGraphqlOptions = {
   extend: { },
   before: { },
   overwrite: { }
+};
+
+let Models = {};
+
+const resolverWrapper = (source, args, context, info) => {
+  return resolver(source, args, context, info);
 };
 
 const includeArguments = () => {
@@ -61,9 +65,9 @@ const execBefore = function(model, source, args, context, info, type, where){
 
 const findOneRecord = (model, where) => {
   if(where){
-    return model.findOne({ where}).then(data => data);
+    return model.findOne({ where }).then(data => data);
   }else{
-    return new Promise(resolve => resolve);
+    return Promise.resolve();
   }
 };
 
@@ -72,17 +76,25 @@ const queryResolver = (model, inputTypeName, source, args, context, info) => {
   const type = 'fetch';
 
   return options.authorizer(source, args, context, info).then(_ => {
-    if(model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)){
+    if(model.graphql.overwrite.hasOwnProperty(type)){
       return model.graphql.overwrite[type](source, args, context, info);
     }else{
-      return execBefore(model, source, args, context, info, type).then(src => {
-        return resolver(model)(source, args, context, info).then(data => {
-          if(model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)){
+      return execBefore(model, source, args, context, info, type)
+      .then(src => {
+
+        return resolver(model)(source, args, context, info)
+        .then(data => {
+          if(model.graphql.extend.hasOwnProperty(type)){
             return model.graphql.extend[type](data, source, args, context, info);
           }else{
             return data;
           }
+        })
+        .then(data => {
+          return data;
+          //return associationExtend(data, model, source, args, context, info);
         });
+
       });
     }
   });
@@ -92,14 +104,15 @@ const queryResolver = (model, inputTypeName, source, args, context, info) => {
 const mutationResolver = (model, inputTypeName, source, args, context, info, type, where) => {
 
   return options.authorizer(source, args, context, info).then(_ => {
-    if(model.graphql && model.graphql.hasOwnProperty('overwrite') && model.graphql.overwrite.hasOwnProperty(type)){
+    if(model.graphql.overwrite.hasOwnProperty(type)){
       return model.graphql.overwrite[type](source, args, context, info, where);
     }else{
       return execBefore(model, source, args, context, info, type, where).then(src => {
         source = src;
         return findOneRecord(model, type === 'destroy' ? where : null).then(preData => {
+          //console.log("I am here");
           return model[type](type === 'destroy' ? { where } : args[inputTypeName], { where }).then(data => {
-            if(model.graphql && model.graphql.hasOwnProperty('extend') && model.graphql.extend.hasOwnProperty(type)){
+            if(model.graphql.extend.hasOwnProperty(type)){
               return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
             }else{
               return data;
@@ -134,7 +147,17 @@ const generateAssociationFields = (associations, types, isInput = false) => {
     fields[associationName] = { type };
     if (!isInput) {
       // GraphQLInputObjectType do not accept fields with resolve
-      fields[associationName].resolve = resolver(relation);
+      fields[associationName].resolve = (source, args, context, info) => {
+        return resolver(relation)(source, args, context, info).then(result => {
+          if(relation.target.graphql.extend.fetch && result.length){
+            return relation.target.graphql.extend.fetch(result[0], source, args, context, info).then(item => {
+              return [].concat(item);
+            });
+          }else{
+            return result;
+          }
+        });
+      }
     }
   }
 
@@ -173,7 +196,7 @@ const generateGraphQLType = (model, types, isInput = false) => {
   });
 };
 
-const generateCustomGraphQLTypes = (model, types) => {
+const generateCustomGraphQLTypes = (model, types, isInput = false) => {
 
   let customTypes = {};
 
@@ -187,10 +210,22 @@ const generateCustomGraphQLTypes = (model, types) => {
         fields[field] = generateGraphQLField(model.graphql.types[type][field]);
       }
 
-      customTypes[type] = new GraphQLInputObjectType({
-        name: type,
-        fields: () => fields
-      });
+      if(isInput){
+        if(type.toUpperCase().endsWith('INPUT')){
+          customTypes[type] = new GraphQLInputObjectType({
+            name: type,
+            fields: () => fields
+          });
+        }
+      }else{
+        if(!type.toUpperCase().endsWith('INPUT')){
+          customTypes[type] = new GraphQLObjectType({
+            name: type,
+            fields: () => fields
+          });
+        }
+      }
+
     }
 
   }
@@ -214,7 +249,8 @@ const generateModelTypes = models => {
     if (models[modelName].hasOwnProperty('name') && modelName !== 'Sequelize') {
       outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes);
       inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true);
-      inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName]));
+      inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null ,true));
+      outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
     }
 
   }
@@ -229,10 +265,19 @@ const generateModelTypes = models => {
 * from Sequelize models.
 * @param {*} models The sequelize models used to create the root `GraphQLSchema`
 */
-const generateQueryRootType = (models, outputTypes) => {
+const generateQueryRootType = (models, outputTypes, inputTypes) => {
+
+  let createQueriesFor = {};
+
+  for(let outputTypeName in outputTypes){
+    if(models[outputTypeName]){
+      createQueriesFor[outputTypeName] = outputTypes[outputTypeName];
+    }
+  }
+
   return new GraphQLObjectType({
     name: 'Root_Query',
-    fields: Object.keys(outputTypes).reduce((fields, modelTypeName) => {
+    fields: Object.keys(createQueriesFor).reduce((fields, modelTypeName) => {
 
       const modelType = outputTypes[modelTypeName];
       let queries = {
@@ -248,9 +293,25 @@ const generateQueryRootType = (models, outputTypes) => {
           type: new GraphQLList(modelType),
           args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments()),
           resolve: (source, args, context, info) => {
-            return queryResolver(models[modelType.name], modelType.name, source, args, context, info)
+            return queryResolver(models[modelType.name], modelType.name, source, args, context, info);
           }
         }
+      };
+
+      if(models[modelTypeName].graphql && models[modelTypeName].graphql.queries){
+
+        for(let query in models[modelTypeName].graphql.queries){
+          queries[camelCase(query)] = {
+            type: outputTypes[models[modelTypeName].graphql.queries[query].output] || GraphQLInt,
+            args: Object.assign({ [models[modelTypeName].graphql.queries[query].input]: { type: inputTypes[models[modelTypeName].graphql.queries[query].input] } }, includeArguments()),
+            resolve: (source, args, context, info) => {
+              return options.authorizer(source, args, context, info).then(_ => {
+                return models[modelTypeName].graphql.queries[query].resolver(source, args, context, info);
+              });
+            }
+          };
+        }
+
       };
 
       return Object.assign(fields, queries);
@@ -276,7 +337,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
       const inputType = inputTypes[inputTypeName];
       const key = models[inputTypeName].primaryKeyAttributes[0];
       const aliases = models[inputTypeName].graphql.alias;
-      
+
       let mutations = {
         [inputTypeName + 'Default']: {
           type: GraphQLInt,
@@ -329,11 +390,11 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
             type: outputTypes[models[inputTypeName].graphql.mutations[mutation].output] || GraphQLInt,
             args: Object.assign({ [models[inputTypeName].graphql.mutations[mutation].input]: { type: inputTypes[models[inputTypeName].graphql.mutations[mutation].input] } }, includeArguments()),
             resolve: (source, args, context, info) => {
-              const where = { [key]: args[inputTypeName][key] };
+              const where = key ? { [key]: args[inputTypeName][key] } : { };
               return options.authorizer(source, args, context, info).then(_ => {
                 return models[modelName].graphql.mutations[mutation].resolver(source, args, context, info, where);
               }).then(data => {
-                if(outputTypes[models[inputTypeName].graphql.mutations[mutation].output]){
+                if(outputTypes[models[inputTypeName].graphql.mutations[mutation].output] && models[inputTypeName]){
                   return findOne(models[inputTypeName], where);
                 }else{
                   return data;
@@ -355,6 +416,9 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
 
 // This function is exported
 const generateSchema = (models, types) => {
+
+  Models = models;
+
   let availableModels = {};
   for (let modelName in models){
     models[modelName].graphql = models[modelName].graphql || defaultModelGraphqlOptions;
@@ -367,7 +431,7 @@ const generateSchema = (models, types) => {
 
   const modelTypes = types || generateModelTypes(availableModels);
   return {
-    query: generateQueryRootType(availableModels, modelTypes.outputTypes),
+    query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
     mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.outputTypes)
   };
 };
