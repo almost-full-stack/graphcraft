@@ -16,7 +16,8 @@ module.exports = (sequelize, DataTypes) => {
     // extensions to replace or extend existing graphql implementations (available options would be create, destroy, update, query)
     Product.graphql = {
         attributes: {
-            exclude: ['description']
+            exclude: ['description'],
+            include: { modelPortfolioId: 'int' }
         },
         excludeMutations: [],
         excludeQueries: [],

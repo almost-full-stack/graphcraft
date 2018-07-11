@@ -190,9 +190,10 @@ const generateGraphQLType = (model, types, isInput = false) => {
       includeAttributes[attribute] = generateGraphQLField(model.graphql.attributes.include[attribute]);
     }
   }
+  
   return new GraphQLClass({
     name: isInput ? `${model.name}Input` : model.name,
-    fields: () => Object.assign(attributeFields(model, Object.assign({ allowNull: !!isInput }, model.graphql.attributes || {}), includeAttributes), generateAssociationFields(model.associations, types, isInput))
+    fields: () => Object.assign(attributeFields(model, Object.assign({}, { allowNull: !!isInput })), generateAssociationFields(model.associations, types, isInput), includeAttributes)
   });
 };
 

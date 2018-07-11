@@ -76,27 +76,6 @@ var findOneRecord = function findOneRecord(model, where) {
   }
 };
 
-var associationExtend = function associationExtend(data, model, source, args, context, info) {
-  var resolvers = [];
-  data.forEach(function (item) {
-    for (var associationName in model.associations) {
-      var relation = model.associations[associationName];
-      var itemJson = item.toJSON();
-
-      if (itemJson[associationName] && relation.target && relation.target.garphql.extend && relation.target.garphql.extend.fetch) {
-        console.log("Relation");
-        resolvers.push(relation.target.garphql.extend.fetch(itemJson[associationName], source, args, context, info));
-      }
-    }
-  });
-
-  return Promise.all(resolvers).then(function (_) {
-    console.log(_);
-    console.log("Resolved");
-    return data;
-  });
-};
-
 var queryResolver = function queryResolver(model, inputTypeName, source, args, context, info) {
 
   var type = 'fetch';
@@ -216,10 +195,11 @@ var generateGraphQLType = function generateGraphQLType(model, types) {
       includeAttributes[attribute] = generateGraphQLField(model.graphql.attributes.include[attribute]);
     }
   }
+
   return new GraphQLClass({
     name: isInput ? model.name + 'Input' : model.name,
     fields: function fields() {
-      return Object.assign(attributeFields(model, Object.assign({ allowNull: !!isInput }, model.graphql.attributes || {}), includeAttributes), generateAssociationFields(model.associations, types, isInput));
+      return Object.assign(attributeFields(model, Object.assign({}, { allowNull: !!isInput })), generateAssociationFields(model.associations, types, isInput), includeAttributes);
     }
   });
 };
