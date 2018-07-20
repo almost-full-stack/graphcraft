@@ -22,14 +22,17 @@ module.exports = (sequelize, DataTypes) => {
         excludeMutations: [],
         excludeQueries: [],
         // this will be executed after mutations/queries
+        before: {
+          create: (source, args, context, info) => {
+            return Promise.resolve();
+          }
+        },
         overwrite: {
 
         },
         extend: {
             create: (data, source, args, context, info) => {
-                //console.log(data.toJSON());
-                //console.log('Running extension.');
-                return data;
+                return Promise.resolve(data);
             },
             fetch: (data, source, args, context, info) => {
                 //console.log('Running extension.');

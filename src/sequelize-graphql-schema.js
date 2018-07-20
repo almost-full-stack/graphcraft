@@ -147,6 +147,7 @@ const generateAssociationFields = (associations, types, isInput = false) => {
     fields[associationName] = { type };
     if (!isInput) {
       // GraphQLInputObjectType do not accept fields with resolve
+      fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
       fields[associationName].resolve = (source, args, context, info) => {
         return resolver(relation)(source, args, context, info).then(result => {
           if(relation.target.graphql.extend.fetch && result.length){
@@ -182,7 +183,7 @@ const generateGraphQLField = (type) => {
 * @param {*} model The sequelize model used to create the `GraphQLObjectType`
 * @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
-const generateGraphQLType = (model, types, isInput = false) => {
+const generateGraphQLType = (model, types, isInput = false, method) => {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   let includeAttributes = {};
   if(isInput && model.graphql.attributes.include){
@@ -190,7 +191,7 @@ const generateGraphQLType = (model, types, isInput = false) => {
       includeAttributes[attribute] = generateGraphQLField(model.graphql.attributes.include[attribute]);
     }
   }
-  
+
   return new GraphQLClass({
     name: isInput ? `${model.name}Input` : model.name,
     fields: () => Object.assign(attributeFields(model, Object.assign({}, { allowNull: !!isInput })), generateAssociationFields(model.associations, types, isInput), includeAttributes)
@@ -378,7 +379,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
           description: 'Delete a ' + inputTypeName,
           args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments()),
           resolve: (source, args, context, info) => {
-            const where = { [key]: args[inputTypeName][key] };
+            const where = { [key]: args[key] };
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'destroy', where);
           }
         };
@@ -391,15 +392,11 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
             type: outputTypes[models[inputTypeName].graphql.mutations[mutation].output] || GraphQLInt,
             args: Object.assign({ [models[inputTypeName].graphql.mutations[mutation].input]: { type: inputTypes[models[inputTypeName].graphql.mutations[mutation].input] } }, includeArguments()),
             resolve: (source, args, context, info) => {
-              const where = key ? { [key]: args[inputTypeName][key] } : { };
+              const where = key && args[inputTypeName] ? { [key]: args[inputTypeName][key] } : { };
               return options.authorizer(source, args, context, info).then(_ => {
-                return models[modelName].graphql.mutations[mutation].resolver(source, args, context, info, where);
+                return models[inputTypeName].graphql.mutations[mutation].resolver(source, args, context, info, where);
               }).then(data => {
-                if(outputTypes[models[inputTypeName].graphql.mutations[mutation].output] && models[inputTypeName]){
-                  return findOne(models[inputTypeName], where);
-                }else{
-                  return data;
-                }
+                return data;
               });
             }
           };

@@ -2,7 +2,10 @@
 module.exports = (sequelize, DataTypes) => {
 
     const Attribute = sequelize.define('Attribute', {
-        key: DataTypes.STRING,
+        key: {
+          type: DataTypes.STRING,
+          allowNull: false
+        },
         value: DataTypes.STRING
     }, { });
 
