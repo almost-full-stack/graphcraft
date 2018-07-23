@@ -92,7 +92,6 @@ const queryResolver = (model, inputTypeName, source, args, context, info) => {
         })
         .then(data => {
           return data;
-          //return associationExtend(data, model, source, args, context, info);
         });
 
       });
@@ -149,14 +148,16 @@ const generateAssociationFields = (associations, types, isInput = false) => {
       // GraphQLInputObjectType do not accept fields with resolve
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
       fields[associationName].resolve = (source, args, context, info) => {
-        return resolver(relation)(source, args, context, info).then(result => {
-          if(relation.target.graphql.extend.fetch && result.length){
-            return relation.target.graphql.extend.fetch(result[0], source, args, context, info).then(item => {
-              return [].concat(item);
-            });
-          }else{
-            return result;
-          }
+        return execBefore(relation.target, source, args, context, info, 'fetch').then(_ => {
+          return resolver(relation)(source, args, context, info).then(result => {
+            if(relation.target.graphql.extend.fetch && result.length){
+              return relation.target.graphql.extend.fetch(result[0], source, args, context, info).then(item => {
+                return [].concat(item);
+              });
+            }else{
+              return result;
+            }
+          });
         });
       }
     }

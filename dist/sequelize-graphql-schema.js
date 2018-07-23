@@ -94,7 +94,6 @@ var queryResolver = function queryResolver(model, inputTypeName, source, args, c
           }
         }).then(function (data) {
           return data;
-          //return associationExtend(data, model, source, args, context, info);
         });
       });
     }
@@ -148,14 +147,16 @@ var generateAssociationFields = function generateAssociationFields(associations,
       // GraphQLInputObjectType do not accept fields with resolve
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
       fields[associationName].resolve = function (source, args, context, info) {
-        return resolver(relation)(source, args, context, info).then(function (result) {
-          if (relation.target.graphql.extend.fetch && result.length) {
-            return relation.target.graphql.extend.fetch(result[0], source, args, context, info).then(function (item) {
-              return [].concat(item);
-            });
-          } else {
-            return result;
-          }
+        return execBefore(relation.target, source, args, context, info, 'fetch').then(function (_) {
+          return resolver(relation)(source, args, context, info).then(function (result) {
+            if (relation.target.graphql.extend.fetch && result.length) {
+              return relation.target.graphql.extend.fetch(result[0], source, args, context, info).then(function (item) {
+                return [].concat(item);
+              });
+            } else {
+              return result;
+            }
+          });
         });
       };
     }

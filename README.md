@@ -2,6 +2,7 @@
 
 A helper function that automatically generates `GraphQLSchema` from Sequelize models.
 Extended Romain Pellerin's https://github.com/rpellerin/graphql-sequelize-schema-generator
+Disclaimer: Use it at your own risk, rapidly changing and extending due to being used in an internal project. A stable and complete version will be published with documentation on 6th September.
 
 ## Installation
 

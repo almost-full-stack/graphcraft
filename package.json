@@ -1,6 +1,6 @@
 {
   "name": "sequelize-graphql-schema",
-  "version": "0.1.15",
+  "version": "0.1.19",
   "description": "A helper function to automatically generate `GraphQLSchema` from Sequelize models.",
   "main": "index.js",
   "scripts": {
@@ -40,6 +40,7 @@
   "homepage": "https://github.com/alirizwan/sequelize-graphql-schema#readme",
   "dependencies": {
     "camelcase": "^5.0.0",
+    "dataloader-sequelize": "^1.7.2",
     "express": "^4.16.3",
     "express-graphql": "^0.6.12",
     "graphql": "^0.13.2",
