@@ -25,8 +25,8 @@ let options = {
 
 const defaultModelGraphqlOptions = {
   attributes: {
-    exclude: [],
-    include: {}
+    exclude: [],  // list attributes which are to be ignored in Model Input
+    include: {}, // attributes in key:type format which are to be included in Model Input
   },
   alias: { },
   mutations: { },
@@ -109,7 +109,6 @@ const mutationResolver = (model, inputTypeName, source, args, context, info, typ
       return execBefore(model, source, args, context, info, type, where).then(src => {
         source = src;
         return findOneRecord(model, type === 'destroy' ? where : null).then(preData => {
-          //console.log("I am here");
           return model[type](type === 'destroy' ? { where } : args[inputTypeName], { where }).then(data => {
             if(model.graphql.extend.hasOwnProperty(type)){
               return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
@@ -389,8 +388,27 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
       if(models[inputTypeName].graphql && models[inputTypeName].graphql.mutations){
 
         for(let mutation in models[inputTypeName].graphql.mutations){
+
+          let isArray = false;
+          let outPutType = GraphQLInt;
+          let typeName = models[inputTypeName].graphql.mutations[mutation].output;
+
+          if(typeName){
+            if(typeName.startsWith('[')){
+              typeName = typeName.replace('[', '');
+              typeName = typeName.replace(']', '');
+              isArray = true;
+            }
+
+            if(isArray){
+              outPutType = new GraphQLList(outputTypes[typeName]);
+            }else{
+              outPutType = outputTypes[typeName];
+            }
+          }
+
           mutations[camelCase(mutation)] = {
-            type: outputTypes[models[inputTypeName].graphql.mutations[mutation].output] || GraphQLInt,
+            type: outPutType,
             args: Object.assign({ [models[inputTypeName].graphql.mutations[mutation].input]: { type: inputTypes[models[inputTypeName].graphql.mutations[mutation].input] } }, includeArguments()),
             resolve: (source, args, context, info) => {
               const where = key && args[inputTypeName] ? { [key]: args[inputTypeName][key] } : { };

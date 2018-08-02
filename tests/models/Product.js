@@ -2,7 +2,10 @@
 module.exports = (sequelize, DataTypes) => {
 
     const Product = sequelize.define('Product', {
-        name: DataTypes.STRING,
+        name: {
+          type: DataTypes.STRING,
+          include: ['create', 'modify']
+        },
         accountId: DataTypes.INTEGER,   // Cash account id
         clientId: DataTypes.INTEGER,    // Client who created/opened the Product
         scopeId: DataTypes.INTEGER,   // Tennant managing account of client, required since one Client can have links with multiple tennants.
@@ -21,6 +24,12 @@ module.exports = (sequelize, DataTypes) => {
         },
         excludeMutations: [],
         excludeQueries: [],
+        types: {
+          myObj: { id: 'int' }
+        },
+        mutations: {
+          myMutation: { input: 'Product', output: '[myObj]', resolver: () => { return 1; }}
+        },
         // this will be executed after mutations/queries
         before: {
           create: (source, args, context, info) => {
