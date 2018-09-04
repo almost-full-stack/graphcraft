@@ -10,14 +10,19 @@ const {
   resolver,
   attributeFields,
   defaultListArgs,
-  defaultArgs
+  defaultArgs,
+  JSONType
 } = require('graphql-sequelize');
-
 const camelCase = require('camelcase');
+const remoteSchema = require('./remoteSchema');
+const { GraphQLClient } = require('graphql-request');
+const _ = require('lodash');
 
 let options = {
   exclude: [ ],
   includeArguments: { },
+  remote: {
+  },
   authorizer: function(){
     return Promise.resolve();
   }
@@ -27,6 +32,7 @@ const defaultModelGraphqlOptions = {
   attributes: {
     exclude: [],  // list attributes which are to be ignored in Model Input
     include: {}, // attributes in key:type format which are to be included in Model Input
+    import: []
   },
   alias: { },
   mutations: { },
@@ -39,8 +45,47 @@ const defaultModelGraphqlOptions = {
 
 let Models = {};
 
-const resolverWrapper = (source, args, context, info) => {
-  return resolver(source, args, context, info);
+const remoteResolver = (source, args, context, info, remoteQuery, remoteArguments, type) => {
+
+  const availableArgs = _.keys(remoteQuery.args);
+  const pickedArgs = _.pick(remoteArguments, availableArgs);
+  let queryArgs = [];
+
+  for(const arg in remoteArguments){
+    queryArgs.push(`$${arg}:${remoteArguments[arg].type}`);
+  }
+
+  let passedArgs = [];
+
+  for(const arg in pickedArgs){
+    passedArgs.push(`${arg}:$${arg}`);
+  };
+
+  const fields = _.keys(type.getFields());
+
+  const query = `query ${remoteQuery.name}(${queryArgs.join(', ')}){
+    ${remoteQuery.name}(${passedArgs.join(', ')}){
+      ${fields.join(', ')}
+    }
+  }`;
+
+  const variables = _.pick(args, availableArgs);
+  const key = remoteQuery.to || 'id';
+
+  if(_.indexOf(availableArgs, key) > -1 && !variables.where){
+    variables[key] = source[remoteQuery.with];
+  }else if(_.indexOf(availableArgs, 'where') > -1){
+    variables.where = variables.where || {};
+    variables.where[key] = source[remoteQuery.with];
+  }
+
+  const headers = _.pick(context.headers, remoteQuery.headers);
+  const client = new GraphQLClient(remoteQuery.endpoint, { headers });
+
+  return client.request(query, variables).then((data) => {
+    return data[remoteQuery.name];
+  });
+
 };
 
 const includeArguments = () => {
@@ -123,6 +168,54 @@ const mutationResolver = (model, inputTypeName, source, args, context, info, typ
 
 };
 
+const generateGraphQLField = (type) => {
+  let isRequired = type.indexOf('!') > -1 ? true : false;
+  type = type.replace('!', '').toLowerCase();
+  let field = type === 'int' ? GraphQLInt : GraphQLString;
+  if(isRequired){
+    field = GraphQLNonNull(field);
+  }
+  return { type: field };
+};
+
+const toGraphQLType = function(name, schema){
+
+  let fields = {};
+
+  for(const field in schema){
+    fields[field] = generateGraphQLField(schema[field]);
+  }
+
+  return new GraphQLObjectType({
+    name,
+    fields: () => fields
+  });
+
+};
+
+const generateTypesFromObject = function(remoteData){
+
+  const types = {};
+  let queries = [];
+
+  remoteData.forEach((item) => {
+    for(const type in item.types){
+      types[type] = toGraphQLType(type, item.types[type]);
+    }
+    item.queries.forEach((query) => {
+      let args = {};
+      for(const arg in query.args){
+        args[arg] = generateGraphQLField(query.args[arg]);
+      }
+      query.args = args;
+    });
+    queries = queries.concat(item.queries);
+  });
+
+  return { types, queries };
+
+};
+
 /**
 * Returns the association fields of an entity.
 *
@@ -134,8 +227,14 @@ const mutationResolver = (model, inputTypeName, source, args, context, info, typ
 */
 const generateAssociationFields = (associations, types, isInput = false) => {
   let fields = {}
+
   for (let associationName in associations) {
     const relation = associations[associationName];
+
+    if(!types[relation.target.name]){
+      return fields;
+    }
+
     // BelongsToMany is represented as a list, just like HasMany
     const type = relation.associationType === 'BelongsToMany' ||
     relation.associationType === 'HasMany'
@@ -143,7 +242,8 @@ const generateAssociationFields = (associations, types, isInput = false) => {
     : types[relation.target.name];
 
     fields[associationName] = { type };
-    if (!isInput) {
+
+    if (!isInput && !relation.isRemote) {
       // GraphQLInputObjectType do not accept fields with resolve
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
       fields[associationName].resolve = (source, args, context, info) => {
@@ -159,20 +259,16 @@ const generateAssociationFields = (associations, types, isInput = false) => {
           });
         });
       }
+    }else if(!isInput && relation.isRemote){
+      fields[associationName].args = Object.assign({}, relation.query.args, defaultListArgs());
+      fields[associationName].resolve = (source, args, context, info) => {
+        return remoteResolver(source, args, context, info, relation.query, fields[associationName].args, types[relation.target.name]);
+      }
+
     }
   }
 
   return fields;
-};
-
-const generateGraphQLField = (type) => {
-  let isRequired = type.indexOf('!') > -1 ? true : false;
-  type = type.replace('!', '');
-  let field = type === 'int' ? GraphQLInt : GraphQLString;
-  if(isRequired){
-    field = GraphQLNonNull(field);
-  }
-  return { type: field };
 };
 
 /**
@@ -183,7 +279,7 @@ const generateGraphQLField = (type) => {
 * @param {*} model The sequelize model used to create the `GraphQLObjectType`
 * @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
-const generateGraphQLType = (model, types, isInput = false, method) => {
+const generateGraphQLType = (model, types, isInput = false) => {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   let includeAttributes = {};
   if(isInput && model.graphql.attributes.include){
@@ -243,8 +339,8 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
 * @param {*} models The sequelize models used to create the types
 */
 // This function is exported
-const generateModelTypes = models => {
-  let outputTypes = {};
+const generateModelTypes = (models, remoteTypes) => {
+  let outputTypes = remoteTypes || {};
   let inputTypes = {};
   for (let modelName in models) {
     // Only our models, not Sequelize nor sequelize
@@ -258,6 +354,25 @@ const generateModelTypes = models => {
   }
 
   return { outputTypes, inputTypes };
+};
+
+const generateModelTypesFromRemote = (context) => {
+  if(options.remote){
+
+    let promises = [];
+
+    for(let opt in options.remote.import){
+
+      opt.headers = options.remote.import[opt].headers || options.remote.headers;
+      promises.push(remoteSchema(options.remote.import[opt], context));
+
+    }
+
+    return Promise.all(promises);
+
+  }else{
+    return Promise.resolve(null);
+  }
 };
 
 /**
@@ -432,7 +547,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
 };
 
 // This function is exported
-const generateSchema = (models, types) => {
+const generateSchema = (models, types, context) => {
 
   Models = models;
 
@@ -446,11 +561,56 @@ const generateSchema = (models, types) => {
     }
   }
 
-  const modelTypes = types || generateModelTypes(availableModels);
-  return {
-    query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
-    mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.outputTypes)
-  };
+  if(options.remote && options.remote.import){
+
+    return generateModelTypesFromRemote(context).then((result) => {
+
+      const remoteSchema = generateTypesFromObject(result);
+
+      for(const modelName in availableModels){
+        if(availableModels[modelName].graphql.import){
+
+          availableModels[modelName].graphql.import.forEach((association) => {
+
+            for(let index = 0; index < remoteSchema.queries.length; index ++){
+                if(remoteSchema.queries[index].output === association.from){
+                    availableModels[modelName].associations[(association.as || association.from)] = {
+                      associationType: remoteSchema.queries[index].isList ? 'HasMany' : 'BelongsTo',
+                      isRemote: true,
+                      target: { name: association.from },
+                      query: Object.assign({}, association, remoteSchema.queries[index])
+                    };
+                    break;
+                }
+            }
+
+          });
+
+        }
+
+      }
+
+      const modelTypes = types || generateModelTypes(availableModels, remoteSchema.types);
+
+      //modelTypes.outputTypes = Object.assign({}, modelTypes.outputTypes, remoteSchema.types);
+
+      return {
+        query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
+        mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.outputTypes)
+      };
+
+    });
+
+  }else{
+
+    const modelTypes = types || generateModelTypes(availableModels);
+
+    return {
+      query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
+      mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.outputTypes)
+    };
+  }
+
 };
 
 module.exports = _options => {

@@ -20,8 +20,9 @@ module.exports = (sequelize, DataTypes) => {
     Product.graphql = {
         attributes: {
             exclude: ['description'],
-            include: { modelPortfolioId: 'int' }
+            include: { modelPortfolioId: 'int' },
         },
+        import: [ { from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' } ],
         excludeMutations: [],
         excludeQueries: [],
         types: {
