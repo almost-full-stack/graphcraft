@@ -282,7 +282,7 @@ const generateAssociationFields = (associations, types, isInput = false) => {
 const generateGraphQLType = (model, types, isInput = false) => {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   let includeAttributes = {};
-  if(isInput && model.graphql.attributes.include){
+  if(model.graphql.attributes.include){
     for(let attribute in model.graphql.attributes.include){
       includeAttributes[attribute] = generateGraphQLField(model.graphql.attributes.include[attribute]);
     }
