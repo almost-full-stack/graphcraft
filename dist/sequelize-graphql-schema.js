@@ -289,7 +289,7 @@ var generateGraphQLType = function generateGraphQLType(model, types) {
 
   var GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   var includeAttributes = {};
-  if (isInput && model.graphql.attributes.include) {
+  if (model.graphql.attributes.include) {
     for (var attribute in model.graphql.attributes.include) {
       includeAttributes[attribute] = generateGraphQLField(model.graphql.attributes.include[attribute]);
     }
@@ -531,7 +531,7 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
 
       if (models[inputTypeName].graphql.excludeMutations.indexOf('update') === -1) {
         mutations[camelCase(aliases.update || inputTypeName + 'Edit')] = {
-          type: outputTypes[inputTypeName],
+          type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'Update a ' + inputTypeName,
           args: Object.assign(_defineProperty({}, inputTypeName, { type: inputType }), includeArguments()),
           resolve: function resolve(source, args, context, info) {
