@@ -495,7 +495,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
 
       if(models[inputTypeName].graphql.excludeMutations.indexOf('update') === -1){
         mutations[camelCase(aliases.update || (inputTypeName + 'Edit'))] = {
-          type: outputTypes[inputTypeName],
+          type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'Update a ' + inputTypeName,
           args: Object.assign({ [inputTypeName]: { type: inputType } }, includeArguments()),
           resolve: (source, args, context, info) => {
