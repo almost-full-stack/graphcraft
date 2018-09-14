@@ -437,9 +437,11 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
             }
           }
 
+          const inputArg = models[modelTypeName].graphql.queries[query].input ? { [models[modelTypeName].graphql.queries[query].input]: { type: inputTypes[models[modelTypeName].graphql.queries[query].input] } } : {};
+
           queries[camelCase(query)] = {
             type: outPutType,
-            args: Object.assign({ [models[modelTypeName].graphql.queries[query].input]: { type: inputTypes[models[modelTypeName].graphql.queries[query].input] } }, includeArguments()),
+            args: Object.assign(inputArg, defaultListArgs(), includeArguments()),
             resolve: (source, args, context, info) => {
               return options.authorizer(source, args, context, info).then(_ => {
                 return models[modelTypeName].graphql.queries[query].resolver(source, args, context, info);

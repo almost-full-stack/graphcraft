@@ -1,5 +1,7 @@
 'use strict';
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 var _require = require('graphql'),
@@ -14,13 +16,21 @@ var _require2 = require('graphql-sequelize'),
     resolver = _require2.resolver,
     attributeFields = _require2.attributeFields,
     defaultListArgs = _require2.defaultListArgs,
-    defaultArgs = _require2.defaultArgs;
+    defaultArgs = _require2.defaultArgs,
+    JSONType = _require2.JSONType;
 
 var camelCase = require('camelcase');
+var remoteSchema = require('./remoteSchema');
+
+var _require3 = require('graphql-request'),
+    GraphQLClient = _require3.GraphQLClient;
+
+var _ = require('lodash');
 
 var options = {
   exclude: [],
   includeArguments: {},
+  remote: {},
   authorizer: function authorizer() {
     return Promise.resolve();
   }
@@ -29,7 +39,8 @@ var options = {
 var defaultModelGraphqlOptions = {
   attributes: {
     exclude: [], // list attributes which are to be ignored in Model Input
-    include: {} // attributes in key:type format which are to be included in Model Input
+    include: {}, // attributes in key:type format which are to be included in Model Input
+    import: []
   },
   alias: {},
   mutations: {},
@@ -42,8 +53,42 @@ var defaultModelGraphqlOptions = {
 
 var Models = {};
 
-var resolverWrapper = function resolverWrapper(source, args, context, info) {
-  return resolver(source, args, context, info);
+var remoteResolver = function remoteResolver(source, args, context, info, remoteQuery, remoteArguments, type) {
+
+  var availableArgs = _.keys(remoteQuery.args);
+  var pickedArgs = _.pick(remoteArguments, availableArgs);
+  var queryArgs = [];
+
+  for (var arg in remoteArguments) {
+    queryArgs.push('$' + arg + ':' + remoteArguments[arg].type);
+  }
+
+  var passedArgs = [];
+
+  for (var _arg in pickedArgs) {
+    passedArgs.push(_arg + ':$' + _arg);
+  };
+
+  var fields = _.keys(type.getFields());
+
+  var query = 'query ' + remoteQuery.name + '(' + queryArgs.join(', ') + '){\n    ' + remoteQuery.name + '(' + passedArgs.join(', ') + '){\n      ' + fields.join(', ') + '\n    }\n  }';
+
+  var variables = _.pick(args, availableArgs);
+  var key = remoteQuery.to || 'id';
+
+  if (_.indexOf(availableArgs, key) > -1 && !variables.where) {
+    variables[key] = source[remoteQuery.with];
+  } else if (_.indexOf(availableArgs, 'where') > -1) {
+    variables.where = variables.where || {};
+    variables.where[key] = source[remoteQuery.with];
+  }
+
+  var headers = _.pick(context.headers, remoteQuery.headers);
+  var client = new GraphQLClient(remoteQuery.endpoint, { headers: headers });
+
+  return client.request(query, variables).then(function (data) {
+    return data[remoteQuery.name];
+  });
 };
 
 var includeArguments = function includeArguments() {
@@ -122,6 +167,54 @@ var mutationResolver = function mutationResolver(model, inputTypeName, source, a
   });
 };
 
+var generateGraphQLField = function generateGraphQLField(type) {
+  var isRequired = type.indexOf('!') > -1 ? true : false;
+  type = type.replace('!', '').toLowerCase();
+  var field = type === 'int' ? GraphQLInt : GraphQLString;
+  if (isRequired) {
+    field = GraphQLNonNull(field);
+  }
+  return { type: field };
+};
+
+var toGraphQLType = function toGraphQLType(name, schema) {
+
+  var _fields = {};
+
+  for (var field in schema) {
+    _fields[field] = generateGraphQLField(schema[field]);
+  }
+
+  return new GraphQLObjectType({
+    name: name,
+    fields: function fields() {
+      return _fields;
+    }
+  });
+};
+
+var generateTypesFromObject = function generateTypesFromObject(remoteData) {
+
+  var types = {};
+  var queries = [];
+
+  remoteData.forEach(function (item) {
+    for (var type in item.types) {
+      types[type] = toGraphQLType(type, item.types[type]);
+    }
+    item.queries.forEach(function (query) {
+      var args = {};
+      for (var arg in query.args) {
+        args[arg] = generateGraphQLField(query.args[arg]);
+      }
+      query.args = args;
+    });
+    queries = queries.concat(item.queries);
+  });
+
+  return { types: types, queries: queries };
+};
+
 /**
 * Returns the association fields of an entity.
 *
@@ -138,11 +231,19 @@ var generateAssociationFields = function generateAssociationFields(associations,
 
   var _loop = function _loop(associationName) {
     var relation = associations[associationName];
+
+    if (!types[relation.target.name]) {
+      return {
+        v: fields
+      };
+    }
+
     // BelongsToMany is represented as a list, just like HasMany
     var type = relation.associationType === 'BelongsToMany' || relation.associationType === 'HasMany' ? new GraphQLList(types[relation.target.name]) : types[relation.target.name];
 
     fields[associationName] = { type: type };
-    if (!isInput) {
+
+    if (!isInput && !relation.isRemote) {
       // GraphQLInputObjectType do not accept fields with resolve
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
       fields[associationName].resolve = function (source, args, context, info) {
@@ -158,24 +259,21 @@ var generateAssociationFields = function generateAssociationFields(associations,
           });
         });
       };
+    } else if (!isInput && relation.isRemote) {
+      fields[associationName].args = Object.assign({}, relation.query.args, defaultListArgs());
+      fields[associationName].resolve = function (source, args, context, info) {
+        return remoteResolver(source, args, context, info, relation.query, fields[associationName].args, types[relation.target.name]);
+      };
     }
   };
 
   for (var associationName in associations) {
-    _loop(associationName);
+    var _ret = _loop(associationName);
+
+    if ((typeof _ret === 'undefined' ? 'undefined' : _typeof(_ret)) === "object") return _ret.v;
   }
 
   return fields;
-};
-
-var generateGraphQLField = function generateGraphQLField(type) {
-  var isRequired = type.indexOf('!') > -1 ? true : false;
-  type = type.replace('!', '');
-  var field = type === 'int' ? GraphQLInt : GraphQLString;
-  if (isRequired) {
-    field = GraphQLNonNull(field);
-  }
-  return { type: field };
 };
 
 /**
@@ -188,7 +286,6 @@ var generateGraphQLField = function generateGraphQLField(type) {
 */
 var generateGraphQLType = function generateGraphQLType(model, types) {
   var isInput = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
-  var method = arguments[3];
 
   var GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   var includeAttributes = {};
@@ -225,13 +322,13 @@ var generateCustomGraphQLTypes = function generateCustomGraphQLTypes(model, type
         if (type.toUpperCase().endsWith('INPUT')) {
           customTypes[type] = new GraphQLInputObjectType({
             name: type,
-            fields: function (_fields) {
+            fields: function (_fields2) {
               function fields() {
-                return _fields.apply(this, arguments);
+                return _fields2.apply(this, arguments);
               }
 
               fields.toString = function () {
-                return _fields.toString();
+                return _fields2.toString();
               };
 
               return fields;
@@ -244,13 +341,13 @@ var generateCustomGraphQLTypes = function generateCustomGraphQLTypes(model, type
         if (!type.toUpperCase().endsWith('INPUT')) {
           customTypes[type] = new GraphQLObjectType({
             name: type,
-            fields: function (_fields2) {
+            fields: function (_fields3) {
               function fields() {
-                return _fields2.apply(this, arguments);
+                return _fields3.apply(this, arguments);
               }
 
               fields.toString = function () {
-                return _fields2.toString();
+                return _fields3.toString();
               };
 
               return fields;
@@ -278,8 +375,8 @@ var generateCustomGraphQLTypes = function generateCustomGraphQLTypes(model, type
 * @param {*} models The sequelize models used to create the types
 */
 // This function is exported
-var generateModelTypes = function generateModelTypes(models) {
-  var outputTypes = {};
+var generateModelTypes = function generateModelTypes(models, remoteTypes) {
+  var outputTypes = remoteTypes || {};
   var inputTypes = {};
   for (var modelName in models) {
     // Only our models, not Sequelize nor sequelize
@@ -292,6 +389,23 @@ var generateModelTypes = function generateModelTypes(models) {
   }
 
   return { outputTypes: outputTypes, inputTypes: inputTypes };
+};
+
+var generateModelTypesFromRemote = function generateModelTypesFromRemote(context) {
+  if (options.remote) {
+
+    var promises = [];
+
+    for (var opt in options.remote.import) {
+
+      opt.headers = options.remote.import[opt].headers || options.remote.headers;
+      promises.push(remoteSchema(options.remote.import[opt], context));
+    }
+
+    return Promise.all(promises);
+  } else {
+    return Promise.resolve(null);
+  }
 };
 
 /**
@@ -336,8 +450,27 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
 
       if (models[modelTypeName].graphql && models[modelTypeName].graphql.queries) {
         var _loop3 = function _loop3(query) {
+
+          var isArray = false;
+          var outPutType = GraphQLInt;
+          var typeName = models[modelTypeName].graphql.queries[query].output;
+
+          if (typeName) {
+            if (typeName.startsWith('[')) {
+              typeName = typeName.replace('[', '');
+              typeName = typeName.replace(']', '');
+              isArray = true;
+            }
+
+            if (isArray) {
+              outPutType = new GraphQLList(outputTypes[typeName]);
+            } else {
+              outPutType = outputTypes[models[modelTypeName].graphql.queries[query].output];
+            }
+          }
+
           queries[camelCase(query)] = {
-            type: outputTypes[models[modelTypeName].graphql.queries[query].output] || GraphQLInt,
+            type: outPutType,
             args: Object.assign(_defineProperty({}, models[modelTypeName].graphql.queries[query].input, { type: inputTypes[models[modelTypeName].graphql.queries[query].input] }), includeArguments()),
             resolve: function resolve(source, args, context, info) {
               return options.authorizer(source, args, context, info).then(function (_) {
@@ -469,7 +602,7 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
 };
 
 // This function is exported
-var generateSchema = function generateSchema(models, types) {
+var generateSchema = function generateSchema(models, types, context) {
 
   Models = models;
 
@@ -483,11 +616,54 @@ var generateSchema = function generateSchema(models, types) {
     }
   }
 
-  var modelTypes = types || generateModelTypes(availableModels);
-  return {
-    query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
-    mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.outputTypes)
-  };
+  if (options.remote && options.remote.import) {
+
+    return generateModelTypesFromRemote(context).then(function (result) {
+
+      var remoteSchema = generateTypesFromObject(result);
+
+      var _loop5 = function _loop5(_modelName) {
+        if (availableModels[_modelName].graphql.import) {
+
+          availableModels[_modelName].graphql.import.forEach(function (association) {
+
+            for (var index = 0; index < remoteSchema.queries.length; index++) {
+              if (remoteSchema.queries[index].output === association.from) {
+                availableModels[_modelName].associations[association.as || association.from] = {
+                  associationType: remoteSchema.queries[index].isList ? 'HasMany' : 'BelongsTo',
+                  isRemote: true,
+                  target: { name: association.from },
+                  query: Object.assign({}, association, remoteSchema.queries[index])
+                };
+                break;
+              }
+            }
+          });
+        }
+      };
+
+      for (var _modelName in availableModels) {
+        _loop5(_modelName);
+      }
+
+      var modelTypes = types || generateModelTypes(availableModels, remoteSchema.types);
+
+      //modelTypes.outputTypes = Object.assign({}, modelTypes.outputTypes, remoteSchema.types);
+
+      return {
+        query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
+        mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.outputTypes)
+      };
+    });
+  } else {
+
+    var modelTypes = types || generateModelTypes(availableModels);
+
+    return {
+      query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
+      mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.outputTypes)
+    };
+  }
 };
 
 module.exports = function (_options) {

@@ -32,7 +32,7 @@ module.exports = (sequelize, DataTypes) => {
           myMutation: { input: 'Product', output: '[myObj]', resolver: () => { return 1; }}
         },
         queries: {
-          myQuery: { input: 'Product', output: '[myObj]', resolver: () => { return 1; } }
+          myQuery: { output: '[myObj]', resolver: () => { return 1; } }
         },
         // this will be executed after mutations/queries
         before: {
