@@ -3,7 +3,7 @@ const express = require('express');
 const graphqlHTTP = require('express-graphql');
 const {generateSchema} = require('../src/sequelize-graphql-schema')({
   exclude: [ ],
-  remote: {
+  /*remote: {
     import: {
       'Instrument': {
         endpoint: 'http://localhost:3000/graphiql',
@@ -17,7 +17,7 @@ const {generateSchema} = require('../src/sequelize-graphql-schema')({
       }
     },
     headers: [ 'authorization', 'accessToken' ]
-  },
+  },*/
   includeArguments: {
     scopeId: 'int'
   }
@@ -48,6 +48,6 @@ app.use('/', (req, res) => {
 
 });
 
-app.listen(3001, function() {
+app.listen(3000, function() {
   console.log('RUNNING ON 3000');
 });

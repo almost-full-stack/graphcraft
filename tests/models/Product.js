@@ -31,6 +31,9 @@ module.exports = (sequelize, DataTypes) => {
         mutations: {
           myMutation: { input: 'Product', output: '[myObj]', resolver: () => { return 1; }}
         },
+        queries: {
+          myQuery: { input: 'Product', output: '[myObj]', resolver: () => { return 1; } }
+        },
         // this will be executed after mutations/queries
         before: {
           create: (source, args, context, info) => {

@@ -418,8 +418,27 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
       if(models[modelTypeName].graphql && models[modelTypeName].graphql.queries){
 
         for(let query in models[modelTypeName].graphql.queries){
+
+          let isArray = false;
+          let outPutType = GraphQLInt;
+          let typeName = models[modelTypeName].graphql.queries[query].output;
+
+          if(typeName){
+            if(typeName.startsWith('[')){
+              typeName = typeName.replace('[', '');
+              typeName = typeName.replace(']', '');
+              isArray = true;
+            }
+
+            if(isArray){
+              outPutType = new GraphQLList(outputTypes[typeName]);
+            }else{
+              outPutType = outputTypes[models[modelTypeName].graphql.queries[query].output];
+            }
+          }
+
           queries[camelCase(query)] = {
-            type: outputTypes[models[modelTypeName].graphql.queries[query].output] || GraphQLInt,
+            type: outPutType,
             args: Object.assign({ [models[modelTypeName].graphql.queries[query].input]: { type: inputTypes[models[modelTypeName].graphql.queries[query].input] } }, includeArguments()),
             resolve: (source, args, context, info) => {
               return options.authorizer(source, args, context, info).then(_ => {
