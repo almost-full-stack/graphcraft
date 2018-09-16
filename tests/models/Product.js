@@ -22,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
             exclude: ['description'],
             include: { modelPortfolioId: 'int' },
         },
+        alias: { fetch: 'myProduct' },
         import: [ { from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' } ],
         excludeMutations: [],
         excludeQueries: [],
