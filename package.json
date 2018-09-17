@@ -1,6 +1,6 @@
 {
   "name": "sequelize-graphql-schema",
-  "version": "0.1.24",
+  "version": "0.1.25",
   "description": "A helper function to automatically generate `GraphQLSchema` from Sequelize models.",
   "main": "index.js",
   "scripts": {
@@ -27,10 +27,6 @@
     {
       "name": "Ali Rizwan",
       "email": "ali.aruz@outlook.com"
-    },
-    {
-      "name": "Romain Pellerin",
-      "email": "romain.pellerin@inovia-team.com"
     }
   ],
   "license": "MIT",

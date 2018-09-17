@@ -438,8 +438,10 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
         }
       });
 
+      var aliases = models[modelType.name].graphql.alias;
+
       if (models[modelType.name].graphql.excludeQueries.indexOf('query') === -1) {
-        queries[camelCase(modelType.name + 'Get')] = {
+        queries[camelCase(aliases.fetch || modelType.name + 'Get')] = {
           type: new GraphQLList(modelType),
           args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments()),
           resolve: function resolve(source, args, context, info) {
