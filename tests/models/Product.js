@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
         excludeMutations: [],
         excludeQueries: [],
         types: {
-          myObj: { id: 'int' }
+          myObj: { id: '[int]' }
         },
         mutations: {
           myMutation: { input: 'Product', output: '[myObj]', resolver: () => { return 1; }}

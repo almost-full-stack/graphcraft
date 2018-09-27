@@ -250,7 +250,7 @@ var generateAssociationFields = function generateAssociationFields(associations,
         return execBefore(relation.target, source, args, context, info, 'fetch').then(function (_) {
           return resolver(relation)(source, args, context, info).then(function (result) {
             if (relation.target.graphql.extend.fetch && result.length) {
-              return relation.target.graphql.extend.fetch(result[0], source, args, context, info).then(function (item) {
+              return relation.target.graphql.extend.fetch(result, source, args, context, info).then(function (item) {
                 return [].concat(item);
               });
             } else {
