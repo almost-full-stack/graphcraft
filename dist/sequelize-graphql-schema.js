@@ -43,6 +43,7 @@ var defaultModelGraphqlOptions = {
     import: []
   },
   alias: {},
+  bulk: [],
   mutations: {},
   excludeMutations: [],
   excludeQueries: [],
@@ -145,7 +146,7 @@ var queryResolver = function queryResolver(model, inputTypeName, source, args, c
   });
 };
 
-var mutationResolver = function mutationResolver(model, inputTypeName, source, args, context, info, type, where) {
+var mutationResolver = function mutationResolver(model, inputTypeName, source, args, context, info, type, where, isBulk) {
 
   return options.authorizer(source, args, context, info).then(function (_) {
     if (model.graphql.overwrite.hasOwnProperty(type)) {
@@ -154,12 +155,20 @@ var mutationResolver = function mutationResolver(model, inputTypeName, source, a
       return execBefore(model, source, args, context, info, type, where).then(function (src) {
         source = src;
         return findOneRecord(model, type === 'destroy' ? where : null).then(function (preData) {
-          return model[type](type === 'destroy' ? { where: where } : args[inputTypeName], { where: where }).then(function (data) {
+          var operationType = isBulk && type === 'create' ? 'bulkCreate' : type;
+          var validate = true;
+          return model[operationType](type === 'destroy' ? { where: where } : args[inputTypeName], { where: where, validate: validate }).then(function (data) {
             if (model.graphql.extend.hasOwnProperty(type)) {
               return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
             } else {
               return data;
             }
+          }).then(function (data) {
+            if (operationType === 'bulkCreate') {
+              return args[inputTypeName].length;
+            }
+
+            return data;
           });
         });
       });
@@ -563,6 +572,17 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
           resolve: function resolve(source, args, context, info) {
             var where = _defineProperty({}, key, args[key]);
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'destroy', where);
+          }
+        };
+      }
+
+      if (models[inputTypeName].graphql.bulk.indexOf('create') > -1) {
+        mutations[camelCase(aliases.create || inputTypeName + 'AddBulk')] = {
+          type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+          description: 'Create bulk ' + inputTypeName + ' and return number of rows created.',
+          args: Object.assign(_defineProperty({}, inputTypeName, { type: new GraphQLList(inputType) }), includeArguments()),
+          resolve: function resolve(source, args, context, info) {
+            return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, true);
           }
         };
       }
