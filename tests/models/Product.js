@@ -22,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
             exclude: ['description'],
             include: { modelPortfolioId: 'int' },
         },
+        bulk: ['create'],
         alias: { fetch: 'myProduct' },
         import: [ { from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' } ],
         excludeMutations: [],
@@ -49,7 +50,6 @@ module.exports = (sequelize, DataTypes) => {
                 return Promise.resolve(data);
             },
             fetch: (data, source, args, context, info) => {
-                //console.log('Running extension.');
                 return data;
             }
         }

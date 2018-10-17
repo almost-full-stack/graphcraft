@@ -169,8 +169,17 @@ var mutationResolver = function mutationResolver(model, inputTypeName, source, a
 
 var generateGraphQLField = function generateGraphQLField(type) {
   var isRequired = type.indexOf('!') > -1 ? true : false;
+  var isArray = type.indexOf('[') > -1 ? true : false;
   type = type.replace('!', '').toLowerCase();
+  type = type.replace('[', '');
+  type = type.replace(']', '');
+
   var field = type === 'int' ? GraphQLInt : GraphQLString;
+
+  if (isArray) {
+    field = new GraphQLList(field);
+  }
+
   if (isRequired) {
     field = GraphQLNonNull(field);
   }
