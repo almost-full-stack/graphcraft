@@ -27,6 +27,12 @@ var _require3 = require('graphql-request'),
 
 var _ = require('lodash');
 
+var _require4 = require('dataloader-sequelize'),
+    createContext = _require4.createContext,
+    EXPECTED_OPTIONS_KEY = _require4.EXPECTED_OPTIONS_KEY;
+
+var dataloaderContext = void 0;
+
 var options = {
   exclude: [],
   includeArguments: {},
@@ -132,7 +138,7 @@ var queryResolver = function queryResolver(model, inputTypeName, source, args, c
     } else {
       return execBefore(model, source, args, context, info, type).then(function (src) {
 
-        return resolver(model)(source, args, context, info).then(function (data) {
+        return resolver(model, _defineProperty({}, EXPECTED_OPTIONS_KEY, dataloaderContext))(source, args, context, info).then(function (data) {
           if (model.graphql.extend.hasOwnProperty(type)) {
             return model.graphql.extend[type](data, source, args, context, info);
           } else {
@@ -266,7 +272,7 @@ var generateAssociationFields = function generateAssociationFields(associations,
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
       fields[associationName].resolve = function (source, args, context, info) {
         return execBefore(relation.target, source, args, context, info, 'fetch').then(function (_) {
-          return resolver(relation)(source, args, context, info).then(function (result) {
+          return resolver(relation, _defineProperty({}, EXPECTED_OPTIONS_KEY, dataloaderContext))(source, args, context, info).then(function (result) {
             if (relation.target.graphql.extend.fetch && result.length) {
               return relation.target.graphql.extend.fetch(result, source, args, context, info).then(function (item) {
                 return [].concat(item);
@@ -558,7 +564,7 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
             var where = _defineProperty({}, key, args[inputTypeName][key]);
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', where).then(function (boolean) {
               // `boolean` equals the number of rows affected (0 or 1)
-              return resolver(models[inputTypeName])(source, where, context, info);
+              return resolver(models[inputTypeName], _defineProperty({}, EXPECTED_OPTIONS_KEY, dataloaderContext))(source, where, context, info);
             });
           }
         };
@@ -638,6 +644,7 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
 var generateSchema = function generateSchema(models, types, context) {
 
   Models = models;
+  dataloaderContext = createContext(models.sequelize);
 
   var availableModels = {};
   for (var modelName in models) {
@@ -704,6 +711,7 @@ module.exports = function (_options) {
   return {
     generateGraphQLType: generateGraphQLType,
     generateModelTypes: generateModelTypes,
-    generateSchema: generateSchema
+    generateSchema: generateSchema,
+    dataloaderContext: dataloaderContext
   };
 };
