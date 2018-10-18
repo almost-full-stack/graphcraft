@@ -36,6 +36,7 @@
   "homepage": "https://github.com/alirizwan/sequelize-graphql-schema#readme",
   "dependencies": {
     "camelcase": "^5.0.0",
+    "dataloader-sequelize": "^1.7.3",
     "graphql-relay": "^0.5.5",
     "graphql-request": "^1.8.2",
     "graphql-sequelize": "^8.3.1",

@@ -17,6 +17,8 @@ const camelCase = require('camelcase');
 const remoteSchema = require('./remoteSchema');
 const { GraphQLClient } = require('graphql-request');
 const _ = require('lodash');
+const {createContext, EXPECTED_OPTIONS_KEY} = require('dataloader-sequelize');
+let dataloaderContext;
 
 let options = {
   exclude: [ ],
@@ -128,7 +130,7 @@ const queryResolver = (model, inputTypeName, source, args, context, info) => {
       return execBefore(model, source, args, context, info, type)
       .then(src => {
 
-        return resolver(model)(source, args, context, info)
+        return resolver(model, {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, args, context, info)
         .then(data => {
           if(model.graphql.extend.hasOwnProperty(type)){
             return model.graphql.extend[type](data, source, args, context, info);
@@ -266,7 +268,7 @@ const generateAssociationFields = (associations, types, isInput = false) => {
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
       fields[associationName].resolve = (source, args, context, info) => {
         return execBefore(relation.target, source, args, context, info, 'fetch').then(_ => {
-          return resolver(relation)(source, args, context, info).then(result => {
+          return resolver(relation, {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, args, context, info).then(result => {
             if(relation.target.graphql.extend.fetch && result.length){
               return relation.target.graphql.extend.fetch(result, source, args, context, info).then(item => {
                 return [].concat(item);
@@ -523,7 +525,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', where)
             .then(boolean => {
               // `boolean` equals the number of rows affected (0 or 1)
-              return resolver(models[inputTypeName])(source, where, context, info);
+              return resolver(models[inputTypeName], {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, where, context, info);
             });
           }
         };
@@ -600,6 +602,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
 const generateSchema = (models, types, context) => {
 
   Models = models;
+  dataloaderContext = createContext(models.sequelize);
 
   let availableModels = {};
   for (let modelName in models){
@@ -668,6 +671,7 @@ module.exports = _options => {
   return {
     generateGraphQLType,
     generateModelTypes,
-    generateSchema
+    generateSchema,
+    dataloaderContext
   };
 };
