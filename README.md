@@ -17,8 +17,8 @@ This package assumes you have `graphql` and `sequelize` already installed (both 
 | option           | type     | example                      | description                                                                                                                     |
 |------------------|----------|------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
 | authorizer       | Function |                              | Your custom authorization mechanism goes here, all queries and mutations will be called after this. This must return a promise. |
-| exclude          | Array    | ['MODEL_NAME', 'MODEL_NAME'] | Pass in model names to exclude from graphql schema.                                                                             |
-| includeArguments | Object   | { 'customArgument', 'int' }  | These arguments will be included in all queries and mutations.                                                                  |
+| exclude          | Array    | ```['MODEL_NAME', 'MODEL_NAME']``` | Pass in model names to exclude from graphql schema.                                                                             |
+| includeArguments | Object   | ```{ 'customArgument', 'int' }```  | These arguments will be included in all queries and mutations.                                                                  |
 | remote           | Object   | See Remote Options           | Import queries from external graphql schema.                                                                                    |
 
 ## Model Options
