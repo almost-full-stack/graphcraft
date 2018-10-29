@@ -23,7 +23,20 @@ This package assumes you have `graphql` and `sequelize` already installed (both 
 
 ## Model Options
 
-
+| option           | type   | example                                                                                                                 | description                                                                                                                                         |
+|------------------|--------|-------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| attributes       | Object | ```{exclude: ['ATTRIBUTE_NAME'], include: { customAttributeName: 'int' }}```                                            | Model attributes in exclude will be excluded from graphql types. Non-Model custom attributes will be added in graphql type from include.            |
+| bulk             | Array  | ```['create', 'destroy']```                                                                                             | Create mutations for bulk create or destroy operations.                                                                                             |
+| alias            | Object | ```{ fetch: 'myQuery', create: 'myCreateMutation', destroy: 'myDeleteMutation, update: 'myUpdateMutation' }```          | Rename default queries and mutations with alias.                                                                                                    |
+| excludeMutations | Array  | ```[ 'create', 'update', 'destroy' ]```                                                                                 |                                                                                                                                                     |
+| excludeQueries   | Array  | ```[ 'fetch' ]```                                                                                                       |                                                                                                                                                     |
+| types            | Object | ```{myType: { id: '[int]' }, myTypeInput: { id: 'int' }}```                                                             | Create custom types. Add Input postfix to convert to input type.                                                                                    |
+| mutations        | Object | ```{myMutation: { input: 'myTypeInput', output: '[myType]', resolver: customResolver}}```                               | Custom mutations to be created. input or output can refer to a custom input type or default graphql types.                                          |
+| queries          | Object | ```{myQuery: { output: '[myType]', resolver: customResolver }}```                                                       |                                                                                                                                                     |
+| before           | Object | ```{create: (source, args, context, info) => { return Promise.resolve(); }}                                             | To run before default query or mutation executes. Available options are `create`, `fetch`, `destroy` and `update`. Functions must return a promise. |
+| overwrite        | Object | same as before                                                                                                          | This will overwrite default query or mutation.                                                                                                      |
+| extend           | Object | same as before with data coming from default passed to this function: ```create: (data, source, args, context, info)``` | To extend default functionality.                                                                                                                    |
+| import           | Array  | see remote options                                                                                                      | Associations with remote schema.                                                                                                                    |
 
 ## Usage
 
