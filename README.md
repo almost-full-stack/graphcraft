@@ -37,6 +37,12 @@ This package assumes you have `graphql` and `sequelize` already installed (both 
 | overwrite        | Object | same as before                                                                                                          | This will overwrite default query or mutation.                                                                                                      |
 | extend           | Object | same as before with data coming from default passed to this function: ```create: (data, source, args, context, info)``` | To extend default functionality.                                                                                                                    |
 | import           | Array  | see remote options                                                                                                      | Associations with remote schema.                                                                                                                    |
+## Remote Options
+
+| option  |  type  |                                                                                                                                 example | description                                                                                      |
+|---------|:------:|----------------------------------------------------------------------------------------------------------------------------------------:|--------------------------------------------------------------------------------------------------|
+| import  | Object | ```{'RemoteData': {endpoint: 'http://garphql-endpoint.com',queries: { 'myQuery': { as: 'RemoteQuery' } },headers: ['authorization']}``` | Remote graphql data to import given queries, alias of query and headers to pass when calling it. |
+| headers |  Array |                                                                                                               ```[ 'authorization' ]``` | Common headers passed to all endpoints.                                                          |
 
 ## Usage
 
