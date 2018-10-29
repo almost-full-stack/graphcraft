@@ -4,7 +4,8 @@ const {
   GraphQLList,
   GraphQLInt,
   GraphQLNonNull,
-  GraphQLString
+  GraphQLString,
+  GraphQLBoolean
 } = require('graphql');
 const {
   resolver,
@@ -130,7 +131,13 @@ const queryResolver = (model, inputTypeName, source, args, context, info) => {
       return execBefore(model, source, args, context, info, type)
       .then(src => {
 
-        return resolver(model, {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, args, context, info)
+        return resolver(model, {
+          [EXPECTED_OPTIONS_KEY]: dataloaderContext,
+          before: (findOptions, args, context) => {
+            findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : model.options.paranoid;
+            return findOptions;
+          }
+        })(source, args, context, info)
         .then(data => {
           if(model.graphql.extend.hasOwnProperty(type)){
             return model.graphql.extend[type](data, source, args, context, info);
@@ -425,12 +432,14 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
         }
       };
 
+      const paranoidType = models[modelType.name].options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
+
       const aliases = models[modelType.name].graphql.alias;
 
       if(models[modelType.name].graphql.excludeQueries.indexOf('query') === -1){
         queries[camelCase(aliases.fetch || (modelType.name + 'Get'))] = {
           type: new GraphQLList(modelType),
-          args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments()),
+          args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
           resolve: (source, args, context, info) => {
             return queryResolver(models[modelType.name], modelType.name, source, args, context, info);
           }
@@ -463,7 +472,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
 
           queries[camelCase(query)] = {
             type: outPutType,
-            args: Object.assign(inputArg, defaultListArgs(), includeArguments()),
+            args: Object.assign(inputArg, defaultListArgs(), includeArguments(), paranoidType),
             resolve: (source, args, context, info) => {
               return options.authorizer(source, args, context, info).then(_ => {
                 return models[modelTypeName].graphql.queries[query].resolver(source, args, context, info);
@@ -602,7 +611,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
 const generateSchema = (models, types, context) => {
 
   Models = models;
-  dataloaderContext = createContext(models.sequelize);
+  //dataloaderContext = createContext(models.sequelize);
 
   let availableModels = {};
   for (let modelName in models){

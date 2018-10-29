@@ -10,7 +10,8 @@ var _require = require('graphql'),
     GraphQLList = _require.GraphQLList,
     GraphQLInt = _require.GraphQLInt,
     GraphQLNonNull = _require.GraphQLNonNull,
-    GraphQLString = _require.GraphQLString;
+    GraphQLString = _require.GraphQLString,
+    GraphQLBoolean = _require.GraphQLBoolean;
 
 var _require2 = require('graphql-sequelize'),
     resolver = _require2.resolver,
@@ -137,8 +138,12 @@ var queryResolver = function queryResolver(model, inputTypeName, source, args, c
       return model.graphql.overwrite[type](source, args, context, info);
     } else {
       return execBefore(model, source, args, context, info, type).then(function (src) {
+        var _resolver;
 
-        return resolver(model, _defineProperty({}, EXPECTED_OPTIONS_KEY, dataloaderContext))(source, args, context, info).then(function (data) {
+        return resolver(model, (_resolver = {}, _defineProperty(_resolver, EXPECTED_OPTIONS_KEY, dataloaderContext), _defineProperty(_resolver, 'before', function before(findOptions, args, context) {
+          findOptions.paranoid = args.where && args.where.deletedAt && args.where.deletedAt.ne === null || args.paranoid === false ? false : model.options.paranoid;
+          return findOptions;
+        }), _resolver))(source, args, context, info).then(function (data) {
           if (model.graphql.extend.hasOwnProperty(type)) {
             return model.graphql.extend[type](data, source, args, context, info);
           } else {
@@ -462,12 +467,14 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
         }
       });
 
+      var paranoidType = models[modelType.name].options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
+
       var aliases = models[modelType.name].graphql.alias;
 
       if (models[modelType.name].graphql.excludeQueries.indexOf('query') === -1) {
         queries[camelCase(aliases.fetch || modelType.name + 'Get')] = {
           type: new GraphQLList(modelType),
-          args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments()),
+          args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
           resolve: function resolve(source, args, context, info) {
             return queryResolver(models[modelType.name], modelType.name, source, args, context, info);
           }
@@ -499,7 +506,7 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
 
           queries[camelCase(query)] = {
             type: outPutType,
-            args: Object.assign(inputArg, defaultListArgs(), includeArguments()),
+            args: Object.assign(inputArg, defaultListArgs(), includeArguments(), paranoidType),
             resolve: function resolve(source, args, context, info) {
               return options.authorizer(source, args, context, info).then(function (_) {
                 return models[modelTypeName].graphql.queries[query].resolver(source, args, context, info);
@@ -644,7 +651,7 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
 var generateSchema = function generateSchema(models, types, context) {
 
   Models = models;
-  dataloaderContext = createContext(models.sequelize);
+  //dataloaderContext = createContext(models.sequelize);
 
   var availableModels = {};
   for (var modelName in models) {

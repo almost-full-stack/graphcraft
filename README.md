@@ -1,8 +1,6 @@
 # sequelize-graphql-schema
 
-A helper function that automatically generates `GraphQLSchema` from Sequelize models.
-Extended Romain Pellerin's https://github.com/rpellerin/graphql-sequelize-schema-generator
-Disclaimer: Use it at your own risk, rapidly changing and extending due to being used in an internal project. A stable and complete version will be published with documentation on 6th September.
+A helper library that lets you focus on business logic by automatically generates `GraphQLSchema` and manages graphQL from Sequelize model.
 
 ## Installation
 
@@ -12,34 +10,43 @@ npm install sequelize-graphql-schema
 
 ## Prerequisites
 
-This package assumes you have `graphql` and `sequelize` already installed (both packages are declared as `dependencies` and `peerDependencies`).
+This package assumes you have `graphql` and `sequelize` already installed (both packages are declared as `peerDependencies`).
+
+## Options
+
+| option           | type     | example                      | description                                                                                                                     |
+|------------------|----------|------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| authorizer       | Function |                              | Your custom authorization mechanism goes here, all queries and mutations will be called after this. This must return a promise. |
+| exclude          | Array    | ['MODEL_NAME', 'MODEL_NAME'] | Pass in model names to exclude from graphql schema.                                                                             |
+| includeArguments | Object   | { 'customArgument', 'int' }  | These arguments will be included in all queries and mutations.                                                                  |
+| remote           | Object   | See Remote Options           | Import queries from external graphql schema.                                                                                    |
+
+## Model Options
+
+
 
 ## Usage
 
 ```javascript
-var {generateModelTypes, generateSchema} = require('sequelize-graphql-schema')
-var models = require('./models')
-var schema = generateSchema(models) // Generates the schema
+const {generateModelTypes, generateSchema} = require('sequelize-graphql-schema')(options);
+const models = require('./models')
+const schema = generateSchema(models) // Generates the schema
 // OR
-var types = generateModelTypes(models)
-var schema = generateSchema(models, types) // Generates the schema by reusing the types
+const types = generateModelTypes(models)
+const schema = generateSchema(models, types) // Generates the schema by reusing the types
 ```
 
 ### Example with Express
 
 ```javascript
-var { GraphQLSchema } = require('graphql');
+const { GraphQLSchema } = require('graphql');
 const express = require('express');
 const graphqlHTTP = require('express-graphql');
-const {generateSchema} = require('../src/sequelize-graphql-schema')({
-    exclude: [ 'Product2' ],
-    includeArguments: {
-        scopeId: 'int'
-    }
-});
+const {generateSchema} = require('../src/sequelize-graphql-schema')(options);
+
 const models = require('./models');
 
-var app = express()
+const app = express();
 
 app.use(
   '/graphql',
