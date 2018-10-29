@@ -44,6 +44,15 @@ This package assumes you have `graphql` and `sequelize` already installed (both 
 | import  | Object | ```{'RemoteData': {endpoint: 'http://garphql-endpoint.com',queries: { 'myQuery': { as: 'RemoteQuery' } },headers: ['authorization']}``` | Remote graphql data to import given queries, alias of query and headers to pass when calling it. |
 | headers |  Array |                                                                                                               ```[ 'authorization' ]``` | Common headers passed to all endpoints.                                                          |
 
+## Model Import Options
+
+| option |  type  | example | description                     |
+|--------|:------:|--------:|---------------------------------|
+| from   | String |         | Remote schema name from Import. |
+| as     | String |         | alias for remote schema.        |
+| with   | String |         | foreign key from model.         |
+| to     | String |         | target key from remote model.   |
+
 ## Usage
 
 ```javascript
