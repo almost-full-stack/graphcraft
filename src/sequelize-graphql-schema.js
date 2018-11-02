@@ -134,6 +134,24 @@ const queryResolver = (model, inputTypeName, source, args, context, info) => {
         return resolver(model, {
           [EXPECTED_OPTIONS_KEY]: dataloaderContext,
           before: (findOptions, args, context) => {
+
+            const orderArgs = args.order || '';
+            const orderBy = [];
+
+            if(orderArgs != ""){
+              const orderByClauses = orderArgs.split(',');
+              orderByClauses.forEach((clause) => {
+                if(clause.indexOf('reverse:') === 0){
+                  orderBy.push([clause.substring(8), 'DESC']);
+                }else{
+                  orderBy.push([clause, 'ASC']);
+                }
+              });
+
+              findOptions.order = orderBy;
+
+            }
+
             findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : model.options.paranoid;
             return findOptions;
           }

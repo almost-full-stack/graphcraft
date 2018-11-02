@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
         scopeId: DataTypes.INTEGER,   // Tennant managing account of client, required since one Client can have links with multiple tennants.
         portfolioId: DataTypes.INTEGER
     }, {
-      paranoid: true
+      paranoid: false
     });
 
     Product.associate = function(models) {
