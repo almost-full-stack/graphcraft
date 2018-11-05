@@ -37,6 +37,7 @@ const defaultModelGraphqlOptions = {
     include: {}, // attributes in key:type format which are to be included in Model Input
     import: []
   },
+  scopes: null,
   alias: { },
   bulk: [],
   mutations: { },
@@ -49,7 +50,7 @@ const defaultModelGraphqlOptions = {
 
 let Models = {};
 
-const remoteResolver = (source, args, context, info, remoteQuery, remoteArguments, type) => {
+const remoteResolver = async (source, args, context, info, remoteQuery, remoteArguments, type) => {
 
   const availableArgs = _.keys(remoteQuery.args);
   const pickedArgs = _.pick(remoteArguments, availableArgs);
@@ -85,10 +86,9 @@ const remoteResolver = (source, args, context, info, remoteQuery, remoteArgument
 
   const headers = _.pick(context.headers, remoteQuery.headers);
   const client = new GraphQLClient(remoteQuery.endpoint, { headers });
+  const data = await client.request(query, variables);
 
-  return client.request(query, variables).then((data) => {
-    return data[remoteQuery.name];
-  });
+  return data[remoteQuery.name];
 
 };
 
@@ -100,111 +100,101 @@ const includeArguments = () => {
   return includeArguments;
 };
 
-const execBefore = function(model, source, args, context, info, type, where){
-  return new Promise((resolve, reject) => {
-    if(model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)){
-      return model.graphql.before[type](source, args, context, info, where).then(src => {
-        resolve(src);
-      });
-    }else{
-      resolve(source);
-    }
-  });
-};
-
-const findOneRecord = (model, where) => {
-  if(where){
-    return model.findOne({ where }).then(data => data);
+const execBefore = (model, source, args, context, info, type, where) => {
+  if(model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)){
+    return model.graphql.before[type](source, args, context, info, where);
   }else{
     return Promise.resolve();
   }
 };
 
-const queryResolver = (model, inputTypeName, source, args, context, info) => {
+const findOneRecord = (model, where) => {
+  if(where){
+    return model.findOne({ where });
+  }else{
+    return Promise.resolve();
+  }
+};
+
+const queryResolver = async (model, inputTypeName, source, args, context, info) => {
 
   const type = 'fetch';
 
-  return options.authorizer(source, args, context, info).then(_ => {
-    if(model.graphql.overwrite.hasOwnProperty(type)){
-      return model.graphql.overwrite[type](source, args, context, info);
-    }else{
-      return execBefore(model, source, args, context, info, type)
-      .then(src => {
+  await options.authorizer(source, args, context, info);
 
-        return resolver(model, {
-          [EXPECTED_OPTIONS_KEY]: dataloaderContext,
-          before: (findOptions, args, context) => {
+  if(model.graphql.overwrite.hasOwnProperty(type)){
+    return model.graphql.overwrite[type](source, args, context, info);
+  }
 
-            const orderArgs = args.order || '';
-            const orderBy = [];
+  await execBefore(model, source, args, context, info, type);
 
-            if(orderArgs != ""){
-              const orderByClauses = orderArgs.split(',');
-              orderByClauses.forEach((clause) => {
-                if(clause.indexOf('reverse:') === 0){
-                  orderBy.push([clause.substring(8), 'DESC']);
-                }else{
-                  orderBy.push([clause, 'ASC']);
-                }
-              });
+  const before = (findOptions, args, context) => {
 
-              findOptions.order = orderBy;
+    const orderArgs = args.order || '';
+    const orderBy = [];
 
-            }
-
-            findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : model.options.paranoid;
-            return findOptions;
-          }
-        })(source, args, context, info)
-        .then(data => {
-          if(model.graphql.extend.hasOwnProperty(type)){
-            return model.graphql.extend[type](data, source, args, context, info);
-          }else{
-            return data;
-          }
-        })
-        .then(data => {
-          return data;
-        });
-
+    if(orderArgs != ""){
+      const orderByClauses = orderArgs.split(',');
+      orderByClauses.forEach((clause) => {
+        if(clause.indexOf('reverse:') === 0){
+          orderBy.push([clause.substring(8), 'DESC']);
+        }else{
+          orderBy.push([clause, 'ASC']);
+        }
       });
+
+      findOptions.order = orderBy;
+
     }
-  });
+
+    findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : model.options.paranoid;
+    return findOptions;
+  };
+
+  const scope = Array.isArray(model.graphql.scopes) ? { method: [model.graphql.scopes[0], _.get(args, model.graphql.scopes[1], model.graphql.scopes[2] || null)] } : model.graphql.scopes;
+
+  const data = await resolver(model.scope(scope), {
+    [EXPECTED_OPTIONS_KEY]: dataloaderContext,
+    before
+  })(source, args, context, info);
+
+  if(model.graphql.extend.hasOwnProperty(type)){
+    return model.graphql.extend[type](data, source, args, context, info);
+  }
+
+  return data;
 
 };
 
-const mutationResolver = (model, inputTypeName, source, args, context, info, type, where, isBulk) => {
+const mutationResolver = async (model, inputTypeName, source, args, context, info, type, where, isBulk) => {
 
-  return options.authorizer(source, args, context, info).then(_ => {
-    if(model.graphql.overwrite.hasOwnProperty(type)){
-      return model.graphql.overwrite[type](source, args, context, info, where);
-    }else{
-      return execBefore(model, source, args, context, info, type, where).then(src => {
-        source = src;
-        return findOneRecord(model, type === 'destroy' ? where : null).then(preData => {
-          let operationType = (isBulk && type === 'create') ? 'bulkCreate' : type;
-          const validate = true;
-          return model[operationType](type === 'destroy' ? { where } : args[inputTypeName], { where, validate }).then(data => {
-            if(model.graphql.extend.hasOwnProperty(type)){
-              return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
-            }else{
-              return data;
-            }
-          }).then(data => {
-            if(operationType === 'bulkCreate'){
-              return args[inputTypeName].length;
-            }
+  await options.authorizer(source, args, context, info);
 
-            return data;
-          });
-        });
-      });
-    }
-  });
+  if(model.graphql.overwrite.hasOwnProperty(type)){
+    return model.graphql.overwrite[type](source, args, context, info, where);
+  }
+
+  await execBefore(model, source, args, context, info, type, where);
+
+  const preData = await findOneRecord(model, type === 'destroy' ? where : null);
+  const operationType = (isBulk && type === 'create') ? 'bulkCreate' : type;
+  const validate = true;
+  const data = await model[operationType](type === 'destroy' ? { where } : args[inputTypeName], { where, validate });
+
+  if(model.graphql.extend.hasOwnProperty(type)){
+    return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
+  }
+
+  if(operationType === 'bulkCreate'){
+    return args[inputTypeName].length;
+  }
+
+  return data;
 
 };
 
 const generateGraphQLField = (type) => {
+
   let isRequired = type.indexOf('!') > -1 ? true : false;
   let isArray = type.indexOf('[') > -1 ? true : false;
   type = type.replace('!', '').toLowerCase();
@@ -291,20 +281,23 @@ const generateAssociationFields = (associations, types, isInput = false) => {
     if (!isInput && !relation.isRemote) {
       // GraphQLInputObjectType do not accept fields with resolve
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
-      fields[associationName].resolve = (source, args, context, info) => {
-        return execBefore(relation.target, source, args, context, info, 'fetch').then(_ => {
-          return resolver(relation, {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, args, context, info).then(result => {
-            if(relation.target.graphql.extend.fetch && result.length){
-              return relation.target.graphql.extend.fetch(result, source, args, context, info).then(item => {
-                return [].concat(item);
-              });
-            }else{
-              return result;
-            }
-          });
-        });
-      }
+      fields[associationName].resolve = async (source, args, context, info) => {
+
+        await execBefore(relation.target, source, args, context, info, 'fetch');
+
+        const data = await resolver(relation, {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, args, context, info);
+
+        if(relation.target.graphql.extend.fetch && result.length){
+          const item = await relation.target.graphql.extend.fetch(result, source, args, context, info);
+          return [].concat(item);
+        }
+
+        return data;
+
+      };
+
     }else if(!isInput && relation.isRemote){
+
       fields[associationName].args = Object.assign({}, relation.query.args, defaultListArgs());
       fields[associationName].resolve = (source, args, context, info) => {
         return remoteResolver(source, args, context, info, relation.query, fields[associationName].args, types[relation.target.name]);
@@ -314,6 +307,7 @@ const generateAssociationFields = (associations, types, isInput = false) => {
   }
 
   return fields;
+
 };
 
 /**

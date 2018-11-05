@@ -11,7 +11,12 @@ module.exports = (sequelize, DataTypes) => {
         scopeId: DataTypes.INTEGER,   // Tennant managing account of client, required since one Client can have links with multiple tennants.
         portfolioId: DataTypes.INTEGER
     }, {
-      paranoid: false
+      paranoid: false,
+      scopes: {
+        test(value){
+          return { where: { scopeId: value } };
+        }
+      }
     });
 
     Product.associate = function(models) {
@@ -24,6 +29,7 @@ module.exports = (sequelize, DataTypes) => {
             exclude: ['description'],
             include: { modelPortfolioId: 'int' },
         },
+        scopes: ['test', 'scopeId'],
         bulk: ['create'],
         alias: { fetch: 'myProduct' },
         import: [ { from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' } ],
@@ -36,7 +42,7 @@ module.exports = (sequelize, DataTypes) => {
           myMutation: { input: 'Product', output: '[myObj]', resolver: () => { return 1; }}
         },
         queries: {
-          myQuery: { output: '[myObj]', resolver: () => { return 1; } }
+          myQuery: { output: 'Product', input: 'Product', resolver: () => { return 1; } }
         },
         // this will be executed after mutations/queries
         before: {
