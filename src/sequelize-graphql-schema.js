@@ -95,7 +95,7 @@ const remoteResolver = async (source, args, context, info, remoteQuery, remoteAr
 const includeArguments = () => {
   let includeArguments = {};
   for(let argument in options.includeArguments){
-    includeArguments[argument] = { type: options.includeArguments[argument] === 'int' ? GraphQLInt : GraphQLString };
+    includeArguments[argument] = generateGraphQLField(options.includeArguments[argument]);
   }
   return includeArguments;
 };

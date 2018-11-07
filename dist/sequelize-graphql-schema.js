@@ -2,8 +2,44 @@
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
+function _invoke(body, then) {
+  var result = body();if (result && result.then) {
+    return result.then(then);
+  }
+  return then(result);
+}
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
+var _async = function () {
+  try {
+    if (isNaN.apply(null, {})) {
+      return function (f) {
+        return function () {
+          try {
+            return Promise.resolve(f.apply(this, arguments));
+          } catch (e) {
+            return Promise.reject(e);
+          }
+        };
+      };
+    }
+  } catch (e) {}return function (f) {
+    // Pre-ES5.1 JavaScript runtimes don't accept array-likes in Function.apply
+    return function () {
+      var args = [];for (var i = 0; i < arguments.length; i++) {
+        args[i] = arguments[i];
+      }try {
+        return Promise.resolve(f.apply(this, args));
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    };
+  };
+}();function _await(value, then, direct) {
+  if (direct) {
+    return then ? then(value) : value;
+  }value = Promise.resolve(value);return then ? value.then(then) : value;
+}
 var _require = require('graphql'),
     GraphQLObjectType = _require.GraphQLObjectType,
     GraphQLInputObjectType = _require.GraphQLInputObjectType,
@@ -49,6 +85,7 @@ var defaultModelGraphqlOptions = {
     include: {}, // attributes in key:type format which are to be included in Model Input
     import: []
   },
+  scopes: null,
   alias: {},
   bulk: [],
   mutations: {},
@@ -61,7 +98,7 @@ var defaultModelGraphqlOptions = {
 
 var Models = {};
 
-var remoteResolver = function remoteResolver(source, args, context, info, remoteQuery, remoteArguments, type) {
+var remoteResolver = _async(function (source, args, context, info, remoteQuery, remoteArguments, type) {
 
   var availableArgs = _.keys(remoteQuery.args);
   var pickedArgs = _.pick(remoteArguments, availableArgs);
@@ -93,101 +130,94 @@ var remoteResolver = function remoteResolver(source, args, context, info, remote
 
   var headers = _.pick(context.headers, remoteQuery.headers);
   var client = new GraphQLClient(remoteQuery.endpoint, { headers: headers });
+  return _await(client.request(query, variables), function (data) {
 
-  return client.request(query, variables).then(function (data) {
     return data[remoteQuery.name];
   });
-};
+});
 
 var includeArguments = function includeArguments() {
   var includeArguments = {};
   for (var argument in options.includeArguments) {
-    includeArguments[argument] = { type: options.includeArguments[argument] === 'int' ? GraphQLInt : GraphQLString };
+    includeArguments[argument] = generateGraphQLField(options.includeArguments[argument]);
   }
   return includeArguments;
-};
-
-var execBefore = function execBefore(model, source, args, context, info, type, where) {
-  return new Promise(function (resolve, reject) {
-    if (model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)) {
-      return model.graphql.before[type](source, args, context, info, where).then(function (src) {
-        resolve(src);
-      });
-    } else {
-      resolve(source);
-    }
-  });
-};
-
-var findOneRecord = function findOneRecord(model, where) {
-  if (where) {
-    return model.findOne({ where: where }).then(function (data) {
-      return data;
-    });
+};var execBefore = function execBefore(model, source, args, context, info, type, where) {
+  if (model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)) {
+    return model.graphql.before[type](source, args, context, info, where);
   } else {
     return Promise.resolve();
   }
 };
 
-var queryResolver = function queryResolver(model, inputTypeName, source, args, context, info) {
+var findOneRecord = function findOneRecord(model, where) {
+  if (where) {
+    return model.findOne({ where: where });
+  } else {
+    return Promise.resolve();
+  }
+};
+
+var queryResolver = _async(function (model, inputTypeName, source, args, context, info) {
 
   var type = 'fetch';
 
-  return options.authorizer(source, args, context, info).then(function (_) {
-    if (model.graphql.overwrite.hasOwnProperty(type)) {
-      return model.graphql.overwrite[type](source, args, context, info);
-    } else {
-      return execBefore(model, source, args, context, info, type).then(function (src) {
-        var _resolver;
+  return _await(options.authorizer(source, args, context, info), function () {
+    return model.graphql.overwrite.hasOwnProperty(type) ? model.graphql.overwrite[type](source, args, context, info) : _await(execBefore(model, source, args, context, info, type), function () {
+      var _resolver;
 
-        return resolver(model, (_resolver = {}, _defineProperty(_resolver, EXPECTED_OPTIONS_KEY, dataloaderContext), _defineProperty(_resolver, 'before', function before(findOptions, args, context) {
-          findOptions.paranoid = args.where && args.where.deletedAt && args.where.deletedAt.ne === null || args.paranoid === false ? false : model.options.paranoid;
-          return findOptions;
-        }), _resolver))(source, args, context, info).then(function (data) {
-          if (model.graphql.extend.hasOwnProperty(type)) {
-            return model.graphql.extend[type](data, source, args, context, info);
-          } else {
-            return data;
-          }
-        }).then(function (data) {
-          return data;
-        });
-      });
-    }
-  });
-};
+      var before = function before(findOptions, args, context) {
 
-var mutationResolver = function mutationResolver(model, inputTypeName, source, args, context, info, type, where, isBulk) {
+        var orderArgs = args.order || '';
+        var orderBy = [];
 
-  return options.authorizer(source, args, context, info).then(function (_) {
-    if (model.graphql.overwrite.hasOwnProperty(type)) {
-      return model.graphql.overwrite[type](source, args, context, info, where);
-    } else {
-      return execBefore(model, source, args, context, info, type, where).then(function (src) {
-        source = src;
-        return findOneRecord(model, type === 'destroy' ? where : null).then(function (preData) {
-          var operationType = isBulk && type === 'create' ? 'bulkCreate' : type;
-          var validate = true;
-          return model[operationType](type === 'destroy' ? { where: where } : args[inputTypeName], { where: where, validate: validate }).then(function (data) {
-            if (model.graphql.extend.hasOwnProperty(type)) {
-              return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
+        if (orderArgs != "") {
+          var orderByClauses = orderArgs.split(',');
+          orderByClauses.forEach(function (clause) {
+            if (clause.indexOf('reverse:') === 0) {
+              orderBy.push([clause.substring(8), 'DESC']);
             } else {
-              return data;
+              orderBy.push([clause, 'ASC']);
             }
-          }).then(function (data) {
-            if (operationType === 'bulkCreate') {
-              return args[inputTypeName].length;
-            }
-
-            return data;
           });
+
+          findOptions.order = orderBy;
+        }
+
+        findOptions.paranoid = args.where && args.where.deletedAt && args.where.deletedAt.ne === null || args.paranoid === false ? false : model.options.paranoid;
+        return findOptions;
+      };
+
+      var scope = Array.isArray(model.graphql.scopes) ? { method: [model.graphql.scopes[0], _.get(args, model.graphql.scopes[1], model.graphql.scopes[2] || null)] } : model.graphql.scopes;
+
+      return _await(resolver(model.scope(scope), (_resolver = {}, _defineProperty(_resolver, EXPECTED_OPTIONS_KEY, dataloaderContext), _defineProperty(_resolver, 'before', before), _resolver))(source, args, context, info), function (data) {
+        return model.graphql.extend.hasOwnProperty(type) ? model.graphql.extend[type](data, source, args, context, info) : data;
+      });
+    });
+  });
+});
+
+var mutationResolver = _async(function (model, inputTypeName, source, args, context, info, type, where, isBulk) {
+  return _await(options.authorizer(source, args, context, info), function () {
+    return model.graphql.overwrite.hasOwnProperty(type) ? model.graphql.overwrite[type](source, args, context, info, where) : _await(execBefore(model, source, args, context, info, type, where), function () {
+      return _await(findOneRecord(model, type === 'destroy' ? where : null), function (preData) {
+        var operationType = isBulk && type === 'create' ? 'bulkCreate' : type;
+        var validate = true;
+        return _await(model[operationType](type === 'destroy' ? { where: where } : args[inputTypeName], { where: where, validate: validate }), function (data) {
+
+          if (model.graphql.extend.hasOwnProperty(type)) {
+            return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
+          }
+
+          return operationType === 'bulkCreate' ? args[inputTypeName].length : data;
         });
       });
-    }
+    });
   });
-};
+});
 
 var generateGraphQLField = function generateGraphQLField(type) {
+
   var isRequired = type.indexOf('!') > -1 ? true : false;
   var isArray = type.indexOf('[') > -1 ? true : false;
   type = type.replace('!', '').toLowerCase();
@@ -275,20 +305,25 @@ var generateAssociationFields = function generateAssociationFields(associations,
     if (!isInput && !relation.isRemote) {
       // GraphQLInputObjectType do not accept fields with resolve
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
-      fields[associationName].resolve = function (source, args, context, info) {
-        return execBefore(relation.target, source, args, context, info, 'fetch').then(function (_) {
-          return resolver(relation, _defineProperty({}, EXPECTED_OPTIONS_KEY, dataloaderContext))(source, args, context, info).then(function (result) {
-            if (relation.target.graphql.extend.fetch && result.length) {
-              return relation.target.graphql.extend.fetch(result, source, args, context, info).then(function (item) {
-                return [].concat(item);
-              });
-            } else {
-              return result;
-            }
+      fields[associationName].resolve = _async(function (source, args, context, info) {
+        return _await(execBefore(relation.target, source, args, context, info, 'fetch'), function () {
+          return _await(resolver(relation, _defineProperty({}, EXPECTED_OPTIONS_KEY, dataloaderContext))(source, args, context, info), function (data) {
+            var _exit = false;
+            return _invoke(function () {
+              if (relation.target.graphql.extend.fetch && result.length) {
+                return _await(relation.target.graphql.extend.fetch(result, source, args, context, info), function (item) {
+                  _exit = true;
+                  return [].concat(item);
+                });
+              }
+            }, function (_result) {
+              return _exit ? _result : data;
+            });
           });
         });
-      };
+      });
     } else if (!isInput && relation.isRemote) {
+
       fields[associationName].args = Object.assign({}, relation.query.args, defaultListArgs());
       fields[associationName].resolve = function (source, args, context, info) {
         return remoteResolver(source, args, context, info, relation.query, fields[associationName].args, types[relation.target.name]);
@@ -505,8 +540,7 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
           var inputArg = models[modelTypeName].graphql.queries[query].input ? _defineProperty({}, models[modelTypeName].graphql.queries[query].input, { type: inputTypes[models[modelTypeName].graphql.queries[query].input] }) : {};
 
           queries[camelCase(query)] = {
-            type: outPutType,
-            args: Object.assign(inputArg, defaultListArgs(), includeArguments(), paranoidType),
+            type: outPutType, args: Object.assign(inputArg, defaultListArgs(), includeArguments(), paranoidType),
             resolve: function resolve(source, args, context, info) {
               return options.authorizer(source, args, context, info).then(function (_) {
                 return models[modelTypeName].graphql.queries[query].resolver(source, args, context, info);
