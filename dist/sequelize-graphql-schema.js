@@ -462,7 +462,7 @@ var generateModelTypesFromRemote = function generateModelTypesFromRemote(context
 
     for (var opt in options.remote.import) {
 
-      opt.headers = options.remote.import[opt].headers || options.remote.headers;
+      options.remote.import[opt].headers = options.remote.import[opt].headers || options.remote.headers;
       promises.push(remoteSchema(options.remote.import[opt], context));
     }
 

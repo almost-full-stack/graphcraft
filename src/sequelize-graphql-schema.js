@@ -403,7 +403,7 @@ const generateModelTypesFromRemote = (context) => {
 
     for(let opt in options.remote.import){
 
-      opt.headers = options.remote.import[opt].headers || options.remote.headers;
+      options.remote.import[opt].headers = options.remote.import[opt].headers || options.remote.headers;
       promises.push(remoteSchema(options.remote.import[opt], context));
 
     }
