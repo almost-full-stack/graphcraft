@@ -309,8 +309,8 @@ var generateAssociationFields = function generateAssociationFields(associations,
           return _await(resolver(relation, _defineProperty({}, EXPECTED_OPTIONS_KEY, dataloaderContext))(source, args, context, info), function (data) {
             var _exit = false;
             return _invoke(function () {
-              if (relation.target.graphql.extend.fetch && result.length) {
-                return _await(relation.target.graphql.extend.fetch(result, source, args, context, info), function (item) {
+              if (relation.target.graphql.extend.fetch && data.length) {
+                return _await(relation.target.graphql.extend.fetch(data, source, args, context, info), function (item) {
                   _exit = true;
                   return [].concat(item);
                 });

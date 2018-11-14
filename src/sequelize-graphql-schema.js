@@ -287,8 +287,8 @@ const generateAssociationFields = (associations, types, isInput = false) => {
 
         const data = await resolver(relation, {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, args, context, info);
 
-        if(relation.target.graphql.extend.fetch && result.length){
-          const item = await relation.target.graphql.extend.fetch(result, source, args, context, info);
+        if(relation.target.graphql.extend.fetch && data.length){
+          const item = await relation.target.graphql.extend.fetch(data, source, args, context, info);
           return [].concat(item);
         }
 
