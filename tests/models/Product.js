@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
     Product.graphql = {
         attributes: {
             exclude: ['description'],
-            include: { modelPortfolioId: 'int' },
+            include: { modelPortfolioId: 'int', obj: 'myObj' },
         },
         scopes: ['test', 'scopeId'],
         bulk: ['create'],
@@ -58,7 +58,11 @@ module.exports = (sequelize, DataTypes) => {
                 return Promise.resolve(data);
             },
             fetch: (data, source, args, context, info) => {
-                return data;
+              for(let index = 0; index < data.length; index ++){
+                data[index] = data[index].toJSON();
+                data[index].obj = {id: [1]};
+              }
+              return data;
             }
         }
     };

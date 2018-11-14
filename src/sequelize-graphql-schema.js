@@ -323,7 +323,8 @@ const generateGraphQLType = (model, types, isInput = false) => {
   let includeAttributes = {};
   if(model.graphql.attributes.include){
     for(let attribute in model.graphql.attributes.include){
-      includeAttributes[attribute] = generateGraphQLField(model.graphql.attributes.include[attribute]);
+      const type = types && types[model.graphql.attributes.include[attribute]] ? { type: types[model.graphql.attributes.include[attribute]] } : null;
+      includeAttributes[attribute] = type || generateGraphQLField(model.graphql.attributes.include[attribute]);
     }
   }
 
@@ -384,10 +385,10 @@ const generateModelTypes = (models, remoteTypes) => {
   for (let modelName in models) {
     // Only our models, not Sequelize nor sequelize
     if (models[modelName].hasOwnProperty('name') && modelName !== 'Sequelize') {
+      inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
+      outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
       outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes);
       inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true);
-      inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null ,true));
-      outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
     }
 
   }
