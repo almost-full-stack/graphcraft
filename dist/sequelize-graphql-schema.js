@@ -5,8 +5,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 function _invoke(body, then) {
   var result = body();if (result && result.then) {
     return result.then(then);
-  }
-  return then(result);
+  }return then(result);
 }
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
@@ -355,7 +354,8 @@ var generateGraphQLType = function generateGraphQLType(model, types) {
   var includeAttributes = {};
   if (model.graphql.attributes.include) {
     for (var attribute in model.graphql.attributes.include) {
-      includeAttributes[attribute] = generateGraphQLField(model.graphql.attributes.include[attribute]);
+      var type = types && types[model.graphql.attributes.include[attribute]] ? { type: types[model.graphql.attributes.include[attribute]] } : null;
+      includeAttributes[attribute] = type || generateGraphQLField(model.graphql.attributes.include[attribute]);
     }
   }
 
@@ -445,10 +445,10 @@ var generateModelTypes = function generateModelTypes(models, remoteTypes) {
   for (var modelName in models) {
     // Only our models, not Sequelize nor sequelize
     if (models[modelName].hasOwnProperty('name') && modelName !== 'Sequelize') {
-      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes);
-      inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true);
       inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
       outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
+      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes);
+      inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true);
     }
   }
 
@@ -540,7 +540,8 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
           var inputArg = models[modelTypeName].graphql.queries[query].input ? _defineProperty({}, models[modelTypeName].graphql.queries[query].input, { type: inputTypes[models[modelTypeName].graphql.queries[query].input] }) : {};
 
           queries[camelCase(query)] = {
-            type: outPutType, args: Object.assign(inputArg, defaultListArgs(), includeArguments(), paranoidType),
+            type: outPutType,
+            args: Object.assign(inputArg, defaultListArgs(), includeArguments(), paranoidType),
             resolve: function resolve(source, args, context, info) {
               return options.authorizer(source, args, context, info).then(function (_) {
                 return models[modelTypeName].graphql.queries[query].resolver(source, args, context, info);
