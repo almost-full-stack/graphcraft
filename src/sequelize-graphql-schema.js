@@ -68,7 +68,7 @@ const remoteResolver = async (source, args, context, info, remoteQuery, remoteAr
 
   const fields = _.keys(type.getFields());
 
-  const query = `query ${remoteQuery.name}(${queryArgs.join(', ')}){
+  const query = `query ${remoteQuery.name}(${passedArgs.join(', ')}){
     ${remoteQuery.name}(${passedArgs.join(', ')}){
       ${fields.join(', ')}
     }
@@ -201,7 +201,7 @@ const generateGraphQLField = (type) => {
   type = type.replace('[', '');
   type = type.replace(']', '');
 
-  let field = type === 'int' ? GraphQLInt : GraphQLString;
+  let field = type === 'int' ? GraphQLInt : type === 'boolean' ? GraphQLBoolean : GraphQLString;
 
   if(isArray){
     field = new GraphQLList(field);
@@ -234,6 +234,7 @@ const generateTypesFromObject = function(remoteData){
   let queries = [];
 
   remoteData.forEach((item) => {
+
     for(const type in item.types){
       types[type] = toGraphQLType(type, item.types[type]);
     }
