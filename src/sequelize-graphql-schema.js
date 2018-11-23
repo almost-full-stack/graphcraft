@@ -55,20 +55,16 @@ const remoteResolver = async (source, args, context, info, remoteQuery, remoteAr
   const availableArgs = _.keys(remoteQuery.args);
   const pickedArgs = _.pick(remoteArguments, availableArgs);
   let queryArgs = [];
-
-  for(const arg in remoteArguments){
-    queryArgs.push(`$${arg}:${remoteArguments[arg].type}`);
-  }
-
   let passedArgs = [];
 
   for(const arg in pickedArgs){
+    queryArgs.push(`$${arg}:${pickedArgs[arg].type}`);
     passedArgs.push(`${arg}:$${arg}`);
   };
 
   const fields = _.keys(type.getFields());
 
-  const query = `query ${remoteQuery.name}(${passedArgs.join(', ')}){
+  const query = `query ${remoteQuery.name}(${queryArgs.join(', ')}){
     ${remoteQuery.name}(${passedArgs.join(', ')}){
       ${fields.join(', ')}
     }
@@ -625,7 +621,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
 const generateSchema = (models, types, context) => {
 
   Models = models;
-  //dataloaderContext = createContext(models.sequelize);
+  dataloaderContext = createContext(models.sequelize);
 
   let availableModels = {};
   for (let modelName in models){

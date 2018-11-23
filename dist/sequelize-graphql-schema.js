@@ -102,23 +102,18 @@ var remoteResolver = _async(function (source, args, context, info, remoteQuery, 
   var availableArgs = _.keys(remoteQuery.args);
   var pickedArgs = _.pick(remoteArguments, availableArgs);
   var queryArgs = [];
-
-  for (var arg in remoteArguments) {
-    queryArgs.push('$' + arg + ':' + remoteArguments[arg].type);
-  }
-
   var passedArgs = [];
 
-  for (var _arg in pickedArgs) {
-    passedArgs.push(_arg + ':$' + _arg);
+  for (var arg in pickedArgs) {
+    queryArgs.push('$' + arg + ':' + pickedArgs[arg].type);
+    passedArgs.push(arg + ':$' + arg);
   };
 
   var fields = _.keys(type.getFields());
 
   var query = 'query ' + remoteQuery.name + '(' + queryArgs.join(', ') + '){\n    ' + remoteQuery.name + '(' + passedArgs.join(', ') + '){\n      ' + fields.join(', ') + '\n    }\n  }';
 
-  var variables = _.pick(args, availableArgs);
-  var key = remoteQuery.to || 'id';
+  var variables = _.pick(args, availableArgs);var key = remoteQuery.to || 'id';
 
   if (_.indexOf(availableArgs, key) > -1 && !variables.where) {
     variables[key] = source[remoteQuery.with];
@@ -141,7 +136,9 @@ var includeArguments = function includeArguments() {
     includeArguments[argument] = generateGraphQLField(options.includeArguments[argument]);
   }
   return includeArguments;
-};var execBefore = function execBefore(model, source, args, context, info, type, where) {
+};
+
+var execBefore = function execBefore(model, source, args, context, info, type, where) {
   if (model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)) {
     return model.graphql.before[type](source, args, context, info, where);
   } else {
@@ -223,7 +220,7 @@ var generateGraphQLField = function generateGraphQLField(type) {
   type = type.replace('[', '');
   type = type.replace(']', '');
 
-  var field = type === 'int' ? GraphQLInt : GraphQLString;
+  var field = type === 'int' ? GraphQLInt : type === 'boolean' ? GraphQLBoolean : GraphQLString;
 
   if (isArray) {
     field = new GraphQLList(field);
@@ -257,6 +254,7 @@ var generateTypesFromObject = function generateTypesFromObject(remoteData) {
   var queries = [];
 
   remoteData.forEach(function (item) {
+
     for (var type in item.types) {
       types[type] = toGraphQLType(type, item.types[type]);
     }
@@ -686,7 +684,7 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
 var generateSchema = function generateSchema(models, types, context) {
 
   Models = models;
-  //dataloaderContext = createContext(models.sequelize);
+  dataloaderContext = createContext(models.sequelize);
 
   var availableModels = {};
   for (var modelName in models) {
