@@ -1,9 +1,42 @@
 'use strict';
 
-var request = require('request-promise');
+var _async = function () {
+  try {
+    if (isNaN.apply(null, {})) {
+      return function (f) {
+        return function () {
+          try {
+            return Promise.resolve(f.apply(this, arguments));
+          } catch (e) {
+            return Promise.reject(e);
+          }
+        };
+      };
+    }
+  } catch (e) {}return function (f) {
+    // Pre-ES5.1 JavaScript runtimes don't accept array-likes in Function.apply
+    return function () {
+      var args = [];for (var i = 0; i < arguments.length; i++) {
+        args[i] = arguments[i];
+      }try {
+        return Promise.resolve(f.apply(this, args));
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    };
+  };
+}();function _await(value, then, direct) {
+  if (direct) {
+
+    return then ? then(value) : value;
+  }value = Promise.resolve(value);return then ? value.then(then) : value;
+}
+var _require = require('graphql-request'),
+    GraphQLClient = _require.GraphQLClient;
+
 var _ = require('lodash');
 
-module.exports = function (options, context) {
+module.exports = _async(function (options, context) {
 
   var defaultOptions = {
     endpoint: null,
@@ -12,8 +45,6 @@ module.exports = function (options, context) {
   };
 
   var IgnoreTypes = ['Int', 'SequelizeJSON', 'String', 'Boolean'];
-
-  var introspectionQuery = 'query IntrospectionQuery {\n      __schema {\n        queryType { name }\n        mutationType { name }\n        subscriptionType { name }\n        types {\n          ...FullType\n        }\n        directives {\n          name\n          description\n          locations\n          args {\n            ...InputValue\n          }\n        }\n      }\n    }\n    fragment FullType on __Type {\n      kind\n      name\n      description\n      fields(includeDeprecated: true) {\n        name\n        description\n        args {\n          ...InputValue\n        }\n        type {\n          ...TypeRef\n        }\n        isDeprecated\n        deprecationReason\n      }\n      inputFields {\n        ...InputValue\n      }\n      interfaces {\n        ...TypeRef\n      }\n      enumValues(includeDeprecated: true) {\n        name\n        description\n        isDeprecated\n        deprecationReason\n      }\n      possibleTypes {\n        ...TypeRef\n      }\n    }\n    fragment InputValue on __InputValue {\n      name\n      description\n      type { ...TypeRef }\n      defaultValue\n    }\n    fragment TypeRef on __Type {\n      kind\n      name\n      ofType {\n        kind\n        name\n        ofType {\n          kind\n          name\n          ofType {\n            kind\n            name\n            ofType {\n              kind\n              name\n              ofType {\n                kind\n                name\n                ofType {\n                  kind\n                  name\n                  ofType {\n                    kind\n                    name\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }';
 
   function getTypes(type, AllTypes, array) {
 
@@ -37,22 +68,13 @@ module.exports = function (options, context) {
     });
 
     return array;
-  }
+  }var introspectionQuery = 'query IntrospectionQuery {\n      __schema {\n        queryType { name }\n        mutationType { name }\n        subscriptionType { name }\n        types {\n          ...FullType\n        }\n        directives {\n          name\n          description\n          locations\n          args {\n            ...InputValue\n          }\n        }\n      }\n    }\n    fragment FullType on __Type {\n      kind\n      name\n      description\n      fields(includeDeprecated: true) {\n        name\n        description\n        args {\n          ...InputValue\n        }\n        type {\n          ...TypeRef\n        }\n        isDeprecated\n        deprecationReason\n      }\n      inputFields {\n        ...InputValue\n      }\n      interfaces {\n        ...TypeRef\n      }\n      enumValues(includeDeprecated: true) {\n        name\n        description\n        isDeprecated\n        deprecationReason\n      }\n      possibleTypes {\n        ...TypeRef\n      }\n    }\n    fragment InputValue on __InputValue {\n      name\n      description\n      type { ...TypeRef }\n      defaultValue\n    }\n    fragment TypeRef on __Type {\n      kind\n      name\n      ofType {\n        kind\n        name\n        ofType {\n          kind\n          name\n          ofType {\n            kind\n            name\n            ofType {\n              kind\n              name\n              ofType {\n                kind\n                name\n                ofType {\n                  kind\n                  name\n                  ofType {\n                    kind\n                    name\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }';var headers = context ? _.pick(context.headers, options.headers) : {};
 
-  var headers = context ? _.pick(context.headers, options.headers) : {};
   headers['graphql-introspection'] = true;
 
-  return request({
-    uri: options.endpoint,
-    method: 'POST',
-    body: {
-      query: introspectionQuery
-    },
-    headers: headers,
-    json: true
-  }).then(function (res) {
-
-    var schema = res.data.__schema;
+  var client = new GraphQLClient(options.endpoint, { headers: headers });
+  return _await(client.request(introspectionQuery), function (data) {
+    var schema = data.__schema;
     var queryTypeName = schema.queryType.name;
     var Types = schema.types;
     var AllTypes = {};
@@ -109,7 +131,7 @@ module.exports = function (options, context) {
 
     QueriesToImport.forEach(function (query) {
 
-      var obj = { args: {}, name: query.name, endpoint: options.endpoint, headers: options.headers, output: query.outputName, isList: query.type.kind === 'LIST' ? true : false };
+      var obj = { args: {}, name: query.name, endpoint: options.endpoint, headers: options.headers, output: query.outputName, isList: query.type.kind === 'LIST' ? true : false, options: options.options };
 
       query.args.forEach(function (arg) {
         obj.args[arg.name] = arg.type.name;
@@ -120,4 +142,4 @@ module.exports = function (options, context) {
 
     return { types: FilteredTypes, queries: FilteredQueries };
   });
-};
+});

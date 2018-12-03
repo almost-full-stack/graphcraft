@@ -26,6 +26,7 @@ let options = {
   includeArguments: { },
   remote: {
   },
+  dataloader: false,
   authorizer: function(){
     return Promise.resolve();
   }
@@ -294,7 +295,7 @@ const generateAssociationFields = (associations, types, isInput = false) => {
       };
 
     }else if(!isInput && relation.isRemote){
-
+      console.log(relation);
       fields[associationName].args = Object.assign({}, relation.query.args, defaultListArgs());
       fields[associationName].resolve = (source, args, context, info) => {
         return remoteResolver(source, args, context, info, relation.query, fields[associationName].args, types[relation.target.name]);
@@ -621,7 +622,8 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
 const generateSchema = (models, types, context) => {
 
   Models = models;
-  dataloaderContext = createContext(models.sequelize);
+
+  if(dataloader) dataloaderContext = createContext(models.sequelize);
 
   let availableModels = {};
   for (let modelName in models){

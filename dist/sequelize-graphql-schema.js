@@ -3,7 +3,9 @@
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _invoke(body, then) {
-  var result = body();if (result && result.then) {
+  var result = body();
+
+  if (result && result.then) {
     return result.then(then);
   }return then(result);
 }
@@ -27,7 +29,8 @@ var _async = function () {
     return function () {
       var args = [];for (var i = 0; i < arguments.length; i++) {
         args[i] = arguments[i];
-      }try {
+      }
+      try {
         return Promise.resolve(f.apply(this, args));
       } catch (e) {
         return Promise.reject(e);
@@ -73,6 +76,7 @@ var options = {
   exclude: [],
   includeArguments: {},
   remote: {},
+  dataloader: false,
   authorizer: function authorizer() {
     return Promise.resolve();
   }
@@ -113,7 +117,8 @@ var remoteResolver = _async(function (source, args, context, info, remoteQuery, 
 
   var query = 'query ' + remoteQuery.name + '(' + queryArgs.join(', ') + '){\n    ' + remoteQuery.name + '(' + passedArgs.join(', ') + '){\n      ' + fields.join(', ') + '\n    }\n  }';
 
-  var variables = _.pick(args, availableArgs);var key = remoteQuery.to || 'id';
+  var variables = _.pick(args, availableArgs);
+  var key = remoteQuery.to || 'id';
 
   if (_.indexOf(availableArgs, key) > -1 && !variables.where) {
     variables[key] = source[remoteQuery.with];
@@ -123,8 +128,7 @@ var remoteResolver = _async(function (source, args, context, info, remoteQuery, 
   }
 
   var headers = _.pick(context.headers, remoteQuery.headers);
-  var client = new GraphQLClient(remoteQuery.endpoint, { headers: headers });
-  return _await(client.request(query, variables), function (data) {
+  var client = new GraphQLClient(remoteQuery.endpoint, { headers: headers });return _await(client.request(query, variables), function (data) {
 
     return data[remoteQuery.name];
   });
@@ -320,7 +324,7 @@ var generateAssociationFields = function generateAssociationFields(associations,
         });
       });
     } else if (!isInput && relation.isRemote) {
-
+      console.log(relation);
       fields[associationName].args = Object.assign({}, relation.query.args, defaultListArgs());
       fields[associationName].resolve = function (source, args, context, info) {
         return remoteResolver(source, args, context, info, relation.query, fields[associationName].args, types[relation.target.name]);
@@ -533,9 +537,7 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
             } else {
               outPutType = outputTypes[models[modelTypeName].graphql.queries[query].output];
             }
-          }
-
-          var inputArg = models[modelTypeName].graphql.queries[query].input ? _defineProperty({}, models[modelTypeName].graphql.queries[query].input, { type: inputTypes[models[modelTypeName].graphql.queries[query].input] }) : {};
+          }var inputArg = models[modelTypeName].graphql.queries[query].input ? _defineProperty({}, models[modelTypeName].graphql.queries[query].input, { type: inputTypes[models[modelTypeName].graphql.queries[query].input] }) : {};
 
           queries[camelCase(query)] = {
             type: outPutType,
@@ -684,7 +686,8 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
 var generateSchema = function generateSchema(models, types, context) {
 
   Models = models;
-  dataloaderContext = createContext(models.sequelize);
+
+  if (dataloader) dataloaderContext = createContext(models.sequelize);
 
   var availableModels = {};
   for (var modelName in models) {

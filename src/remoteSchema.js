@@ -1,7 +1,7 @@
-const request = require('request-promise');
+const { GraphQLClient } = require('graphql-request');
 const _ = require('lodash');
 
-module.exports = (options, context) => {
+module.exports = async (options, context) => {
 
   const defaultOptions = {
     endpoint: null,
@@ -127,92 +127,83 @@ module.exports = (options, context) => {
 
   }
 
-  let headers = context ? _.pick(context.headers, options.headers) : {};
+  const headers = context ? _.pick(context.headers, options.headers) : {};
+
   headers['graphql-introspection'] = true;
 
-  return request({
-    uri: options.endpoint,
-    method: 'POST',
-    body: {
-      query: introspectionQuery
-    },
-    headers: headers,
-    json: true
-  }).then((res) => {
+  const client = new GraphQLClient(options.endpoint, { headers });
+  const data = await client.request(introspectionQuery);
+  const schema = data.__schema;
+  const queryTypeName = schema.queryType.name;
+  const Types = schema.types;
+  let AllTypes = { };
+  let QueriesToImport = [];
+  let TypesToImport = [];
 
-    const schema = res.data.__schema;
-    const queryTypeName = schema.queryType.name;
-    const Types = schema.types;
-    let AllTypes = { };
-    let QueriesToImport = [];
-    let TypesToImport = [];
+  for(let index = 0; index < Types.length; index ++){
+    AllTypes[Types[index].name] = Types[index];
+  }
 
-    for(let index = 0; index < Types.length; index ++){
-      AllTypes[Types[index].name] = Types[index];
-    }
+  const queryType = AllTypes[queryTypeName];
 
-    const queryType = AllTypes[queryTypeName];
+  queryType.fields.forEach((field) => {
 
-    queryType.fields.forEach((field) => {
+    if(options.queries[field.name]){
 
-      if(options.queries[field.name]){
+      let outputName = null;
 
-        let outputName = null;
-
-        field.args.forEach((arg) => {
-          if(IgnoreTypes.indexOf(arg.type.name || arg.type.ofType.name) == -1){
-            let tempType = AllTypes[arg.type.name || arg.type.ofType.name];
-            tempType.name = options.queries[field.name].as || tempType.name;
-            TypesToImport.push(tempType);
-          }
-        });
-
-        if(IgnoreTypes.indexOf(field.type.name || field.type.ofType.name) == -1){
-          let tempType = AllTypes[field.type.name || field.type.ofType.name];
+      field.args.forEach((arg) => {
+        if(IgnoreTypes.indexOf(arg.type.name || arg.type.ofType.name) == -1){
+          let tempType = AllTypes[arg.type.name || arg.type.ofType.name];
           tempType.name = options.queries[field.name].as || tempType.name;
-          outputName = tempType.name;
           TypesToImport.push(tempType);
         }
+      });
 
-        field.outputName = outputName;
-        QueriesToImport.push(field);
-
+      if(IgnoreTypes.indexOf(field.type.name || field.type.ofType.name) == -1){
+        let tempType = AllTypes[field.type.name || field.type.ofType.name];
+        tempType.name = options.queries[field.name].as || tempType.name;
+        outputName = tempType.name;
+        TypesToImport.push(tempType);
       }
 
-    });
+      field.outputName = outputName;
+      QueriesToImport.push(field);
 
-    let FilteredTypes = {};
-    let FilteredQueries = [];
-
-    TypesToImport.forEach((type) => {
-
-      let obj = {};
-
-      type.fields.forEach((field) => {
-        if(field.type.kind == 'SCALAR' || field.type.ofType.kind == 'SCALAR'){
-          obj[field.name] = field.type.name || field.type.ofType.name;
-        }
-      });
-
-      FilteredTypes[type.name] = obj;
-
-    });
-
-    QueriesToImport.forEach((query) => {
-
-      let obj = { args: { }, name: query.name, endpoint: options.endpoint, headers: options.headers, output: query.outputName, isList: query.type.kind === 'LIST' ? true : false };
-
-      query.args.forEach((arg) => {
-        obj.args[arg.name] = arg.type.name;
-
-      });
-
-      FilteredQueries.push(obj);
-
-    });
-
-    return { types: FilteredTypes, queries: FilteredQueries };
+    }
 
   });
+
+  let FilteredTypes = {};
+  let FilteredQueries = [];
+
+  TypesToImport.forEach((type) => {
+
+    let obj = {};
+
+    type.fields.forEach((field) => {
+      if(field.type.kind == 'SCALAR' || field.type.ofType.kind == 'SCALAR'){
+        obj[field.name] = field.type.name || field.type.ofType.name;
+      }
+    });
+
+    FilteredTypes[type.name] = obj;
+
+  });
+
+  QueriesToImport.forEach((query) => {
+
+    let obj = { args: { }, name: query.name, endpoint: options.endpoint, headers: options.headers, output: query.outputName, isList: query.type.kind === 'LIST' ? true : false, options: options.options };
+
+    query.args.forEach((arg) => {
+      obj.args[arg.name] = arg.type.name;
+
+    });
+
+    FilteredQueries.push(obj);
+
+  });
+
+  return { types: FilteredTypes, queries: FilteredQueries };
 
 };

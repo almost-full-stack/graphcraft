@@ -1,6 +1,6 @@
 {
   "name": "sequelize-graphql-schema",
-  "version": "0.1.41",
+  "version": "0.1.42",
   "description": "A helper library that lets you focus on business logic by automatically generates GraphQLSchema and manages graphQL from Sequelize model.",
   "main": "index.js",
   "scripts": {
@@ -37,12 +37,8 @@
   "dependencies": {
     "camelcase": "^5.0.0",
     "dataloader-sequelize": "^1.7.3",
-    "graphql-relay": "^0.5.5",
     "graphql-request": "^1.8.2",
-    "graphql-sequelize": "^8.3.1",
-    "latest": "^0.2.0",
-    "request": "^2.88.0",
-    "request-promise": "^4.2.2"
+    "graphql-sequelize": "^8.3.1"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
