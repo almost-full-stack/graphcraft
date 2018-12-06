@@ -4,40 +4,23 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 function _invoke(body, then) {
   var result = body();
-
   if (result && result.then) {
     return result.then(then);
   }return then(result);
 }
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
-var _async = function () {
-  try {
-    if (isNaN.apply(null, {})) {
-      return function (f) {
-        return function () {
-          try {
-            return Promise.resolve(f.apply(this, arguments));
-          } catch (e) {
-            return Promise.reject(e);
-          }
-        };
-      };
+function _async(f) {
+  return function () {
+    for (var args = [], i = 0; i < arguments.length; i++) {
+      args[i] = arguments[i];
+    }try {
+      return Promise.resolve(f.apply(this, args));
+    } catch (e) {
+      return Promise.reject(e);
     }
-  } catch (e) {}return function (f) {
-    // Pre-ES5.1 JavaScript runtimes don't accept array-likes in Function.apply
-    return function () {
-      var args = [];for (var i = 0; i < arguments.length; i++) {
-        args[i] = arguments[i];
-      }
-      try {
-        return Promise.resolve(f.apply(this, args));
-      } catch (e) {
-        return Promise.reject(e);
-      }
-    };
   };
-}();function _await(value, then, direct) {
+}function _await(value, then, direct) {
   if (direct) {
     return then ? then(value) : value;
   }value = Promise.resolve(value);return then ? value.then(then) : value;
@@ -128,7 +111,8 @@ var remoteResolver = _async(function (source, args, context, info, remoteQuery, 
   }
 
   var headers = _.pick(context.headers, remoteQuery.headers);
-  var client = new GraphQLClient(remoteQuery.endpoint, { headers: headers });return _await(client.request(query, variables), function (data) {
+  var client = new GraphQLClient(remoteQuery.endpoint, { headers: headers });
+  return _await(client.request(query, variables), function (data) {
 
     return data[remoteQuery.name];
   });
@@ -514,8 +498,7 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
           args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
           resolve: function resolve(source, args, context, info) {
             return queryResolver(models[modelType.name], modelType.name, source, args, context, info);
-          }
-        };
+          } };
       };
 
       if (models[modelTypeName].graphql && models[modelTypeName].graphql.queries) {
@@ -537,7 +520,9 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
             } else {
               outPutType = outputTypes[models[modelTypeName].graphql.queries[query].output];
             }
-          }var inputArg = models[modelTypeName].graphql.queries[query].input ? _defineProperty({}, models[modelTypeName].graphql.queries[query].input, { type: inputTypes[models[modelTypeName].graphql.queries[query].input] }) : {};
+          }
+
+          var inputArg = models[modelTypeName].graphql.queries[query].input ? _defineProperty({}, models[modelTypeName].graphql.queries[query].input, { type: inputTypes[models[modelTypeName].graphql.queries[query].input] }) : {};
 
           queries[camelCase(query)] = {
             type: outPutType,
@@ -687,7 +672,7 @@ var generateSchema = function generateSchema(models, types, context) {
 
   Models = models;
 
-  if (dataloader) dataloaderContext = createContext(models.sequelize);
+  if (options.dataloader) dataloaderContext = createContext(models.sequelize);
 
   var availableModels = {};
   for (var modelName in models) {

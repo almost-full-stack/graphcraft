@@ -623,7 +623,7 @@ const generateSchema = (models, types, context) => {
 
   Models = models;
 
-  if(dataloader) dataloaderContext = createContext(models.sequelize);
+  if(options.dataloader) dataloaderContext = createContext(models.sequelize);
 
   let availableModels = {};
   for (let modelName in models){
