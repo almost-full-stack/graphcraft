@@ -3,29 +3,44 @@
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _invoke(body, then) {
-  var result = body();
-  if (result && result.then) {
+  var result = body();if (result && result.then) {
     return result.then(then);
   }return then(result);
 }
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
-function _async(f) {
-  return function () {
-    for (var args = [], i = 0; i < arguments.length; i++) {
-      args[i] = arguments[i];
-    }try {
-      return Promise.resolve(f.apply(this, args));
-    } catch (e) {
-      return Promise.reject(e);
-    }
-  };
-}function _await(value, then, direct) {
+function _await(value, then, direct) {
   if (direct) {
     return then ? then(value) : value;
   }value = Promise.resolve(value);return then ? value.then(then) : value;
 }
-var _require = require('graphql'),
+var _async = function () {
+  try {
+    if (isNaN.apply(null, {})) {
+      return function (f) {
+        return function () {
+          try {
+            return Promise.resolve(f.apply(this, arguments));
+          } catch (e) {
+            return Promise.reject(e);
+          }
+        };
+      };
+    }
+  } catch (e) {}return function (f) {
+    // Pre-ES5.1 JavaScript runtimes don't accept array-likes in Function.apply
+    return function () {
+      var args = [];for (var i = 0; i < arguments.length; i++) {
+        args[i] = arguments[i];
+      }try {
+        return Promise.resolve(f.apply(this, args));
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    };
+  };
+}(),
+    _require = require('graphql'),
     GraphQLObjectType = _require.GraphQLObjectType,
     GraphQLInputObjectType = _require.GraphQLInputObjectType,
     GraphQLList = _require.GraphQLList,
@@ -53,6 +68,7 @@ var _require4 = require('dataloader-sequelize'),
     createContext = _require4.createContext,
     EXPECTED_OPTIONS_KEY = _require4.EXPECTED_OPTIONS_KEY;
 
+var DataLoader = require('dataloader');
 var dataloaderContext = void 0;
 
 var options = {
@@ -86,36 +102,43 @@ var Models = {};
 
 var remoteResolver = _async(function (source, args, context, info, remoteQuery, remoteArguments, type) {
 
-  var availableArgs = _.keys(remoteQuery.args);
-  var pickedArgs = _.pick(remoteArguments, availableArgs);
-  var queryArgs = [];
-  var passedArgs = [];
+  var remoteQueryFetcher = _async(function () {
+    var availableArgs = _.keys(remoteQuery.args);
+    var pickedArgs = _.pick(remoteArguments, availableArgs);
+    var queryArgs = [];
+    var passedArgs = [];
 
-  for (var arg in pickedArgs) {
-    queryArgs.push('$' + arg + ':' + pickedArgs[arg].type);
-    passedArgs.push(arg + ':$' + arg);
-  };
+    for (var arg in pickedArgs) {
+      queryArgs.push('$' + arg + ':' + pickedArgs[arg].type);
+      passedArgs.push(arg + ':$' + arg);
+    };
 
-  var fields = _.keys(type.getFields());
+    var fields = _.keys(type.getFields());
 
-  var query = 'query ' + remoteQuery.name + '(' + queryArgs.join(', ') + '){\n    ' + remoteQuery.name + '(' + passedArgs.join(', ') + '){\n      ' + fields.join(', ') + '\n    }\n  }';
+    var query = 'query ' + remoteQuery.name + '(' + queryArgs.join(', ') + '){\n      ' + remoteQuery.name + '(' + passedArgs.join(', ') + '){\n        ' + fields.join(', ') + '\n      }\n    }';
 
-  var variables = _.pick(args, availableArgs);
-  var key = remoteQuery.to || 'id';
+    var variables = _.pick(args, availableArgs);
+    var key = remoteQuery.to || 'id';
 
-  if (_.indexOf(availableArgs, key) > -1 && !variables.where) {
-    variables[key] = source[remoteQuery.with];
-  } else if (_.indexOf(availableArgs, 'where') > -1) {
-    variables.where = variables.where || {};
-    variables.where[key] = source[remoteQuery.with];
-  }
+    if (_.indexOf(availableArgs, key) > -1 && !variables.where) {
+      variables[key] = source[remoteQuery.with];
+    } else if (_.indexOf(availableArgs, 'where') > -1) {
+      variables.where = variables.where || {};
+      variables.where[key] = source[remoteQuery.with];
+    }
 
-  var headers = _.pick(context.headers, remoteQuery.headers);
-  var client = new GraphQLClient(remoteQuery.endpoint, { headers: headers });
-  return _await(client.request(query, variables), function (data) {
+    var headers = _.pick(context.headers, remoteQuery.headers);
+    var client = new GraphQLClient(remoteQuery.endpoint, { headers: headers });
+    return _await(client.request(query, variables), function (data) {
 
-    return data[remoteQuery.name];
+      return data[remoteQuery.name];
+    });
   });
+
+  var remoteQueryLoader = new DataLoader(function (queries) {
+    return remoteQueryFetcher;
+  });
+  return remoteQueryLoader.load(passedArgs);
 });
 
 var includeArguments = function includeArguments() {
@@ -498,7 +521,8 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
           args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
           resolve: function resolve(source, args, context, info) {
             return queryResolver(models[modelType.name], modelType.name, source, args, context, info);
-          } };
+          }
+        };
       };
 
       if (models[modelTypeName].graphql && models[modelTypeName].graphql.queries) {

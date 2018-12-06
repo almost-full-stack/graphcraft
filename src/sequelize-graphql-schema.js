@@ -19,6 +19,7 @@ const remoteSchema = require('./remoteSchema');
 const { GraphQLClient } = require('graphql-request');
 const _ = require('lodash');
 const {createContext, EXPECTED_OPTIONS_KEY} = require('dataloader-sequelize');
+const DataLoader = require('dataloader');
 let dataloaderContext;
 
 let options = {
@@ -53,39 +54,47 @@ let Models = {};
 
 const remoteResolver = async (source, args, context, info, remoteQuery, remoteArguments, type) => {
 
-  const availableArgs = _.keys(remoteQuery.args);
-  const pickedArgs = _.pick(remoteArguments, availableArgs);
-  let queryArgs = [];
-  let passedArgs = [];
+  const remoteQueryFetcher = async () => {
+    const availableArgs = _.keys(remoteQuery.args);
+    const pickedArgs = _.pick(remoteArguments, availableArgs);
+    let queryArgs = [];
+    let passedArgs = [];
 
-  for(const arg in pickedArgs){
-    queryArgs.push(`$${arg}:${pickedArgs[arg].type}`);
-    passedArgs.push(`${arg}:$${arg}`);
-  };
+    for(const arg in pickedArgs){
+      queryArgs.push(`$${arg}:${pickedArgs[arg].type}`);
+      passedArgs.push(`${arg}:$${arg}`);
+    };
 
-  const fields = _.keys(type.getFields());
+    const fields = _.keys(type.getFields());
 
-  const query = `query ${remoteQuery.name}(${queryArgs.join(', ')}){
-    ${remoteQuery.name}(${passedArgs.join(', ')}){
-      ${fields.join(', ')}
+    const query = `query ${remoteQuery.name}(${queryArgs.join(', ')}){
+      ${remoteQuery.name}(${passedArgs.join(', ')}){
+        ${fields.join(', ')}
+      }
+    }`;
+
+    const variables = _.pick(args, availableArgs);
+    const key = remoteQuery.to || 'id';
+
+    if(_.indexOf(availableArgs, key) > -1 && !variables.where){
+      variables[key] = source[remoteQuery.with];
+    }else if(_.indexOf(availableArgs, 'where') > -1){
+      variables.where = variables.where || {};
+      variables.where[key] = source[remoteQuery.with];
     }
-  }`;
 
-  const variables = _.pick(args, availableArgs);
-  const key = remoteQuery.to || 'id';
+    const headers = _.pick(context.headers, remoteQuery.headers);
+    const client = new GraphQLClient(remoteQuery.endpoint, { headers });
+    const data = await client.request(query, variables);
 
-  if(_.indexOf(availableArgs, key) > -1 && !variables.where){
-    variables[key] = source[remoteQuery.with];
-  }else if(_.indexOf(availableArgs, 'where') > -1){
-    variables.where = variables.where || {};
-    variables.where[key] = source[remoteQuery.with];
+    return data[remoteQuery.name];
   }
 
-  const headers = _.pick(context.headers, remoteQuery.headers);
-  const client = new GraphQLClient(remoteQuery.endpoint, { headers });
-  const data = await client.request(query, variables);
-
-  return data[remoteQuery.name];
+  const remoteQueryLoader = new DataLoader(queries => {
+    console.log(queries);
+    return Promise.resolve(queries);
+  });
+  return remoteQueryLoader.load(passedArgs);
 
 };
 
