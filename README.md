@@ -37,6 +37,16 @@ This package assumes you have `graphql` and `sequelize` already installed (both 
 | overwrite        | Object | same as before                                                                                                          | This will overwrite default query or mutation.                                                                                                      |
 | extend           | Object | same as before with data coming from default passed to this function: ```create: (data, source, args, context, info)``` | To extend default functionality.                                                                                                                    |
 | import           | Array  | see remote options                                                                                                      | Associations with remote schema.                                                                                                                    |
+
+```js
+Product.graphql = {
+    attributes: {
+        exclude: ['description'],
+        include: { modelPortfolioId: 'int', obj: 'myObj' },
+    }
+};
+```
+
 ## Remote Options
 
 | option  |  type  |                                                                                                                                 example | description                                                                                      |
@@ -70,7 +80,12 @@ const schema = generateSchema(models, types) // Generates the schema by reusing 
 const { GraphQLSchema } = require('graphql');
 const express = require('express');
 const graphqlHTTP = require('express-graphql');
-const {generateSchema} = require('../src/sequelize-graphql-schema')(options);
+
+var options = {
+  exclude: ["Users"]
+}
+
+const {generateSchema} = require('sequelize-graphql-schema')(options);
 
 const models = require('./models');
 
@@ -85,6 +100,6 @@ app.use(
 )
 
 app.listen(8080, function() {
-  console.log('RUNNING ON 8080')
+  console.log('RUNNING ON 8080. Graphiql http://localhost:8080/graphql')
 })
 ```
