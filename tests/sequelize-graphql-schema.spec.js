@@ -39,7 +39,7 @@ app.use('/', (req, res) => {
     });
 
   }else{
-
+    console.log(schemaPromise);
     return graphqlHTTP({
       schema: new GraphQLSchema(schemaPromise),
       graphiql: true
