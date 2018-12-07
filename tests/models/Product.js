@@ -9,7 +9,11 @@ module.exports = (sequelize, DataTypes) => {
         accountId: DataTypes.INTEGER,   // Cash account id
         clientId: DataTypes.INTEGER,    // Client who created/opened the Product
         scopeId: DataTypes.INTEGER,   // Tennant managing account of client, required since one Client can have links with multiple tennants.
-        portfolioId: DataTypes.INTEGER
+        portfolioId: DataTypes.INTEGER,
+        states: {
+          type: DataTypes.ENUM,
+          values: ['active', 'pending', 'deleted']
+        }
     }, {
       paranoid: false,
       scopes: {
