@@ -87,7 +87,7 @@ const remoteResolver = async (source, args, context, info, remoteQuery, remoteAr
   const data = await client.request(query, variables);
 
   return data[remoteQuery.name];
-  
+
 };
 
 const includeArguments = () => {
@@ -296,7 +296,6 @@ const generateAssociationFields = (associations, types, isInput = false) => {
       };
 
     }else if(!isInput && relation.isRemote){
-      console.log(relation);
       fields[associationName].args = Object.assign({}, relation.query.args, defaultListArgs());
       fields[associationName].resolve = (source, args, context, info) => {
         return remoteResolver(source, args, context, info, relation.query, fields[associationName].args, types[relation.target.name]);
@@ -317,7 +316,7 @@ const generateAssociationFields = (associations, types, isInput = false) => {
 * @param {*} model The sequelize model used to create the `GraphQLObjectType`
 * @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
-const generateGraphQLType = (model, types, isInput = false) => {
+const generateGraphQLType = (model, types, isInput = false, cache) => {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   let includeAttributes = {};
   if(model.graphql.attributes.include){
@@ -329,7 +328,7 @@ const generateGraphQLType = (model, types, isInput = false) => {
 
   return new GraphQLClass({
     name: isInput ? `${model.name}Input` : model.name,
-    fields: () => Object.assign(attributeFields(model, Object.assign({}, { allowNull: !!isInput })), generateAssociationFields(model.associations, types, isInput), includeAttributes)
+    fields: () => Object.assign(attributeFields(model, Object.assign({}, { allowNull: !!isInput, cache })), generateAssociationFields(model.associations, types, isInput), includeAttributes)
   });
 };
 
@@ -384,10 +383,11 @@ const generateModelTypes = (models, remoteTypes) => {
   for (let modelName in models) {
     // Only our models, not Sequelize nor sequelize
     if (models[modelName].hasOwnProperty('name') && modelName !== 'Sequelize') {
+      const cache = {};
       inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
       outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
-      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes);
-      inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true);
+      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes, false, cache);
+      inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true, cache);
     }
 
   }
