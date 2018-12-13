@@ -3,5 +3,3 @@ node_modules/
 coverage/
 tests/database.db
 package-lock.json
-dist
-dist/*
