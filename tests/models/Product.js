@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
         clientId: DataTypes.INTEGER,    // Client who created/opened the Product
         scopeId: DataTypes.INTEGER,   // Tennant managing account of client, required since one Client can have links with multiple tennants.
         portfolioId: DataTypes.INTEGER,
+        //sdescription: DataTypes.STRING,
         states: {
           type: DataTypes.ENUM,
           values: ['active', 'pending', 'deleted']
@@ -24,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     Product.associate = function(models) {
-      Product.hasMany(models.Attribute);
+      //Product.hasMany(models.Attribute);
     };
 
     // extensions to replace or extend existing graphql implementations (available options would be create, destroy, update, query)
@@ -39,9 +40,7 @@ module.exports = (sequelize, DataTypes) => {
         import: [ { from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' } ],
         excludeMutations: [],
         excludeQueries: [],
-        types: {
-          myObj: { id: '[int]' }
-        },
+        'types': { 'myObj': { 'id': '[int]', 'name': 'string' } },
         mutations: {
           myMutation: { input: 'Product', output: '[myObj]', resolver: () => { return 1; }}
         },
