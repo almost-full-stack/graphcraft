@@ -41,15 +41,16 @@ module.exports = (sequelize, DataTypes) => {
         excludeMutations: [],
         excludeQueries: [],
         'types': {
-          'myObj': { 'id': '[int]', 'name': 'string', 'secObj': '[secObj]' },
-          'secObj': { 'id': 'int', 'name': 'string', 'thirdObj': 'thirdObj!'},
+          'myObj': { 'id': '[int]', 'name': 'string', 'mySecObj': '[secObj]' },
+          'secObj': { 'id': 'int', 'name': 'string', 'myThirdObj': 'thirdObj!'},
           'thirdObj': { 'id': 'int', 'name': 'string'}
         },
         mutations: {
-          myMutation: { input: 'Product', output: '[myObj]', resolver: () => { return 1; }}
+          myMutation: { input: 'Product', output: 'cddMonitorSwitchOutput', resolver: () => { return 1; }}
         },
         queries: {
-          myQuery: { output: 'Product', input: 'Product', resolver: () => { return 1; } }
+          myQuery: { output: 'cddGetOutput', input: 'Product', resolver: () => { return 1; } },
+          myQuery1: { output: 'myObj', input: 'Product', resolver: () => { return 1; } }
         },
         // this will be executed after mutations/queries
         before: {
