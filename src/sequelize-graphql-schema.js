@@ -191,23 +191,31 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
 };
 
-const generateGraphQLField = (type) => {
-
+const sanitizeFieldName = (type) => {
   let isRequired = type.indexOf('!') > -1 ? true : false;
   let isArray = type.indexOf('[') > -1 ? true : false;
-  type = type.replace('!', '').toLowerCase();
   type = type.replace('[', '');
   type = type.replace(']', '');
 
+  return { type, isArray, isRequired };
+};
+
+const generateGraphQLField = (type) => {
+
+  const typeReference = sanitizeFieldName(type);
+
+  type = type.toLowerCase();
+
   let field = type === 'int' ? GraphQLInt : type === 'boolean' ? GraphQLBoolean : GraphQLString;
 
-  if(isArray){
+  if(typeReference.isArray){
     field = new GraphQLList(field);
   }
 
-  if(isRequired){
+  if(typeReference.isRequired){
     field = GraphQLNonNull(field);
   }
+
   return { type: field };
 };
 
@@ -334,33 +342,62 @@ const generateGraphQLType = (model, types, isInput = false, cache) => {
 
 const generateCustomGraphQLTypes = (model, types, isInput = false) => {
 
-  let customTypes = {};
+  const typeCreated = {};
+  const customTypes = {};
+
+  const getCustomType = (type) => {
+
+    const fields = {};
+
+    for(let field in model.graphql.types[type]){
+
+      const fieldReference = sanitizeFieldName(field);
+
+      if(customTypes[fieldReference.type] || model.graphql.types[fieldReference.type]){
+        typeCreated[fieldReference.type] = true;
+
+        const customField = customTypes[fieldReference.type] || getCustomType(fieldReference.type);
+
+        if(fieldReference.isArray){
+          customField = new GraphQLList(customField);
+        }
+
+        if(fieldReference.isRequired){
+          customField = GraphQLNonNull(customField);
+        }
+
+        fields[fieldReference.type] = { type: customField };
+
+      }else{
+        typeCreated[type] = true;
+        fields[field] = generateGraphQLField(model.graphql.types[type][field]);
+      }
+
+    }
+
+    if(isInput){
+      if(type.toUpperCase().endsWith('INPUT')){
+        return new GraphQLInputObjectType({
+          name: type,
+          fields: () => fields
+        });
+      }
+    }else{
+      if(!type.toUpperCase().endsWith('INPUT')){
+        return new GraphQLObjectType({
+          name: type,
+          fields: () => fields
+        });
+      }
+    }
+
+  };
 
   if(model.graphql && model.graphql.types){
 
     for(let type in model.graphql.types){
 
-      let fields = {};
-
-      for(let field in model.graphql.types[type]){
-        fields[field] = generateGraphQLField(model.graphql.types[type][field]);
-      }
-
-      if(isInput){
-        if(type.toUpperCase().endsWith('INPUT')){
-          customTypes[type] = new GraphQLInputObjectType({
-            name: type,
-            fields: () => fields
-          });
-        }
-      }else{
-        if(!type.toUpperCase().endsWith('INPUT')){
-          customTypes[type] = new GraphQLObjectType({
-            name: type,
-            fields: () => fields
-          });
-        }
-      }
+      customTypes[type] = getCustomType(type);
 
     }
 
@@ -384,10 +421,10 @@ const generateModelTypes = (models, remoteTypes) => {
     // Only our models, not Sequelize nor sequelize
     if (models[modelName].hasOwnProperty('name') && modelName !== 'Sequelize') {
       const cache = {};
-      inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
-      outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
       outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes, false, cache);
       inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true, cache);
+      inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
+      outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
     }
 
   }

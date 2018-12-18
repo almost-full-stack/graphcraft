@@ -40,7 +40,11 @@ module.exports = (sequelize, DataTypes) => {
         import: [ { from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' } ],
         excludeMutations: [],
         excludeQueries: [],
-        'types': { 'myObj': { 'id': '[int]', 'name': 'string' } },
+        'types': {
+          'myObj': { 'id': '[int]', 'name': 'string', 'secObj': '[secObj]' },
+          'secObj': { 'id': 'int', 'name': 'string', 'thirdObj': 'thirdObj!'},
+          'thirdObj': { 'id': 'int', 'name': 'string'}
+        },
         mutations: {
           myMutation: { input: 'Product', output: '[myObj]', resolver: () => { return 1; }}
         },
