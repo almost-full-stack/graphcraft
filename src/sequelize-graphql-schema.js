@@ -356,7 +356,7 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
       if(customTypes[fieldReference.type] || model.graphql.types[fieldReference.type]){
         typeCreated[fieldReference.type] = true;
 
-        const customField = customTypes[fieldReference.type] || getCustomType(fieldReference.type);
+        let customField = customTypes[fieldReference.type] || getCustomType(fieldReference.type);
 
         if(fieldReference.isArray){
           customField = new GraphQLList(customField);
