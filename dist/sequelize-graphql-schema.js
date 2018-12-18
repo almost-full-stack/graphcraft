@@ -204,6 +204,7 @@ var sanitizeFieldName = function sanitizeFieldName(type) {
   var isArray = type.indexOf('[') > -1 ? true : false;
   type = type.replace('[', '');
   type = type.replace(']', '');
+  type = type.replace('!', '');
 
   return { type: type, isArray: isArray, isRequired: isRequired };
 };
@@ -212,7 +213,7 @@ var generateGraphQLField = function generateGraphQLField(type) {
 
   var typeReference = sanitizeFieldName(type);
 
-  type = type.toLowerCase();
+  type = typeReference.type.toLowerCase();
 
   var field = type === 'int' ? GraphQLInt : type === 'boolean' ? GraphQLBoolean : GraphQLString;
 
