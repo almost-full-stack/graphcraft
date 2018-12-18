@@ -346,18 +346,18 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
   const typeCreated = {};
   const customTypes = {};
 
-  const getCustomType = (type) => {
+  const getCustomType = (type, ignoreInputCheck) => {
 
     const fields = {};
 
     for(let field in model.graphql.types[type]){
 
-      const fieldReference = sanitizeFieldName(field);
+      const fieldReference = sanitizeFieldName(model.graphql.types[type][field]);
 
-      if(customTypes[fieldReference.type] || model.graphql.types[fieldReference.type]){
+      if(customTypes[fieldReference.type] !== undefined || model.graphql.types[fieldReference.type] != undefined){
         typeCreated[fieldReference.type] = true;
 
-        let customField = customTypes[fieldReference.type] || getCustomType(fieldReference.type);
+        let customField = customTypes[fieldReference.type] || getCustomType(fieldReference.type, true);
 
         if(fieldReference.isArray){
           customField = new GraphQLList(customField);
@@ -376,7 +376,7 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
 
     }
 
-    if(isInput){
+    if(isInput && !ignoreInputCheck){
       if(type.toUpperCase().endsWith('INPUT')){
         return new GraphQLInputObjectType({
           name: type,
@@ -422,10 +422,10 @@ const generateModelTypes = (models, remoteTypes) => {
     // Only our models, not Sequelize nor sequelize
     if (models[modelName].hasOwnProperty('name') && modelName !== 'Sequelize') {
       const cache = {};
-      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes, false, cache);
-      inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true, cache);
       inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
       outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
+      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes, false, cache);
+      inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true, cache);
     }
 
   }
