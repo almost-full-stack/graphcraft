@@ -196,6 +196,7 @@ const sanitizeFieldName = (type) => {
   let isArray = type.indexOf('[') > -1 ? true : false;
   type = type.replace('[', '');
   type = type.replace(']', '');
+  type = type.replace('!', '');
 
   return { type, isArray, isRequired };
 };
@@ -204,7 +205,7 @@ const generateGraphQLField = (type) => {
 
   const typeReference = sanitizeFieldName(type);
 
-  type = type.toLowerCase();
+  type = typeReference.type.toLowerCase();
 
   let field = type === 'int' ? GraphQLInt : type === 'boolean' ? GraphQLBoolean : GraphQLString;
 
