@@ -25,11 +25,16 @@ let dataloaderContext;
 let options = {
   exclude: [ ],
   includeArguments: { },
-  remote: {
-  },
+  remote: { },
   dataloader: false,
-  authorizer: function(){
+  logger(){
     return Promise.resolve();
+  },
+  authorizer(){
+    return Promise.resolve();
+  },
+  errorHandler: {
+    'ETIMEDOUT': {statusCode: 503}
   }
 };
 
@@ -51,6 +56,17 @@ const defaultModelGraphqlOptions = {
 };
 
 let Models = {};
+
+const errorHandler = (error) => {
+  for(let name in options.errorHandler){
+    if(error.message.indexOf(name) > -1) {
+      Object.assign(error, options.errorHandler[name]);
+      break;
+    }
+  }
+
+  return error;
+};
 
 const remoteResolver = async (source, args, context, info, remoteQuery, remoteArguments, type) => {
 
@@ -732,6 +748,7 @@ module.exports = _options => {
     generateGraphQLType,
     generateModelTypes,
     generateSchema,
-    dataloaderContext
+    dataloaderContext,
+    errorHandler
   };
 };
