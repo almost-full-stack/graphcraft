@@ -60,8 +60,15 @@ var options = {
   includeArguments: {},
   remote: {},
   dataloader: false,
+  logger: function logger() {
+    return Promise.resolve();
+  },
   authorizer: function authorizer() {
     return Promise.resolve();
+  },
+
+  errorHandler: {
+    'ETIMEDOUT': { statusCode: 503 }
   }
 };
 
@@ -83,6 +90,17 @@ var defaultModelGraphqlOptions = {
 };
 
 var Models = {};
+
+var errorHandler = function errorHandler(error) {
+  for (var name in options.errorHandler) {
+    if (error.message.indexOf(name) > -1) {
+      Object.assign(error, options.errorHandler[name]);
+      break;
+    }
+  }
+
+  return error;
+};
 
 var remoteResolver = _async(function (source, args, context, info, remoteQuery, remoteArguments, type) {
 
@@ -106,7 +124,8 @@ var remoteResolver = _async(function (source, args, context, info, remoteQuery, 
   if (_.indexOf(availableArgs, key) > -1 && !variables.where) {
     variables[key] = source[remoteQuery.with];
   } else if (_.indexOf(availableArgs, 'where') > -1) {
-    variables.where = variables.where || {};variables.where[key] = source[remoteQuery.with];
+    variables.where = variables.where || {};
+    variables.where[key] = source[remoteQuery.with];
   }
 
   var headers = _.pick(context.headers, remoteQuery.headers);
@@ -753,6 +772,7 @@ module.exports = function (_options) {
     generateGraphQLType: generateGraphQLType,
     generateModelTypes: generateModelTypes,
     generateSchema: generateSchema,
-    dataloaderContext: dataloaderContext
+    dataloaderContext: dataloaderContext,
+    errorHandler: errorHandler
   };
 };
