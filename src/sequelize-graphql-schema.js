@@ -40,7 +40,8 @@ let options = {
 
 const defaultModelGraphqlOptions = {
   attributes: {
-    exclude: [],  // list attributes which are to be ignored in Model Input
+    exclude: [],  // list attributes which are to be ignored in Model Input (exclusive filter)
+    only: null,   // allow to use only listed attributes (inclusive filter, it ignores exclude option)
     include: {}, // attributes in key:type format which are to be included in Model Input
     import: []
   },
@@ -353,7 +354,10 @@ const generateGraphQLType = (model, types, isInput = false, cache) => {
 
   return new GraphQLClass({
     name: isInput ? `${model.name}Input` : model.name,
-    fields: () => Object.assign(attributeFields(model, Object.assign({}, { allowNull: !!isInput, cache })), generateAssociationFields(model.associations, types, isInput), includeAttributes)
+    fields: () => Object.assign(
+      attributeFields(model, Object.assign({}, { exclude: model.graphql.attributes.exclude, only: model.graphql.attributes.only, allowNull: !!isInput, cache })), 
+      generateAssociationFields(model.associations, types, isInput), includeAttributes
+    )
   });
 };
 
