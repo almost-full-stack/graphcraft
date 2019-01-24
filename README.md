@@ -19,6 +19,7 @@ This package assumes you have `graphql` and `sequelize` already installed (both 
 | authorizer       | Function |                              | Your custom authorization mechanism goes here, all queries and mutations will be called after this. This must return a promise. |
 | exclude          | Array    | ```['MODEL_NAME', 'MODEL_NAME']``` | Pass in model names to exclude from graphql schema.                                                                             |
 | includeArguments | Object   | ```{ 'customArgument', 'int' }```  | These arguments will be included in all queries and mutations.                                                                  |
+| customTypes      | Object   | ```{ 'Upload': GraphQLUpload }``` | You can create a custom Scalar type globally available to your models, for example GraphQLUpload from graphql-upload library must be included in this way |
 | remote           | Object   | See Remote Options           | Import queries from external graphql schema.                                                                                    |
 
 ## Model Options

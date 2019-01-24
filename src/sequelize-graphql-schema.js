@@ -27,6 +27,7 @@ let options = {
   includeArguments: { },
   remote: { },
   dataloader: false,
+  customTypes: [],
   logger(){
     return Promise.resolve();
   },
@@ -224,7 +225,10 @@ const generateGraphQLField = (type) => {
 
   type = typeReference.type.toLowerCase();
 
-  let field = type === 'int' ? GraphQLInt : type === 'boolean' ? GraphQLBoolean : GraphQLString;
+  let field = type === 'int' ? GraphQLInt 
+            : type === 'boolean' ? GraphQLBoolean 
+            : options.customTypes[typeReference.type] ? options.customTypes[typeReference.type] 
+            : GraphQLString;
 
   if(typeReference.isArray){
     field = new GraphQLList(field);
