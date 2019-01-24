@@ -53,8 +53,10 @@
     "eslint-plugin-standard": "^4.0.0",
     "express": "^4.16.4",
     "express-graphql": "^0.7.1",
+    "graphql": "^0.13.2",
     "jest-cli": "^23.6.0",
     "prettier-eslint-cli": "^4.7.1",
+    "sequelize": "^4.41.2",
     "sequelize-cli": "^5.4.0",
     "sqlite3": "^4.0.4",
     "stringifier": "^2.0.0"
