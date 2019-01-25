@@ -75,6 +75,10 @@ const types = generateModelTypes(models)
 const schema = generateSchema(models, types) // Generates the schema by reusing the types
 ```
 
+For query default arguments (where, limit etc.) you can refer to graphq-sequelize that is used under the hood:
+
+https://github.com/mickhansen/graphql-sequelize
+
 ### Example with Express
 
 ```javascript
