@@ -32,7 +32,7 @@ const DataLoader = require('dataloader');
 let dataloaderContext;
 
 let options = {
-  exclude: [ ],
+  exclude: [],
   includeArguments: { },
   remote: { },
   dataloader: false,
@@ -50,8 +50,16 @@ let options = {
 
 const defaultModelGraphqlOptions = {
   attributes: {
-    exclude: [],  // list attributes which are to be ignored in Model Input (exclusive filter)
-    only: null,   // allow to use only listed attributes (inclusive filter, it ignores exclude option)
+    exclude: { // list attributes which are to be ignored in Model Input (exclusive filter)
+      create: [],
+      update: [],
+      fetch: []
+    }, 
+    only: { // allow to use only listed attributes (inclusive filter, it ignores exclude option)
+      create: null,
+      update: null,
+      fetch: null
+    },   
     include: {}, // attributes in key:type format which are to be included in Model Input
     import: []
   },
@@ -366,9 +374,16 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
         if (["BelongsTo", "hasOne"].indexOf(relation.associationType) < 0) {
           if (relation.associationType === "BelongsToMany") {
             const aModel = relation.through.model;
+
+            var exclude = aModel.graphql.attributes.exclude;
+            exclude = Array.isArray(exclude) ? exclude : exclude["fetch"];
+
+            var only = aModel.graphql.attributes.only;
+            only = Array.isArray(only) ? only : only["fetch"];
+
             edgeFields = Object.assign(attributeFields(aModel, {
-              exclude: aModel.graphql.attributes.exclude,
-              only: aModel.graphql.attributes.only,
+              exclude,
+              only,
               commentToDescription: true,
               cache
             }), types[relation.target.name].args);
@@ -444,27 +459,39 @@ const generateIncludeAttributes = (model, types, isInput = false) => {
 * @param {*} model The sequelize model used to create the `GraphQLObjectType`
 * @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
-const generateGraphQLType = (model, types, isInput = false, cache) => {
+const generateGraphQLType = (model, types, cache, isInput = false, isUpdate = false) => {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
+
+  var exclude = model.graphql.attributes.exclude;
+  exclude = Array.isArray(exclude) ? exclude : exclude[!isInput ? "fetch" : isUpdate ? "update" : "create"];
+
+  var only = model.graphql.attributes.only;
+  only = Array.isArray(only) ? only : only[!isInput ? "fetch" : isUpdate ? "update" : "create"];
 
   var fields=Object.assign(
     attributeFields(model, Object.assign({}, { 
-      exclude: model.graphql.attributes.exclude, 
-      only: model.graphql.attributes.only, 
-      allowNull: !isInput,
+      exclude,
+      only, 
+      allowNull: !isInput || isUpdate,
       checkDefaults: isInput,
       commentToDescription: true,
       cache 
     })), 
-    generateAssociationFields(model, model.associations, types, cache, isInput), 
+    !isInput ? generateAssociationFields(model, model.associations, types, cache, isInput) : {}, 
     generateIncludeAttributes(model,types,isInput)
   );
 
-  if (isInput)
+  if (isInput) {
     fixIds(model, fields);
 
+    // FIXME: Handle timestamps
+    // console.log('_timestampAttributes', Model._timestampAttributes);
+    delete fields.createdAt;
+    delete fields.updatedAt;
+  }
+
   return new GraphQLClass({
-    name: isInput ? `${model.name}Input` : model.name,
+    name: isInput ? model.name+(isUpdate? "Edit" : "")+"Input" : model.name,
     fields: () => fields
   });
 };
@@ -546,19 +573,20 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
 const generateModelTypes = (models, remoteTypes) => {
   let outputTypes = remoteTypes || {};
   let inputTypes = {};
+  let inputUpdateTypes = {};
   for (let modelName in models) {
     // Only our models, not Sequelize nor sequelize
     if (models[modelName].hasOwnProperty('name') && modelName !== 'Sequelize') {
       const cache = {};
-      inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
       outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
-      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes, false, cache);
-      inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true, cache);
+      inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
+      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes,  cache, false);
+      inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, cache, true);
+      inputUpdateTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, cache, true, true);
     }
-
   }
-
-  return { outputTypes, inputTypes };
+debugger;
+  return { outputTypes, inputTypes, inputUpdateTypes };
 };
 
 const generateModelTypesFromRemote = (context) => {
@@ -665,7 +693,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
   });
 };
 
-const generateMutationRootType = (models, inputTypes, outputTypes) => {
+const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTypes) => {
 
   let createMutationFor = {};
 
@@ -680,6 +708,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
     fields: Object.keys(createMutationFor).reduce((fields, inputTypeName) => {
 
       const inputType = inputTypes[inputTypeName];
+      const inputUpdateType = inputUpdateTypes[inputTypeName];
       const key = models[inputTypeName].primaryKeyAttributes[0];
       const aliases = models[inputTypeName].graphql.alias;
 
@@ -704,7 +733,7 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
         mutations[camelCase(aliases.update || (inputTypeName + 'Edit'))] = {
           type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'Update a ' + inputTypeName,
-          args: Object.assign({ [inputTypeName]: { type: inputType } }, includeArguments()),
+          args: Object.assign({ [inputTypeName]: { type: inputUpdateType } }, includeArguments()),
           resolve: (source, args, context, info) => {
             const where = { [key]: args[inputTypeName][key] };
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', where)
@@ -835,7 +864,7 @@ const generateSchema = (models, types, context) => {
 
       return {
         query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
-        mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.outputTypes)
+        mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.inputUpdateTypes, modelTypes.outputTypes)
       };
 
     });
@@ -846,7 +875,7 @@ const generateSchema = (models, types, context) => {
 
     return {
       query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
-      mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.outputTypes)
+      mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.inputUpdateTypes, modelTypes.outputTypes)
     };
   }
 
