@@ -303,7 +303,6 @@ const toGraphQLType = function(name, schema){
   let fields = {};
 
   for(const field in schema){
-    console.log(field);
     fields[field] = generateGraphQLField(schema[field]);
   }
 
@@ -327,7 +326,6 @@ const generateTypesFromObject = function(remoteData){
     item.queries.forEach((query) => {
       let args = {};
       for(const arg in query.args){
-        console.log(arg)
         args[arg] = generateGraphQLField(query.args[arg]);
       }
       query.args = args;
@@ -585,7 +583,7 @@ const generateModelTypes = (models, remoteTypes) => {
       inputUpdateTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, cache, true, true);
     }
   }
-debugger;
+
   return { outputTypes, inputTypes, inputUpdateTypes };
 };
 
