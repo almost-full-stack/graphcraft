@@ -435,14 +435,16 @@ const generateIncludeAttributes = (model, types, isInput = false) => {
   if(model.graphql.attributes.include){
     for(let attribute in model.graphql.attributes.include){
       var type = null;
-      if (types) {
-        if (isInput && types[model.graphql.attributes.include[attribute]+"Input"])
-          type = { type: types[model.graphql.attributes.include[attribute]+"Input"] };
-        else if (types[model.graphql.attributes.include[attribute]])
-          type = { type: types[model.graphql.attributes.include[attribute]] }
+      var typeName=model.graphql.attributes.include[attribute]+(isInput ? "Input" : "");
+      if (types && types[typeName]) {
+        type = { type: types[typeName] };
+      }
+      
+      if (!type && model.graphql.types && model.graphql.types[typeName]) {
+        type = generateGraphQLField(model.graphql.types[typeName]);
       }
 
-      includeAttributes[attribute] = type || generateGraphQLField(model.graphql.attributes.include[attribute]);
+      includeAttributes[attribute] = type || generateGraphQLField(typeName);
     }
   }
 
@@ -494,65 +496,63 @@ const generateGraphQLType = (model, types, cache, isInput = false, isUpdate = fa
   });
 };
 
-const generateCustomGraphQLTypes = (model, types, isInput = false) => {
+const getCustomType = (model, type, customTypes, isInput, ignoreInputCheck = false) => {
 
-  const typeCreated = {};
-  const customTypes = {};
+  const fields = {};
 
-  const getCustomType = (type, ignoreInputCheck) => {
+  if (typeof model.graphql.types[type] === "string") {
+    return generateGraphQLField(model.graphql.types[type]);
+  }
 
-    const fields = {};
+  for(let field in model.graphql.types[type]){
 
-    for(let field in model.graphql.types[type]){
+    const fieldReference = sanitizeFieldName(model.graphql.types[type][field]);
 
-      const fieldReference = sanitizeFieldName(model.graphql.types[type][field]);
+    if(customTypes[fieldReference.type] !== undefined || model.graphql.types[fieldReference.type] != undefined){
+      let customField = customTypes[fieldReference.type] || getCustomType(fieldReference.type, true);
 
-      if(customTypes[fieldReference.type] !== undefined || model.graphql.types[fieldReference.type] != undefined){
-        typeCreated[fieldReference.type] = true;
-
-        let customField = customTypes[fieldReference.type] || getCustomType(fieldReference.type, true);
-
-        if(fieldReference.isArray){
-          customField = new GraphQLList(customField);
-        }
-
-        if(fieldReference.isRequired){
-          customField = GraphQLNonNull(customField);
-        }
-
-        fields[fieldReference.type] = { type: customField };
-
-      }else{
-        typeCreated[type] = true;
-        fields[field] = generateGraphQLField(model.graphql.types[type][field]);
+      if(fieldReference.isArray){
+        customField = new GraphQLList(customField);
       }
 
-    }
-
-    if(isInput && !ignoreInputCheck){
-      if(type.toUpperCase().endsWith('INPUT')){
-        return new GraphQLInputObjectType({
-          name: type,
-          fields: () => fields
-        });
+      if(fieldReference.isRequired){
+        customField = GraphQLNonNull(customField);
       }
+
+      fields[fieldReference.type] = { type: customField };
+
     }else{
-      if(!type.toUpperCase().endsWith('INPUT')){
-        return new GraphQLObjectType({
-          name: type,
-          fields: () => fields
-        });
-      }
+      fields[field] = generateGraphQLField(model.graphql.types[type][field]);
     }
 
-  };
+  }
+
+  if(isInput && !ignoreInputCheck){
+    if(type.toUpperCase().endsWith('INPUT')){
+      return new GraphQLInputObjectType({
+        name: type,
+        fields: () => fields
+      });
+    }
+  }else{
+    if(!type.toUpperCase().endsWith('INPUT')){
+      return new GraphQLObjectType({
+        name: type,
+        fields: () => fields
+      });
+    }
+  }
+
+};
+
+const generateCustomGraphQLTypes = (model, types, isInput = false) => {
+  const customTypes = {};
 
   if(model.graphql && model.graphql.types){
 
     for(let type in model.graphql.types){
-
-      customTypes[type] = getCustomType(type);
-
+      if (typeof model.graphql.types[type] !== "string")
+        customTypes[type] = getCustomType(model, type, customTypes, isInput);
     }
 
   }
