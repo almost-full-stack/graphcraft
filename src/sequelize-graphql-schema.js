@@ -370,6 +370,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
       if (!relation.isRemote) {
         // 1:1 doesn't need connectionFields
         if (["BelongsTo", "hasOne"].indexOf(relation.associationType) < 0) {
+          var edgeFields={}
           if (relation.associationType === "BelongsToMany") {
             const aModel = relation.through.model;
 
