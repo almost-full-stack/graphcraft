@@ -20,6 +20,9 @@ const { GraphQLClient } = require('graphql-request');
 const _ = require('lodash');
 const {createContext, EXPECTED_OPTIONS_KEY} = require('dataloader-sequelize');
 const DataLoader = require('dataloader');
+const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
+const cls = require('continuation-local-storage');
+const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 let dataloaderContext;
 
 let options = {
@@ -188,22 +191,26 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
     return model.graphql.overwrite[type](source, args, context, info, where);
   }
 
-  await execBefore(model, source, args, context, info, type, where);
+  return Models.sequelize.transaction(async (transaction) => {
 
-  const preData = await findOneRecord(model, type === 'destroy' ? where : null);
-  const operationType = (isBulk && type === 'create') ? 'bulkCreate' : type;
-  const validate = true;
-  const data = await model[operationType](type === 'destroy' ? { where } : args[inputTypeName], { where, validate });
+    await execBefore(model, source, args, context, info, type, where);
 
-  if(model.graphql.extend.hasOwnProperty(type)){
-    return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
-  }
+    const preData = await findOneRecord(model, type === 'destroy' ? where : null);
+    const operationType = (isBulk && type === 'create') ? 'bulkCreate' : type;
+    const validate = true;
+    const data = await model[operationType](type === 'destroy' ? { where } : args[inputTypeName], { where, validate });
 
-  if(operationType === 'bulkCreate'){
-    return args[inputTypeName].length;
-  }
+    if(model.graphql.extend.hasOwnProperty(type)){
+      return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
+    }
 
-  return data;
+    if(operationType === 'bulkCreate'){
+      return args[inputTypeName].length;
+    }
+
+    return data;
+
+  });
 
 };
 
@@ -679,6 +686,7 @@ const generateSchema = (models, types, context) => {
   Models = models;
 
   if(options.dataloader) dataloaderContext = createContext(models.sequelize);
+  Models.Sequelize.useCLS(sequelizeNamespace);
 
   let availableModels = {};
   for (let modelName in models){
@@ -749,6 +757,7 @@ module.exports = _options => {
     generateModelTypes,
     generateSchema,
     dataloaderContext,
-    errorHandler
+    errorHandler,
+    TRANSACTION_NAMESPACE
   };
 };
