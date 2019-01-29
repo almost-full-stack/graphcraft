@@ -1,9 +1,8 @@
 const { GraphQLSchema, introspectionQuery } = require('graphql');
 const express = require('express');
 const graphqlHTTP = require('express-graphql');
-const { generateSchema } = require('../src/sequelize-graphql-schema')({
-  exclude: [],
-
+const {generateSchema} = require('../src/sequelize-graphql-schema')({
+  exclude: [ ],
   /*remote: {
     import: {
       'Instrument': {

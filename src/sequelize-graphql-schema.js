@@ -12,7 +12,8 @@ const {
   defaultListArgs,
   defaultArgs,
   argsToFindOptions,
-  relay
+  relay,
+  JSONType
 } = require('graphql-sequelize')
 
 const { PubSub, withFilter } = require('graphql-subscriptions');
@@ -30,15 +31,13 @@ const {
 
 const camelCase = require('camelcase')
 const remoteSchema = require('./remoteSchema')
-const {
-  GraphQLClient
-} = require('graphql-request')
+const {GraphQLClient} = require('graphql-request')
 const _ = require('lodash')
-const {
-  createContext,
-  EXPECTED_OPTIONS_KEY
-} = require('dataloader-sequelize')
-const DataLoader = require('dataloader')
+const {createContext, EXPECTED_OPTIONS_KEY} = require('dataloader-sequelize')
+const DataLoader = require('dataloader');
+const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
+const cls = require('continuation-local-storage');
+const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 let dataloaderContext
 
 let options = {
@@ -571,18 +570,20 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
     return _data;
   }
 
-  if (args["transaction"])
-    data = await model.sequelize.transaction(async (transaction) => {
-      return await operation(operationType, model, source, args, inputTypeName, null, null, transaction);
-    })
-  else
+  if (args["transaction"]){
+  data = await Models.sequelize.transaction(async (transaction) => {
+    return operation(operationType, model, source, args, inputTypeName, null, null, transaction);
+  });
+}else{
     data = await operation(operationType, model, source, args, inputTypeName, null, null);
+}
 
   if (isBulk) {
     return args[inputTypeName].length;
   }
 
   return type == "destroy" ? parseInt(data) : data;
+
 };
 
 const subscriptionResolver = (model) => {
@@ -637,6 +638,7 @@ function fixIds(
 }
 
 const sanitizeFieldName = (type) => {
+
   let isRequired = type.indexOf('!') > -1 ? true : false;
   let isArray = type.indexOf('[') > -1 ? true : false;
   type = type.replace('[', '');
@@ -1564,7 +1566,8 @@ const generateSchema = (models, types, context) => {
 
   Models = models;
 
-  if (options.dataloader) dataloaderContext = createContext(models.sequelize);
+  if(options.dataloader) dataloaderContext = createContext(models.sequelize);
+  Models.Sequelize.useCLS(sequelizeNamespace);
 
   let availableModels = {};
   for (let modelName in models) {
@@ -1639,6 +1642,7 @@ module.exports = _options => {
     generateSchema,
     dataloaderContext,
     errorHandler,
-    whereQueryVarsToValues
+    whereQueryVarsToValues,
+    TRANSACTION_NAMESPACE
   };
 };

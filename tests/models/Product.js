@@ -43,22 +43,12 @@ module.exports = (sequelize, DataTypes) => {
           'secObj': { 'id': 'int', 'name': 'string', 'myThirdObj': 'thirdObj!' },
           'thirdObj': { 'id': 'int', 'name': 'string' }
         },
-        'mutations': {
-          myMutation: { input: 'myObjInput!',
-resolver: () => {
- return 1;
-} }
+        mutations: {
+          myMutation: { input: 'Product', resolver: () => { return 1; }}
         },
-        'queries': {
-          myQuery: { input: 'myObjInput!',
-resolver: () => {
- return 1;
-} },
-          myQuery1: { output: 'Product',
-input: 'Product',
-resolver: () => {
- return 1;
-} }
+        queries: {
+          myQuery: { input: 'Product', resolver: () => { return 1; } },
+          myQuery1: { output: 'myObj', input: 'Product', resolver: () => { return 1; } }
         },
         // this will be executed after mutations/queries
         'before': {
@@ -71,11 +61,10 @@ resolver: () => {
         },
         'extend': {
             create: (data, source, args, context, info) => {
-                if (data.name == 'fail') {
+                if(data.name == 'fail'){
                   throw Error('rollback transaction');
                 }
-
-                return Product.update({ name: 'New Updated Product' }, { where: { id: 3 } }).then(() => data);
+                return Product.update({ name: 'New Updated Product'}, { where: { id: 3 } }).then(() => data);
             },
             fetch: (data, source, args, context, info) => {
               return data;
