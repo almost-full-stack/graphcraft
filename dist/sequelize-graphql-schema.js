@@ -5,7 +5,8 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 function _invoke(body, then) {
   var result = body();if (result && result.then) {
     return result.then(then);
-  }return then(result);
+  }
+  return then(result);
 }
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
@@ -22,7 +23,9 @@ function _async(f) {
 }function _await(value, then, direct) {
   if (direct) {
     return then ? then(value) : value;
-  }value = Promise.resolve(value);return then ? value.then(then) : value;
+  }value = Promise.resolve(value);
+
+  return then ? value.then(then) : value;
 }
 var _require = require('graphql'),
     GraphQLObjectType = _require.GraphQLObjectType,
@@ -53,6 +56,9 @@ var _require4 = require('dataloader-sequelize'),
     EXPECTED_OPTIONS_KEY = _require4.EXPECTED_OPTIONS_KEY;
 
 var DataLoader = require('dataloader');
+var TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
+var cls = require('continuation-local-storage');
+var sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 var dataloaderContext = void 0;
 
 var options = {
@@ -114,9 +120,7 @@ var remoteResolver = _async(function (source, args, context, info, remoteQuery, 
     passedArgs.push(arg + ':$' + arg);
   };
 
-  var fields = _.keys(type.getFields());
-
-  var query = 'query ' + remoteQuery.name + '(' + queryArgs.join(', ') + '){\n    ' + remoteQuery.name + '(' + passedArgs.join(', ') + '){\n      ' + fields.join(', ') + '\n    }\n  }';
+  var fields = _.keys(type.getFields());var query = 'query ' + remoteQuery.name + '(' + queryArgs.join(', ') + '){\n    ' + remoteQuery.name + '(' + passedArgs.join(', ') + '){\n      ' + fields.join(', ') + '\n    }\n  }';
 
   var variables = _.pick(args, availableArgs);
   var key = remoteQuery.to || 'id';
@@ -201,20 +205,22 @@ var queryResolver = _async(function (model, inputTypeName, source, args, context
 
 var mutationResolver = _async(function (model, inputTypeName, source, args, context, info, type, where, isBulk) {
   return _await(options.authorizer(source, args, context, info), function () {
-    return model.graphql.overwrite.hasOwnProperty(type) ? model.graphql.overwrite[type](source, args, context, info, where) : _await(execBefore(model, source, args, context, info, type, where), function () {
-      return _await(findOneRecord(model, type === 'destroy' ? where : null), function (preData) {
-        var operationType = isBulk && type === 'create' ? 'bulkCreate' : type;
-        var validate = true;
-        return _await(model[operationType](type === 'destroy' ? { where: where } : args[inputTypeName], { where: where, validate: validate }), function (data) {
+    return model.graphql.overwrite.hasOwnProperty(type) ? model.graphql.overwrite[type](source, args, context, info, where) : Models.sequelize.transaction(_async(function (transaction) {
+      return _await(execBefore(model, source, args, context, info, type, where), function () {
+        return _await(findOneRecord(model, type === 'destroy' ? where : null), function (preData) {
+          var operationType = isBulk && type === 'create' ? 'bulkCreate' : type;
+          var validate = true;
+          return _await(model[operationType](type === 'destroy' ? { where: where } : args[inputTypeName], { where: where, validate: validate }), function (data) {
 
-          if (model.graphql.extend.hasOwnProperty(type)) {
-            return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
-          }
+            if (model.graphql.extend.hasOwnProperty(type)) {
+              return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
+            }
 
-          return operationType === 'bulkCreate' ? args[inputTypeName].length : data;
+            return operationType === 'bulkCreate' ? args[inputTypeName].length : data;
+          });
         });
       });
-    });
+    }));
   });
 });
 
@@ -705,6 +711,7 @@ var generateSchema = function generateSchema(models, types, context) {
   Models = models;
 
   if (options.dataloader) dataloaderContext = createContext(models.sequelize);
+  Models.Sequelize.useCLS(sequelizeNamespace);
 
   var availableModels = {};
   for (var modelName in models) {
@@ -773,6 +780,7 @@ module.exports = function (_options) {
     generateModelTypes: generateModelTypes,
     generateSchema: generateSchema,
     dataloaderContext: dataloaderContext,
-    errorHandler: errorHandler
+    errorHandler: errorHandler,
+    TRANSACTION_NAMESPACE: TRANSACTION_NAMESPACE
   };
 };

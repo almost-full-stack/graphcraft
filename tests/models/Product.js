@@ -46,10 +46,10 @@ module.exports = (sequelize, DataTypes) => {
           'thirdObj': { 'id': 'int', 'name': 'string'}
         },
         mutations: {
-          myMutation: { input: 'Product', output: 'cddMonitorSwitchOutput', resolver: () => { return 1; }}
+          myMutation: { input: 'Product', resolver: () => { return 1; }}
         },
         queries: {
-          myQuery: { output: 'cddGetOutput', input: 'Product', resolver: () => { return 1; } },
+          myQuery: { input: 'Product', resolver: () => { return 1; } },
           myQuery1: { output: 'myObj', input: 'Product', resolver: () => { return 1; } }
         },
         // this will be executed after mutations/queries
@@ -63,7 +63,10 @@ module.exports = (sequelize, DataTypes) => {
         },
         extend: {
             create: (data, source, args, context, info) => {
-                return Promise.resolve(data);
+                if(data.name == 'fail'){
+                  throw Error('rollback transaction');
+                }
+                return Product.update({ name: 'New Updated Product'}, { where: { id: 3 } }).then(() => data);
             },
             fetch: (data, source, args, context, info) => {
               return data;
