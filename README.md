@@ -19,14 +19,13 @@ This package assumes you have `graphql` and `sequelize` already installed (both 
 | authorizer       | Function |                              | Your custom authorization mechanism goes here, all queries and mutations will be called after this. This must return a promise. |
 | exclude          | Array    | ```['MODEL_NAME', 'MODEL_NAME']``` | Pass in model names to exclude from graphql schema.                                                                             |
 | includeArguments | Object   | ```{ 'customArgument', 'int' }```  | These arguments will be included in all queries and mutations.                                                                  |
-| customTypes      | Object   | ```{ 'Upload': GraphQLUpload }``` | You can create a custom Scalar type globally available to your models, for example GraphQLUpload from graphql-upload library must be included in this way |
 | remote           | Object   | See Remote Options           | Import queries from external graphql schema.                                                                                    |
 
 ## Model Options
 
 | option           | type   | example                                                                                                                 | description                                                                                                                                         |
 |------------------|--------|-------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| attributes       | Object | ```{only: { create : null, update: null, fetch: null}, exclude: {create: ['ATTRIBUTE_NAME'], update: ['ATTRIBUTE_NAME'], fetch: ['ATTRIBUTE_NAME']}, include: { customAttributeName: 'int' }}```                                            | Model attributes in exclude will be excluded from graphql types. Use only array to inclusive filtering attributes instead of excluding. Non-Model custom attributes will be added in graphql type from include. You can also set exclude/only directly to entire model.         |
+| attributes       | Object | ```{exclude: ['ATTRIBUTE_NAME'], include: { customAttributeName: 'int' }}```                                            | Model attributes in exclude will be excluded from graphql types. Non-Model custom attributes will be added in graphql type from include.            |
 | bulk             | Array  | ```['create', 'destroy']```                                                                                             | Create mutations for bulk create or destroy operations.                                                                                             |
 | alias            | Object | ```{ fetch: 'myQuery', create: 'myCreateMutation', destroy: 'myDeleteMutation, update: 'myUpdateMutation' }```          | Rename default queries and mutations with alias.                                                                                                    |
 | excludeMutations | Array  | ```[ 'create', 'update', 'destroy' ]```                                                                                 |                                                                                                                                                     |
@@ -74,10 +73,6 @@ const schema = generateSchema(models) // Generates the schema
 const types = generateModelTypes(models)
 const schema = generateSchema(models, types) // Generates the schema by reusing the types
 ```
-
-For query default arguments (where, limit etc.) you can refer to graphq-sequelize that is used under the hood:
-
-https://github.com/mickhansen/graphql-sequelize
 
 ### Example with Express
 
