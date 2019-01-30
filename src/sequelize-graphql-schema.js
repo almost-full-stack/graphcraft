@@ -237,8 +237,8 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
           _data=await createAssoc(_model, res, _args[name], transaction);
       }
 
-      if(model.graphql.extend.hasOwnProperty(hookType)){
-        return model.graphql.extend[hookType](type === 'destroy' ? preData : res, source, _args, context, info, where);
+      if(_model.graphql.extend.hasOwnProperty(hookType)){
+        return _model.graphql.extend[hookType](type === 'destroy' ? preData : res, _source, _args, context, info, where);
       }
 
       return Object.assign(res, _data);
