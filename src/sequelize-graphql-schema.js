@@ -137,6 +137,19 @@ const includeArguments = () => {
   return includeArguments;
 };
 
+const defaultMutationArgs = () => {
+  return {
+    set: {
+      type: GraphQLBoolean,
+      description: "If true, all relations use 'set' operation instead of 'add', destroying existing"
+    },
+    transaction: {
+      type: GraphQLBoolean,
+      description: "Enable transaction for this operation and all its nested"
+    },
+  };
+}
+
 const execBefore = (model, source, args, context, info, type, where) => {
   if(model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)){
     return model.graphql.before[type](source, args, context, info, where);
@@ -220,24 +233,24 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
   const operationType = (isBulk && type === 'create') ? 'bulkCreate' : type;
   const validate = true;
 
-  var data={};
+  var data = {};
 
   const operation = async function (opType, _model, _source, _args, name, assocInst, sourceInst, transaction) {
     let hookType = opType == "set" ? "update" : type;
 
-    if(_model.graphql && _model.graphql.overwrite.hasOwnProperty(hookType)){
+    if (_model.graphql && _model.graphql.overwrite.hasOwnProperty(hookType)) {
       return _model.graphql.overwrite[hookType](_source, _args, context, info, where);
     }
 
     await execBefore(_model, _source, _args, context, info, hookType, where);
 
-    const finalize = async (res)=>{
-      let _data={};
-      if (opType === "create" && !isBulk) {
-          _data=await createAssoc(_model, res, _args[name], transaction);
+    const finalize = async (res) => {
+      let _data = {};
+      if ((opType === "create" || opType === "update") && !isBulk) {
+        _data = await createAssoc(_model, res, _args[name], transaction);
       }
 
-      if(_model.graphql.extend.hasOwnProperty(hookType)){
+      if (_model.graphql.extend.hasOwnProperty(hookType)) {
         return _model.graphql.extend[hookType](type === 'destroy' ? preData : res, _source, _args, context, info, where);
       }
 
@@ -246,83 +259,109 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
     let res;
     if (opType == "add" || opType == "set") {
+      let _op;
       if (_source.through && _source.through.model) {
         delete _args[name][_source.target.name];
         delete _args[name][_source.foreignIdentifierField];
-        res = await sourceInst[opType+_source.target.name](assocInst, opType == "add" ? {through: _args[name], transaction } : {transaction})
-        return await finalize(res);
+        _op = opType + _source.target.name;
       } else {
-        res = await sourceInst[opType+_model.name](assocInst, opType == "add" ? {through: _args[name], transaction } : {transaction})
-        return await finalize(res);
+        _op = opType + _model.name;
       }
+
+      res = await sourceInst[_op](assocInst, opType == "add" ? {
+        through: _args[name],
+        transaction
+      } : {
+        transaction
+      })
+      return await finalize(res);
+
     } else {
-      res = await _model[opType](type === 'destroy' ? { where } : _args[name], { where, validate, transaction });
+      res = await _model[opType](type === 'destroy' ? {
+        where
+      } : _args[name], {
+        where,
+        validate,
+        transaction
+      });
+
+      if (opType != "create")
+        return await finalize(await _model.findOne({
+          where, transaction
+        }))
+
       return await finalize(res);
     }
   };
 
-  const createAssoc = async (_source, _sourceInst,  _args, transaction) => {
-    let _data={}
+  const createAssoc = async (_source, _sourceInst, _args, transaction) => {
+    let _data = {}
+
+    const processAssoc = async (aModel, name, fields, isList) => {
+      if (typeof fields === "object" && aModel) {
+
+        let _a = {
+          [name]: fields,
+          transaction
+        }
+
+        if (aModel.associationType === 'BelongsToMany') {
+          const _model = aModel.through.model;
+
+          let fkName = aModel.foreignIdentifierField;
+          let crObj = fields[aModel.target.name];
+          let fkVal = fields[fkName];
+
+
+          if (crObj && fkVal) {
+            return Promise.reject(`Cannot define both foreignKey for association (${fkVal}) AND Instance for creation (${crObj}) in your mutation!`);
+          } else if (!crObj && !fkVal) {
+            return Promise.reject(`You must specify foreignKey for association (${fkName}) OR Instance for creation (${aModel.target.name}) in your mutation!`);
+          }
+
+          if (crObj) {
+            let _at = {
+              [aModel.target.name]: crObj,
+              transaction
+            }
+            let node = await operation("create", aModel.target, _model, _at, aModel.target.name, {}, _sourceInst, transaction);
+            let data = await operation("add", _model, aModel, _a, name, node, _sourceInst, transaction);
+            let edge = data[0][0];
+            edge[aModel.target.name] = node;
+            return {
+              [_model.name]: edge
+            }
+          } else {
+            let data = await operation("add", _model, aModel, _a, name, fkVal, _sourceInst, transaction);
+            return {
+              [_model.name]: data[0][0]
+            }
+          }
+        } else {
+          const _model = aModel.target
+          let newInst = await operation("create", _model, aModel.target, _a, aModel.target.name, {}, _sourceInst, transaction);
+          return await operation("set", _model, aModel, _a, name, newInst, _sourceInst, transaction);
+        }
+      }
+
+      return null;
+    }
+
     for (let name in _args) {
       if (!_source.associations)
         continue;
 
-      const processAssoc = async (aModel, name, fields, isList) => {
-        if (typeof fields === "object" && aModel) {
-
-          let _a = {
-            [name] : fields,
-            transaction
-          }
-
-          if (aModel.associationType === 'BelongsToMany') {
-            const _model = aModel.through.model;
-            
-            let fkName = aModel.foreignIdentifierField;
-            let crObj = fields[aModel.target.name];
-            let fkVal = fields[fkName];
-
-
-            if (crObj && fkVal) {
-              return Promise.reject(`Cannot define both foreignKey for association (${fkVal}) AND Instance for creation (${crObj}) in your mutation!`);
-            } else if (!crObj && !fkVal) {
-              return Promise.reject(`You must specify foreignKey for association (${fkName}) OR Instance for creation (${aModel.target.name}) in your mutation!`);
-            }
-
-            if (crObj) {
-              let _at = {
-                [aModel.target.name] : crObj,
-                transaction
-              }
-              let node = await operation("create", aModel.target, _model, _at,  aModel.target.name, {}, _sourceInst, transaction);
-              let data = await operation("add", _model, aModel, _a, name, node, _sourceInst, transaction);
-              let edge = data[0][0];
-              edge[aModel.target.name] = node;
-              return {
-                [_model.name] : edge
-              }
-            } else {
-              let data = await operation("add", _model, aModel, _a, name, fkVal, _sourceInst, transaction);
-              return {
-                [_model.name] : data[0][0]
-              }
-            }
-          } else {
-            const _model = aModel.target
-            let newInst = await operation("create", _model, aModel.target, _a, aModel.target.name, {}, _sourceInst, transaction);
-            return await operation("set", _model, aModel, _a, name, newInst, _sourceInst, transaction);
-          }
-        }
-
-        return null;
-      }
-
-
       var aModel = _source.associations[name];
       if (Array.isArray(_args[name])) {
         _data[name] = []
+
+        if (args["set"] == true) {
+          let _op = "set" + (_source.through && _source.through.model ? _source.target.name : aModel.target.name)+"s";
+          await _sourceInst[_op]([],{transaction});
+        }
+
         for (let p in _args[name]) {
-          obj =_args[name][p];
+          obj = _args[name][p];
           let newInst = await processAssoc(aModel, name, obj, true);
           if (newInst) {
             _data[name].push(newInst);
@@ -340,13 +379,13 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
   }
 
   if (args["transaction"])
-    data = await model.sequelize.transaction(async (transaction) =>{
+    data = await model.sequelize.transaction(async (transaction) => {
       return await operation(operationType, model, source, args, inputTypeName, null, null, transaction);
     })
   else
     data = await operation(operationType, model, source, args, inputTypeName, null, null);
 
-  if(operationType === 'bulkCreate') {
+  if (operationType === 'bulkCreate') {
     return args[inputTypeName].length;
   }
 
@@ -378,13 +417,7 @@ function fixIds(
       }
       if (attr.references) {
           const modelName = attr.references.model;
-          // in input type of join table we have to show only reference id
-          // of target node, with allowNull = true because it can be omitted allowing
-          // to chose betweeen creation (Input field) or association (Id field) 
-          if (assoc && attr.references.model == source.tableName)
-            delete fields[key];
-          else
-            fields[key] = newId(modelName, assoc || attr.allowNull);
+          fields[key] = newId(modelName, assoc || attr.allowNull);
       } else if (attr.autoIncrement) {
           // Make autoIncrement fields optional (allowNull=True)
           fields[key] = newId(model.name, true);
@@ -472,33 +505,34 @@ const generateTypesFromObject = function(remoteData){
 * @param {*} associations A collection of sequelize associations
 * @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
-const generateAssociationFields = (model, associations, types, cache, isInput = false, isUpdate = false) => {
+const generateAssociationFields = (model, associations, types, cache, isInput = false, isUpdate = false, assoc = null, source = null) => {
   let fields = {}
 
-  for (let associationName in associations) {
-    const relation = associations[associationName];
-
-    if (!types[relation.target.name]) {
-      return fields;
+  const buildAssoc=(assocModel, relation, associationType, associationName, foreign = false)=>{
+    if (!types[assocModel.name]) {
+      if (assocModel != source) { // avoid circular loop
+        types[assocModel.name] = generateGraphQLType(assocModel, types, cache, isInput, isUpdate, assocModel, source)
+      } else 
+        return fields;
     }
 
     // BelongsToMany is represented as a list, just like HasMany
-    const type = relation.associationType === 'BelongsToMany' ||
-      relation.associationType === 'HasMany' ?
-      new GraphQLList(types[relation.target.name]) :
-      types[relation.target.name];
+    const type = associationType === 'BelongsToMany' ||
+      associationType === 'HasMany' ?
+      new GraphQLList(types[assocModel.name]) :
+      types[assocModel.name];
 
     fields[associationName] = {
       type
     };
 
     if (isInput) {
-      if (!isUpdate && relation.associationType === "BelongsToMany") {
+      if (associationType === "BelongsToMany") {
         const aModel = relation.through.model;
         // if n:m join table, we have to create the connection input type for it
-        const _name = getTypeName(aModel, isInput, isUpdate, true);
+        const _name = getTypeName(aModel, isInput, false, true);
         if (!types[_name]) {
-          var t = generateGraphQLType(aModel, types, cache, isInput, isUpdate, relation.target, model)
+          var t = generateGraphQLType(aModel, types, cache, isInput, false, assocModel, model)
           t.name = _name;
           types[_name] = new GraphQLList(t);
         }
@@ -507,9 +541,9 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
     } else {
       if (!relation.isRemote) {
         // 1:1 doesn't need connectionFields
-        if (["BelongsTo", "hasOne"].indexOf(relation.associationType) < 0) {
+        if (["BelongsTo", "HasOne"].indexOf(associationType) < 0) {
           var edgeFields={}
-          if (relation.associationType === "BelongsToMany") {
+          if (associationType === "BelongsToMany") {
             const aModel = relation.through.model;
 
             var exclude = aModel.graphql.attributes.exclude;
@@ -523,7 +557,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
               only,
               commentToDescription: true,
               cache
-            }), types[relation.target.name].args);
+            }), types[assocModel.name].args);
 
             // Pass Through model to resolve function
             _.each(edgeFields, (edgeField, field) => {
@@ -533,12 +567,12 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
 
           let connection = sequelizeConnection({
             name: model.name + associationName,
-            nodeType: types[relation.target.name],
+            nodeType: types[assocModel.name],
             target: relation,
             connectionFields: {
               total: {
                 type: new GraphQLNonNull(GraphQLInt),
-                description: `Total count of ${type.name} results associated with ${relation.target.name}.`,
+                description: `Total count of ${type.name} results associated with ${assocModel.name}.`,
                 resolve: (source, args, context, info) => {
                   return source.edges.length;
                 }
@@ -554,16 +588,45 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
           fields[associationName].resolve = connection.resolve;
         } else {
           // GraphQLInputObjectType do not accept fields with resolve
-          fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), types[relation.target.name].args);
+          fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), types[assocModel.name].args);
           fields[associationName].resolve = queryResolver(relation, true);
         }
       } else {
         fields[associationName].args = Object.assign({}, relation.query.args, defaultListArgs());
         fields[associationName].resolve = (source, args, context, info) => {
-          return remoteResolver(source, args, context, info, relation.query, fields[associationName].args, types[relation.target.name]);
+          return remoteResolver(source, args, context, info, relation.query, fields[associationName].args, types[assocModel.name]);
         }
       }
     }
+
+    return false;
+  }
+
+  for (let associationName in associations) {
+      const relation=associations[associationName]
+      res=buildAssoc(relation.target, relation, relation.associationType, associationName)
+      if (res)
+        return res;
+  }
+
+  //Discovers hidden relations that are implicit created
+  // (for example for join table in n:m case)
+  const rawAttributes = model.rawAttributes;
+  for (let key in rawAttributes) {
+      if (key === "clientMutationId") {
+          return;
+      }
+
+      const attr = rawAttributes[key];
+      if (attr && attr.references) {
+          const modelName = attr.references.model;
+          const refModel=model.sequelize.modelManager.getModel(modelName, {attribute: "tableName"});
+          for (let associationName in refModel.associations) {
+            const relation=refModel.associations[associationName];
+            if (relation.through && relation.through.model.name == model.name && refModel.name != source)
+              buildAssoc(refModel, relation, relation.associationType == "BelongsToMany" ? "BelongsTo" : relation.associationType, modelName, true);
+          }
+      }
   }
 
   return fields;
@@ -606,11 +669,16 @@ const generateGraphQLFields = (model, types, cache, isInput = false, isUpdate = 
       commentToDescription: true,
       cache 
     })),
-    !isUpdate ? generateAssociationFields(model, model.associations, types, cache, isInput, isUpdate) : {},
+    generateAssociationFields(model, model.associations, types, cache, isInput, isUpdate, assoc, source),
     generateIncludeAttributes(model,types,isInput)
   );
 
-  if (assoc && types[assoc.name]) {
+  if (assoc && ((model.name == assoc.name && model.associations[assoc.name]) || model.name != assoc.name)) {
+
+    if (!types[assoc.name]) {
+      types[assoc.name] = generateGraphQLType(assoc, types, cache, isInput, isUpdate, assoc, source)
+    }
+
     fields[assoc.name] = {
       name: getTypeName(assoc, isInput, isUpdate, false),
       type: types[assoc.name]
@@ -640,11 +708,18 @@ const generateGraphQLFields = (model, types, cache, isInput = false, isUpdate = 
 const generateGraphQLType = (model, types, cache, isInput = false, isUpdate = false, assoc = null, source = null) => {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
 
-  var fields=generateGraphQLFields(model, types, cache, isInput, isUpdate, assoc, source)
+  const thunk = () => generateGraphQLFields(model, types, cache, isInput, isUpdate, assoc, source);
+
+  var fields=assoc ? thunk : thunk()
+
+  let name = getTypeName(model, isInput, isUpdate, assoc);
+  // can be already created by generateGraphQLFields recursion
+  if (types[model.name] && types[model.name].name == name)
+    return types[model.name];
 
   return new GraphQLClass({
-    name: getTypeName(model, isInput, isUpdate, assoc),
-    fields: () => fields
+    name,
+    fields
   });
 };
 
@@ -730,9 +805,9 @@ const generateModelTypes = (models, remoteTypes) => {
       const cache = {};
       outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
       inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
-      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes,  cache, false);
-      inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, cache, true);
-      inputUpdateTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, cache, true, true);
+      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes,  cache, false, false, null, models[modelName]);
+      inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, cache, true, false, null, models[modelName]);
+      inputUpdateTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, cache, true, true, null, models[modelName]);
     }
   }
 
@@ -874,7 +949,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         mutations[camelCase(aliases.create || (inputTypeName + 'Add'))] = {
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create a ' + inputTypeName,
-          args: Object.assign({ [inputTypeName]: { type: inputType } }, includeArguments(), { transaction: { type : GraphQLBoolean } }),
+          args: Object.assign({ [inputTypeName]: { type: inputType } }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create')
         };
       }
@@ -886,7 +961,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           args: Object.assign({
             [key]: { type: new GraphQLNonNull(GraphQLInt)},
             [inputTypeName]: { type: inputUpdateType } 
-          }, includeArguments(), { transaction: { type : GraphQLBoolean } }),
+          }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
             const where = { [key]: args[key] };
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', where)
@@ -902,7 +977,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         mutations[camelCase(aliases.destroy || (inputTypeName + 'Delete'))] = {
           type: GraphQLInt,
           description: 'Delete a ' + inputTypeName,
-          args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments(), { transaction: { type : GraphQLBoolean } }),
+          args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
             const where = { [key]: args[key] };
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'destroy', where);
@@ -914,7 +989,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         mutations[camelCase(aliases.create || (inputTypeName + 'AddBulk'))] = {
           type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create bulk ' + inputTypeName + ' and return number of rows created.',
-          args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments(), { transaction: { type : GraphQLBoolean } }),
+          args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, true)
         };
       }
