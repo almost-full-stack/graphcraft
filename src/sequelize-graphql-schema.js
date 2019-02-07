@@ -738,7 +738,7 @@ const getCustomType = (model, type, customTypes, isInput, ignoreInputCheck = fal
     const fieldReference = sanitizeFieldName(model.graphql.types[type][field]);
 
     if(customTypes[fieldReference.type] !== undefined || model.graphql.types[fieldReference.type] != undefined){
-      let customField = customTypes[fieldReference.type] || getCustomType(fieldReference.type, true);
+      let customField = customTypes[fieldReference.type] || getCustomType(model, fieldReference.type, customTypes, isInput, true);
 
       if(fieldReference.isArray){
         customField = new GraphQLList(customField);
