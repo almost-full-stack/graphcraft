@@ -168,7 +168,7 @@ const findOneRecord = (model, where) => {
 
 const queryResolver = (model, isAssoc = false, field = null) => {
   return async (source, args, context, info) => {
-    var _model = field || !isAssoc ? model : model.target;
+    var _model = !field && isAssoc && model.target ? model.target : model;
     const type = 'fetch';
   
     if (!isAssoc) // authorization should not be executed for nested queries
@@ -510,10 +510,10 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
 
   const buildAssoc=(assocModel, relation, associationType, associationName, foreign = false)=>{
     if (!types[assocModel.name]) {
-      if (assocModel != source) { // avoid circular loop
+      //if (assocModel != source) { // avoid circular loop
         types[assocModel.name] = generateGraphQLType(assocModel, types, cache, isInput, isUpdate, assocModel, source)
-      } else 
-        return fields;
+      //} else 
+      //  return fields;
     }
 
     // BelongsToMany is represented as a list, just like HasMany
@@ -529,6 +529,8 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
     if (isInput) {
       if (associationType === "BelongsToMany") {
         const aModel = relation.through.model;
+        if (!aModel.graphql)
+          aModel.graphql=defaultModelGraphqlOptions;
         // if n:m join table, we have to create the connection input type for it
         const _name = getTypeName(aModel, isInput, false, true);
         if (!types[_name]) {
@@ -545,6 +547,8 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
           var edgeFields={}
           if (associationType === "BelongsToMany") {
             const aModel = relation.through.model;
+            if (!aModel.graphql)
+              aModel.graphql=defaultModelGraphqlOptions;
 
             var exclude = aModel.graphql.attributes.exclude;
             exclude = Array.isArray(exclude) ? exclude : exclude["fetch"];
@@ -621,11 +625,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
       if (attr && attr.references) {
           const modelName = attr.references.model;
           const refModel=model.sequelize.modelManager.getModel(modelName, {attribute: "tableName"});
-          for (let associationName in refModel.associations) {
-            const relation=refModel.associations[associationName];
-            if (relation.through && relation.through.model.name == model.name && refModel.name != source)
-              buildAssoc(refModel, relation, relation.associationType == "BelongsToMany" ? "BelongsTo" : relation.associationType, modelName, true);
-          }
+          buildAssoc(refModel, refModel, "BelongsTo", refModel.name, true);
       }
   }
 
@@ -708,7 +708,9 @@ const generateGraphQLFields = (model, types, cache, isInput = false, isUpdate = 
 const generateGraphQLType = (model, types, cache, isInput = false, isUpdate = false, assoc = null, source = null) => {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
 
-  const thunk = () => generateGraphQLFields(model, types, cache, isInput, isUpdate, assoc, source);
+  const thunk = () => {
+    return generateGraphQLFields(model, types, cache, isInput, isUpdate, assoc, source);
+  }
 
   var fields=assoc ? thunk : thunk()
 
