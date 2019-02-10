@@ -87,6 +87,21 @@ const errorHandler = (error) => {
   return error;
 };
 
+const whereQueryVarsToValues = (o, vals) => {
+  [
+    ...Object.getOwnPropertyNames(o),
+    ...Object.getOwnPropertySymbols(o)
+  ].forEach(k => {
+    if (_.isFunction(o[k])) {
+      o[k] = o[k](vals);
+      return;
+    }
+    if (_.isObject(o[k])) {
+      whereQueryVarsToValues(o[k], vals);
+    }
+  });
+}
+
 const remoteResolver = async (source, args, context, info, remoteQuery, remoteArguments, type) => {
 
   const availableArgs = _.keys(remoteQuery.args);
@@ -152,6 +167,9 @@ const defaultMutationArgs = () => {
 
 const execBefore = (model, source, args, context, info, type, where) => {
   if(model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)){
+    if (args.where)
+      whereQueryVarsToValues(args.where,info.variableValues);
+
     return model.graphql.before[type](source, args, context, info, where);
   }else{
     return Promise.resolve();
@@ -1118,6 +1136,7 @@ module.exports = _options => {
     generateModelTypes,
     generateSchema,
     dataloaderContext,
-    errorHandler
+    errorHandler,
+    whereQueryVarsToValues
   };
 };
