@@ -19,7 +19,7 @@ const {generateSchema} = require('../dist/sequelize-graphql-schema')({
     headers: [ 'authorization', 'accessToken' ]
   },*/
   includeArguments: {
-    scopeId: 'int!',
+    scopeId: 'int',
     test: '[int]'
   }
 });
