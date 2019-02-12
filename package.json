@@ -43,7 +43,8 @@
     "graphql-request": "^1.8.2",
     "graphql-sequelize": "9.2.0",
     "graphql-subscriptions": "^1.1.0",
-    "uuid": "^3.3.2"
+    "uuid": "^3.3.2",
+    "graphql": "^14.1.1"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
@@ -68,8 +69,7 @@
     "husky": "^1.1.4"
   },
   "peerDependencies": {
-    "sequelize": "^4.41.2",
-    "graphql": "^14.1.1"
+    "sequelize": "^4.41.2"
   },
   "jest": {
     "testEnvironment": "node",
