@@ -414,7 +414,8 @@ function fixIds(
   model,
   fields,
   assoc,
-  source
+  source,
+  isUpdate
 ) {
   const newId= (modelName, allowNull = false)=> {return {
       name: 'id',
@@ -435,7 +436,7 @@ function fixIds(
       }
       if (attr.references) {
           const modelName = attr.references.model;
-          fields[key] = newId(modelName, assoc || attr.allowNull);
+          fields[key] = newId(modelName, isUpdate || (assoc || attr.allowNull));
       } else if (attr.autoIncrement) {
           // Make autoIncrement fields optional (allowNull=True)
           fields[key] = newId(model.name, true);
@@ -704,7 +705,7 @@ const generateGraphQLFields = (model, types, cache, isInput = false, isUpdate = 
   }
 
   if (isInput) {
-    fixIds(model, fields, assoc, source);
+    fixIds(model, fields, assoc, source, isUpdate);
 
     // FIXME: Handle timestamps
     // console.log('_timestampAttributes', Model._timestampAttributes);
