@@ -44,11 +44,11 @@ module.exports = (sequelize, DataTypes) => {
           'thirdObj': { 'id': 'int', 'name': 'string' }
         },
         mutations: {
-          myMutation: { input: '[Product]!', resolver: () => { return 1; }}
+          myMutation: { input: 'myObjInput!', resolver: () => { return 1; }}
         },
         queries: {
-          myQuery: { input: 'Product', resolver: () => { return 1; } },
-          myQuery1: { output: 'myObj', input: 'Product', resolver: () => { return 1; } }
+          myQuery: { input: 'myObjInput!', resolver: () => { return 1; } },
+          myQuery1: { output: 'Product', input: 'Product', resolver: () => { return 1; } }
         },
         // this will be executed after mutations/queries
         'before': {
