@@ -5,7 +5,8 @@ const {
   GraphQLInt,
   GraphQLNonNull,
   GraphQLString,
-  GraphQLBoolean
+  GraphQLBoolean,
+  GraphQLEnumType
 } = require('graphql');
 const {
   resolver,
@@ -373,6 +374,22 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
 
     const fields = {};
 
+    //Enum
+    if(Array.isArray(model.graphql.types[type])){
+      model.graphql.types[type].forEach((value) => {
+        if(Array.isArray(value)){
+          fields[value[0]] = {value: value[1]};
+        }else{
+          fields[value] = {value: value};
+        }
+      });
+
+      return new GraphQLEnumType({
+        name: type,
+        values: fields
+      });
+    }
+
     for(let field in model.graphql.types[type]){
 
       const fieldReference = sanitizeFieldName(model.graphql.types[type][field]);
@@ -524,24 +541,44 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
         for(let query in models[modelTypeName].graphql.queries){
 
           let isArray = false;
+          let isRequired = false;
           let outPutType = GraphQLInt;
+          let inPutType = GraphQLInt;
           let typeName = models[modelTypeName].graphql.queries[query].output;
+          let inputTypeNameField = models[modelTypeName].graphql.queries[query].input;
 
           if(typeName){
-            if(typeName.startsWith('[')){
-              typeName = typeName.replace('[', '');
-              typeName = typeName.replace(']', '');
-              isArray = true;
-            }
+
+            const typeReference = sanitizeFieldName(typeName);
+            typeName = typeReference.type;
+            isArray = typeReference.isArray;
+            isRequired = typeReference.isRequired;
 
             if(isArray){
               outPutType = new GraphQLList(outputTypes[typeName]);
             }else{
               outPutType = outputTypes[models[modelTypeName].graphql.queries[query].output];
             }
+
           }
 
-          const inputArg = models[modelTypeName].graphql.queries[query].input ? { [models[modelTypeName].graphql.queries[query].input]: { type: inputTypes[models[modelTypeName].graphql.queries[query].input] } } : {};
+          if(inputTypeNameField){
+
+            const typeReference = sanitizeFieldName(inputTypeNameField);
+            inputTypeNameField = typeReference.type;
+
+            if(typeReference.isArray){
+              inPutType = new GraphQLList(inputTypes[inputTypeNameField]);
+            }else{
+              inPutType = inputTypes[inputTypeNameField];
+            }
+
+            if(typeReference.isRequired){
+              inPutType = GraphQLNonNull(inPutType);
+            }
+          }
+
+          const inputArg = models[modelTypeName].graphql.queries[query].input ? { [inputTypeNameField]: { type: inPutType } } : {};
 
           queries[camelCase(query)] = {
             type: outPutType,

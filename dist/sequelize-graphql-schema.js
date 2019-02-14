@@ -3,10 +3,11 @@
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _invoke(body, then) {
-  var result = body();if (result && result.then) {
+  var result = body();
+
+  if (result && result.then) {
     return result.then(then);
-  }
-  return then(result);
+  }return then(result);
 }
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
@@ -23,9 +24,7 @@ function _async(f) {
 }function _await(value, then, direct) {
   if (direct) {
     return then ? then(value) : value;
-  }value = Promise.resolve(value);
-
-  return then ? value.then(then) : value;
+  }value = Promise.resolve(value);return then ? value.then(then) : value;
 }
 var _require = require('graphql'),
     GraphQLObjectType = _require.GraphQLObjectType,
@@ -34,7 +33,8 @@ var _require = require('graphql'),
     GraphQLInt = _require.GraphQLInt,
     GraphQLNonNull = _require.GraphQLNonNull,
     GraphQLString = _require.GraphQLString,
-    GraphQLBoolean = _require.GraphQLBoolean;
+    GraphQLBoolean = _require.GraphQLBoolean,
+    GraphQLEnumType = _require.GraphQLEnumType;
 
 var _require2 = require('graphql-sequelize'),
     resolver = _require2.resolver,
@@ -120,7 +120,9 @@ var remoteResolver = _async(function (source, args, context, info, remoteQuery, 
     passedArgs.push(arg + ':$' + arg);
   };
 
-  var fields = _.keys(type.getFields());var query = 'query ' + remoteQuery.name + '(' + queryArgs.join(', ') + '){\n    ' + remoteQuery.name + '(' + passedArgs.join(', ') + '){\n      ' + fields.join(', ') + '\n    }\n  }';
+  var fields = _.keys(type.getFields());
+
+  var query = 'query ' + remoteQuery.name + '(' + queryArgs.join(', ') + '){\n    ' + remoteQuery.name + '(' + passedArgs.join(', ') + '){\n      ' + fields.join(', ') + '\n    }\n  }';
 
   var variables = _.pick(args, availableArgs);
   var key = remoteQuery.to || 'id';
@@ -397,6 +399,22 @@ var generateCustomGraphQLTypes = function generateCustomGraphQLTypes(model, type
 
     var _fields2 = {};
 
+    //Enum
+    if (Array.isArray(model.graphql.types[type])) {
+      model.graphql.types[type].forEach(function (value) {
+        if (Array.isArray(value)) {
+          _fields2[value[0]] = { value: value[1] };
+        } else {
+          _fields2[value] = { value: value };
+        }
+      });
+
+      return new GraphQLEnumType({
+        name: type,
+        values: _fields2
+      });
+    }
+
     for (var field in model.graphql.types[type]) {
 
       var fieldReference = sanitizeFieldName(model.graphql.types[type][field]);
@@ -473,9 +491,7 @@ var generateModelTypes = function generateModelTypes(models, remoteTypes) {
       outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes, false, cache);
       inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true, cache);
     }
-  }
-
-  return { outputTypes: outputTypes, inputTypes: inputTypes };
+  }return { outputTypes: outputTypes, inputTypes: inputTypes };
 };
 
 var generateModelTypesFromRemote = function generateModelTypesFromRemote(context) {
@@ -543,15 +559,18 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
         var _loop2 = function _loop2(query) {
 
           var isArray = false;
+          var isRequired = false;
           var outPutType = GraphQLInt;
+          var inPutType = GraphQLInt;
           var typeName = models[modelTypeName].graphql.queries[query].output;
+          var inputTypeNameField = models[modelTypeName].graphql.queries[query].input;
 
           if (typeName) {
-            if (typeName.startsWith('[')) {
-              typeName = typeName.replace('[', '');
-              typeName = typeName.replace(']', '');
-              isArray = true;
-            }
+
+            var typeReference = sanitizeFieldName(typeName);
+            typeName = typeReference.type;
+            isArray = typeReference.isArray;
+            isRequired = typeReference.isRequired;
 
             if (isArray) {
               outPutType = new GraphQLList(outputTypes[typeName]);
@@ -560,7 +579,23 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
             }
           }
 
-          var inputArg = models[modelTypeName].graphql.queries[query].input ? _defineProperty({}, models[modelTypeName].graphql.queries[query].input, { type: inputTypes[models[modelTypeName].graphql.queries[query].input] }) : {};
+          if (inputTypeNameField) {
+
+            var _typeReference = sanitizeFieldName(inputTypeNameField);
+            inputTypeNameField = _typeReference.type;
+
+            if (_typeReference.isArray) {
+              inPutType = new GraphQLList(inputTypes[inputTypeNameField]);
+            } else {
+              inPutType = inputTypes[inputTypeNameField];
+            }
+
+            if (_typeReference.isRequired) {
+              inPutType = GraphQLNonNull(inPutType);
+            }
+          }
+
+          var inputArg = models[modelTypeName].graphql.queries[query].input ? _defineProperty({}, inputTypeNameField, { type: inPutType }) : {};
 
           queries[camelCase(query)] = {
             type: outPutType,
@@ -684,16 +719,16 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
 
           if (inputTypeNameField) {
 
-            var _typeReference = sanitizeFieldName(inputTypeNameField);
-            inputTypeNameField = _typeReference.type;
+            var _typeReference2 = sanitizeFieldName(inputTypeNameField);
+            inputTypeNameField = _typeReference2.type;
 
-            if (_typeReference.isArray) {
+            if (_typeReference2.isArray) {
               inPutType = new GraphQLList(inputTypes[inputTypeNameField]);
             } else {
               inPutType = inputTypes[inputTypeNameField];
             }
 
-            if (_typeReference.isRequired) {
+            if (_typeReference2.isRequired) {
               inPutType = GraphQLNonNull(inPutType);
             }
           }
