@@ -41,7 +41,7 @@ module.exports = (sequelize, DataTypes) => {
           'thirdObj': { 'id': 'int', 'name': 'string'}
         },
         mutations: {
-          myMutation: { input: 'Product!', resolver: () => { return 1; }}
+          myMutation: { input: '[Product]!', resolver: () => { return 1; }}
         },
         queries: {
           myQuery: { input: 'Product', resolver: () => { return 1; } },
