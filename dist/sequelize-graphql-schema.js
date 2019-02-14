@@ -662,15 +662,18 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
         var _loop3 = function _loop3(mutation) {
 
           var isArray = false;
+          var isRequired = false;
           var outPutType = GraphQLInt;
+          var inPutType = GraphQLInt;
           var typeName = models[inputTypeName].graphql.mutations[mutation].output;
+          var inputTypeNameField = models[inputTypeName].graphql.mutations[mutation].input;
 
           if (typeName) {
-            if (typeName.startsWith('[')) {
-              typeName = typeName.replace('[', '');
-              typeName = typeName.replace(']', '');
-              isArray = true;
-            }
+
+            var typeReference = sanitizeFieldName(typeName);
+            typeName = typeReference.type;
+            isArray = typeReference.isArray;
+            isRequired = typeReference.isRequired;
 
             if (isArray) {
               outPutType = new GraphQLList(outputTypes[typeName]);
@@ -679,9 +682,25 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
             }
           }
 
+          if (inputTypeNameField) {
+
+            var _typeReference = sanitizeFieldName(inputTypeNameField);
+            inputTypeNameField = _typeReference.type;
+
+            if (_typeReference.isArray) {
+              inPutType = new GraphQLList(inputTypes[inputTypeNameField]);
+            } else {
+              inPutType = inputTypes[inputTypeNameField];
+            }
+
+            if (_typeReference.isRequired) {
+              inPutType = GraphQLNonNull(inPutType);
+            }
+          }
+
           mutations[camelCase(mutation)] = {
             type: outPutType,
-            args: Object.assign(_defineProperty({}, models[inputTypeName].graphql.mutations[mutation].input, { type: inputTypes[models[inputTypeName].graphql.mutations[mutation].input] }), includeArguments()),
+            args: Object.assign(_defineProperty({}, inputTypeNameField, { type: inPutType }), includeArguments()),
             resolve: function resolve(source, args, context, info) {
               var where = key && args[inputTypeName] ? _defineProperty({}, key, args[inputTypeName][key]) : {};
               return options.authorizer(source, args, context, info).then(function (_) {
