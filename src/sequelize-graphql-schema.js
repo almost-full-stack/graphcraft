@@ -718,7 +718,11 @@ const generateTypesFromObject = function (remoteData) {
 
 };
 
+<<<<<<< HEAD
 function getBulkOption(options, key) {
+=======
+function getBulkOption(options, key){
+>>>>>>> 5d7ad20... bulkadd option can return inserted rows regardless of dialect.
   const bulkOption = options.filter((option) => Array.isArray(option) ? option[0] == key : option == key);
   return bulkOption.length ? (Array.isArray(bulkOption[0]) ? bulkOption[0][1] : true) : false;
 }
@@ -1403,39 +1407,14 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         };
       }
 
-      if (models[inputTypeName].graphql.bulk.indexOf('create') > -1) {
-        let mutationName = camelCase(aliases.bulkAdd || (inputTypeName + 'AddBulk'))
-        mutations[mutationName] = {
+      const hasBulkOption = getBulkOption(models[inputTypeName].graphql.bulk, 'create');
+
+      if(hasBulkOption){
+        mutations[camelCase(aliases.create || (inputTypeName + 'AddBulk'))] = {
           type: (typeof hasBulkOption === 'string') ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
-          description: 'Create bulk ' + inputTypeName + ' and return number of rows created.',
-          args: Object.assign({
-            [inputTypeName]: {
-              type: new GraphQLList(inputType)
-            }
-          }, includeArguments(), defaultMutationArgs()),
-          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'create', null, true)
-        };
-      }
-
-      if (models[inputTypeName].graphql.bulk.indexOf('destroy') > -1) {
-        let mutationName = camelCase(aliases.bulkDelete || (inputTypeName + 'DeleteBulk'))
-        mutations[mutationName] = {
-          type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
-          description: 'Delete bulk ' + inputTypeName + ' and return number of rows deleted.',
-          args: Object.assign({
-            where: defaultListArgs().where,
-            [key]: {
-              type: new GraphQLList(new GraphQLNonNull(GraphQLInt))
-            },
-          }, includeArguments(), defaultMutationArgs()),
-          resolve: (source, args, context, info) => {
-            const where = {
-              ...args["where"],
-              [key]: args[key]
-            };
-
-            return mutationResolver(models[inputTypeName], key, mutationName, source, args, context, info, 'destroy', where, true)
-          }
+          description: 'Create bulk ' + inputTypeName + ' and return number of rows or created rows.',
+          args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
+          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, hasBulkOption)
         };
       }
 

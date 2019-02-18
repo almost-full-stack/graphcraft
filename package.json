@@ -41,7 +41,7 @@
     "dataloader-sequelize": "^1.7.8",
     "graphql-relay": "^0.5.5",
     "graphql-request": "^1.8.2",
-"graphql-sequelize": "^9.3.3",
+    "graphql-sequelize": "^9.3.3",
     "graphql-subscriptions": "^1.1.0",
     "uuid": "^3.3.2"    
   },
