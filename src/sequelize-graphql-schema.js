@@ -197,24 +197,43 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
     await execBefore(model, source, args, context, info, type, where);
 
+    let data = null;
     const preData = await findOneRecord(model, type === 'destroy' ? where : null);
     const operationType = (isBulk && type === 'create') ? 'bulkCreate' : type;
 
-    if(typeof isBulk === 'string' && args[inputTypeName].length && !args[inputTypeName][0][isBulk]){
+    if(isBulk && type === 'update'){
 
-      const bulkAddId = uuid();
+      const key = model.primaryKeyAttributes[0];
+      const updatePromises = [];
 
       args[inputTypeName].forEach((input) => {
-        input[isBulk] = bulkAddId;
+        updatePromises.push(
+          model.update(input, {where: {[key]: input[key]}})
+        );
       });
 
-    }
+      data = await Promise.all(updatePromises);
 
-    const validate = true;
-    let data = await model[operationType](type === 'destroy' ? { where } : args[inputTypeName], { where, validate });
+    }else{
 
-    if(typeof isBulk === 'string'){
-      data = await model.findAll({where: {[isBulk]: args[inputTypeName][0][isBulk]}});
+      if(typeof isBulk === 'string' && args[inputTypeName].length && !args[inputTypeName][0][isBulk]){
+
+        const bulkAddId = uuid();
+
+        args[inputTypeName].forEach((input) => {
+          input[isBulk] = bulkAddId;
+        });
+
+      }
+
+      const validate = true;
+
+      data = await model[operationType](type === 'destroy' ? { where } : args[inputTypeName], { where, validate });
+
+      if(typeof isBulk === 'string'){
+        data = await model.findAll({where: {[isBulk]: args[inputTypeName][0][isBulk]}});
+      }
+
     }
 
     if(model.graphql.extend.hasOwnProperty(type)){
@@ -681,14 +700,31 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
         };
       }
 
-      const hasBulkOption = getBulkOption(models[inputTypeName].graphql.bulk, 'create');
+      const hasBulkOptionCreate = getBulkOption(models[inputTypeName].graphql.bulk, 'create');
+      const hasBulkOptionEdit = getBulkOption(models[inputTypeName].graphql.bulk, 'edit');
 
-      if(hasBulkOption){
+      if(hasBulkOptionCreate){
         mutations[camelCase(aliases.create || (inputTypeName + 'AddBulk'))] = {
-          type: (typeof hasBulkOption === 'string') ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+          type: (typeof hasBulkOptionCreate === 'string') ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create bulk ' + inputTypeName + ' and return number of rows or created rows.',
           args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
-          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, hasBulkOption)
+          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, hasBulkOptionCreate)
+        };
+      }
+
+      if(hasBulkOptionEdit){
+
+        mutations[camelCase(aliases.edit || (inputTypeName + 'EditBulk'))] = {
+          type: outputTypes[inputTypeName] ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+          description: 'Update bulk ' + inputTypeName + ' and return number of rows modified or updated rows.',
+          args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
+          resolve: async (source, args, context, info) => {
+            const whereClause = {[key]: {[Models.Sequelize.Op.in]: args[inputTypeName].map((input) => input[key])}};
+
+            await mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', null, hasBulkOptionEdit);
+
+            return resolver(models[inputTypeName], {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, whereClause, context, info);
+          }
         };
       }
 
