@@ -32,12 +32,13 @@ const {
 
 const camelCase = require('camelcase')
 const remoteSchema = require('./remoteSchema')
-const {GraphQLClient} = require('graphql-request')
+const { GraphQLClient } = require('graphql-request')
 const _ = require('lodash')
-const {createContext, EXPECTED_OPTIONS_KEY} = require('dataloader-sequelize')
+const { createContext, EXPECTED_OPTIONS_KEY } = require('dataloader-sequelize')
 const DataLoader = require('dataloader');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const cls = require('continuation-local-storage');
+const uuid = require('uuid/v4');
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 let dataloaderContext
 
@@ -124,9 +125,9 @@ const getTypeByString = (type) => {
 
   return lType === 'int' ? GraphQLInt :
     lType === 'boolean' ? GraphQLBoolean :
-    lType === 'string' ? GraphQLString :
-    options.customTypes[type] ? options.customTypes[type] :
-    null;
+      lType === 'string' ? GraphQLString :
+        options.customTypes[type] ? options.customTypes[type] :
+          null;
 }
 
 /**
@@ -197,8 +198,8 @@ const includeArguments = () => {
 
 const keyArguments = (keys) => {
   let keyArguments = {};
-  for(let argument in keys){
-    keyArguments[argument] = { type: new GraphQLNonNull(GraphQLInt)};
+  for (let argument in keys) {
+    keyArguments[argument] = { type: new GraphQLNonNull(GraphQLInt) };
   }
   return keyArguments;
 }
@@ -271,8 +272,8 @@ const queryResolver = (model, isAssoc = false, field = null, assocModel = null) 
       if (args.orderEdges) {
         const orderByClauses = args.orderEdges.split(',');
         orderByClauses.forEach((clause) => {
-          var colName='`'+model.through.model.name+'`.`'+(clause.indexOf('reverse:') === 0 ? clause.substring(8) : clause)+'`';
-          orderBy.push([Sequelize.col(colName) , clause.indexOf('reverse:') === 0 ? 'DESC' : 'ASC']);
+          var colName = '`' + model.through.model.name + '`.`' + (clause.indexOf('reverse:') === 0 ? clause.substring(8) : clause) + '`';
+          orderBy.push([Sequelize.col(colName), clause.indexOf('reverse:') === 0 ? 'DESC' : 'ASC']);
         });
       }
 
@@ -287,7 +288,7 @@ const queryResolver = (model, isAssoc = false, field = null, assocModel = null) 
 
           whereQueryVarsToValues(args.whereEdges, info.variableValues);
 
-          var colName='`'+model.through.model.name+'`.`'+key+'`';
+          var colName = '`' + model.through.model.name + '`.`' + key + '`';
           findOptions.where[colName] = Sequelize.where(Sequelize.col(colName), args.whereEdges[key])
         }
       }
@@ -392,8 +393,8 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
         through: _args[name],
         transaction
       } : {
-        transaction
-      })
+          transaction
+        })
       return await finalize(res);
 
     } else {
@@ -424,10 +425,10 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
         where,
         transaction
       } : _args[name], {
-        where,
-        validate,
-        transaction
-      });
+          where,
+          validate,
+          transaction
+        });
 
       if (opType !== "create" && opType !== "destroy") {
         return await finalize(await _model.findOne({
@@ -542,7 +543,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
                 }
               } else {
                 if (!toUpdate(assoc))
-                    await operation("destroy", aModel.target, _source, [], null, null, _sourceInst, transaction, v)
+                  await operation("destroy", aModel.target, _source, [], null, null, _sourceInst, transaction, v)
               }
             }
           } else {
@@ -571,13 +572,13 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
     return _data;
   }
 
-  if (args["transaction"]){
-  data = await Models.sequelize.transaction(async (transaction) => {
-    return operation(operationType, model, source, args, inputTypeName, null, null, transaction);
-  });
-}else{
+  if (args["transaction"]) {
+    data = await Models.sequelize.transaction(async (transaction) => {
+      return operation(operationType, model, source, args, inputTypeName, null, null, transaction);
+    });
+  } else {
     data = await operation(operationType, model, source, args, inputTypeName, null, null);
-}
+  }
 
   if (isBulk) {
     return args[inputTypeName].length;
@@ -717,6 +718,11 @@ const generateTypesFromObject = function (remoteData) {
 
 };
 
+function getBulkOption(options, key) {
+  const bulkOption = options.filter((option) => Array.isArray(option) ? option[0] == key : option == key);
+  return bulkOption.length ? (Array.isArray(bulkOption[0]) ? bulkOption[0][1] : true) : false;
+}
+
 /**
  * Returns the association fields of an entity.
  *
@@ -828,8 +834,8 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
 
           fields[associationName].type = connection.connectionType;
           fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), {
-              whereEdges: defaultListArgs().where,
-              orderEdges: defaultListArgs().order
+            whereEdges: defaultListArgs().where,
+            orderEdges: defaultListArgs().order
           }, connection.connectionArgs);
           fields[associationName].resolve = connection.resolve;
         } else {
@@ -884,7 +890,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
       // so graphql-sequelize resolver is not able to understand how to
       // build the query.
       // HACK-FIX(?):
-      if (!model.associations[assocModel.name] ) {
+      if (!model.associations[assocModel.name]) {
         model.belongsTo(assocModel, {
           foreignKey: attr.field
         });
@@ -1108,11 +1114,11 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
         });
       }
     } else if (!type.toUpperCase().endsWith('INPUT')) {
-        return new GraphQLObjectType({
-          name: type,
-          fields: () => fields
-        });
-      }
+      return new GraphQLObjectType({
+        name: type,
+        fields: () => fields
+      });
+    }
 
   };
 
@@ -1218,7 +1224,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
             let args = argsToFindOptions.default({ where });
 
             if (args.where)
-                whereQueryVarsToValues(args.where, info.variableValues);
+              whereQueryVarsToValues(args.where, info.variableValues);
             return models[modelTypeName].count({
               where: args.where
             })
@@ -1256,7 +1262,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           let typeName = models[modelTypeName].graphql.queries[query].output;
           let inputTypeNameField = models[modelTypeName].graphql.queries[query].input;
 
-          if(typeName){
+          if (typeName) {
 
             const typeReference = sanitizeFieldName(typeName);
             typeName = typeReference.type;
@@ -1273,18 +1279,18 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
 
           }
 
-          if(inputTypeNameField){
+          if (inputTypeNameField) {
 
             const typeReference = sanitizeFieldName(inputTypeNameField);
             inputTypeNameField = typeReference.type;
 
-            if(typeReference.isArray){
+            if (typeReference.isArray) {
               inPutType = new GraphQLList(inputTypes[inputTypeNameField]);
-            }else{
+            } else {
               inPutType = inputTypes[inputTypeNameField];
             }
 
-            if(typeReference.isRequired){
+            if (typeReference.isRequired) {
               inPutType = GraphQLNonNull(inPutType);
             }
           }
@@ -1344,7 +1350,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create a ' + inputTypeName,
           args: Object.assign({
-            [inputTypeName]: { type: inputUpdateType } 
+            [inputTypeName]: { type: inputUpdateType }
           }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'create')
         };
@@ -1356,7 +1362,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'Update a ' + inputTypeName,
           args: Object.assign({
-            [key]: { type: new GraphQLNonNull(GraphQLInt)},
+            [key]: { type: new GraphQLNonNull(GraphQLInt) },
             where: defaultListArgs().where,
             [inputTypeName]: {
               type: inputUpdateType
@@ -1379,13 +1385,13 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
       }
 
       if (models[inputTypeName].graphql.excludeMutations.indexOf('destroy') === -1) {
-        let mutationName = camelCase(aliases.destroy || (inputTypeName + 'Delete')) 
+        let mutationName = camelCase(aliases.destroy || (inputTypeName + 'Delete'))
         mutations[mutationName] = {
           type: GraphQLInt,
           description: 'Delete a ' + inputTypeName,
           args: Object.assign({
-              [key]: { type: new GraphQLNonNull(GraphQLInt)},
-              where: defaultListArgs().where 
+            [key]: { type: new GraphQLNonNull(GraphQLInt) },
+            where: defaultListArgs().where
           }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
             const where = {
@@ -1400,7 +1406,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
       if (models[inputTypeName].graphql.bulk.indexOf('create') > -1) {
         let mutationName = camelCase(aliases.bulkAdd || (inputTypeName + 'AddBulk'))
         mutations[mutationName] = {
-          type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+          type: (typeof hasBulkOption === 'string') ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create bulk ' + inputTypeName + ' and return number of rows created.',
           args: Object.assign({
             [inputTypeName]: {
@@ -1411,7 +1417,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         };
       }
 
-    if (models[inputTypeName].graphql.bulk.indexOf('destroy') > -1) {
+      if (models[inputTypeName].graphql.bulk.indexOf('destroy') > -1) {
         let mutationName = camelCase(aliases.bulkDelete || (inputTypeName + 'DeleteBulk'))
         mutations[mutationName] = {
           type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
@@ -1422,7 +1428,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
               type: new GraphQLList(new GraphQLNonNull(GraphQLInt))
             },
           }, includeArguments(), defaultMutationArgs()),
-          resolve: (source, args, context, info) => { 
+          resolve: (source, args, context, info) => {
             const where = {
               ...args["where"],
               [key]: args[key]
@@ -1444,7 +1450,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           let typeName = models[inputTypeName].graphql.mutations[mutation].output;
           let inputTypeNameField = models[inputTypeName].graphql.mutations[mutation].input;
 
-          if(typeName){
+          if (typeName) {
 
             const typeReference = sanitizeFieldName(typeName);
             typeName = typeReference.type;
@@ -1459,18 +1465,18 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
 
           }
 
-          if(inputTypeNameField){
+          if (inputTypeNameField) {
 
             const typeReference = sanitizeFieldName(inputTypeNameField);
             inputTypeNameField = typeReference.type;
 
-            if(typeReference.isArray){
+            if (typeReference.isArray) {
               inPutType = new GraphQLList(inputTypes[inputTypeNameField]);
-            }else{
+            } else {
               inPutType = inputTypes[inputTypeNameField];
             }
 
-            if(typeReference.isRequired){
+            if (typeReference.isRequired) {
               inPutType = GraphQLNonNull(inPutType);
             }
           }
@@ -1524,25 +1530,25 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
 
       {
         let _filter = models[inputTypeName].graphql.subsFilter.default;
-        let filter= _filter ? _filter : () => true
+        let filter = _filter ? _filter : () => true
         let subsName = camelCase(aliases.subscribe || (inputTypeName + 'Subs'));
         subscriptions[subsName] = {
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
           description: 'On creation/update/delete of ' + inputTypeName,
           args: {},
-          subscribe: withFilter(() =>  pubsub.asyncIterator([
-              camelCase(inputTypeName + 'Add'),
-              camelCase(inputTypeName + 'Edit'),
-              camelCase(inputTypeName + 'Delete'),
-              camelCase(inputTypeName + 'AddBulk')
-          ]),filter),
+          subscribe: withFilter(() => pubsub.asyncIterator([
+            camelCase(inputTypeName + 'Add'),
+            camelCase(inputTypeName + 'Edit'),
+            camelCase(inputTypeName + 'Delete'),
+            camelCase(inputTypeName + 'AddBulk')
+          ]), filter),
           resolve: subscriptionResolver(models[inputTypeName])
         };
       }
 
       if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('create') === -1) {
         let _filter = models[inputTypeName].graphql.subsFilter.create;
-        let filter= _filter ? _filter : () => true
+        let filter = _filter ? _filter : () => true
         let subsName = camelCase(aliases.subsCreate || (inputTypeName + 'AddSubs'));
         subscriptions[subsName] = {
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
@@ -1559,7 +1565,7 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
 
       if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('update') === -1) {
         let _filter = models[inputTypeName].graphql.subsFilter.update;
-        let filter= _filter ? _filter : () => true
+        let filter = _filter ? _filter : () => true
         let subsName = camelCase(aliases.subsUpdate || (inputTypeName + 'EditSubs'))
         subscriptions[subsName] = {
           type: outputTypes[inputTypeName] || GraphQLInt,
@@ -1580,7 +1586,7 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
 
       if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('destroy') === -1) {
         let _filter = models[inputTypeName].graphql.subsFilter.destroy;
-        let filter= _filter ? _filter : () => true
+        let filter = _filter ? _filter : () => true
         let subsName = camelCase(aliases.subsDestroy || (inputTypeName + 'DeleteSubs'))
         subscriptions[subsName] = {
           type: GraphQLInt,
@@ -1598,7 +1604,7 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
 
       if (models[inputTypeName].graphql.bulk.indexOf('create') > -1) {
         let _filter = models[inputTypeName].graphql.subsFilter.create;
-        let filter= _filter ? _filter : () => true
+        let filter = _filter ? _filter : () => true
         let subsName = camelCase(aliases.subsBulkAdd || (inputTypeName + 'AddBulkSubs'))
         subscriptions[subsName] = {
           type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
@@ -1670,7 +1676,7 @@ const generateSchema = (models, types, context) => {
 
   Models = models;
 
-  if(options.dataloader) dataloaderContext = createContext(models.sequelize);
+  if (options.dataloader) dataloaderContext = createContext(models.sequelize);
   Models.Sequelize.useCLS(sequelizeNamespace);
 
   let availableModels = {};

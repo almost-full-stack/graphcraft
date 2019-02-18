@@ -30,12 +30,12 @@ module.exports = (sequelize, DataTypes) => {
             exclude: ['description'],
             include: { modelPortfolioId: 'int', obj: 'myObj' },
         },
-        'scopes': ['test', 'scopeId'],
-        'bulk': ['create', 'edit'],
-        'alias': { fetch: 'myProduct' },
-        'import': [{ from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' }],
-        'excludeMutations': [],
-        'excludeQueries': [],
+        scopes: ['test', 'scopeId'],
+        bulk: [['create', 'name']],
+        alias: { fetch: 'myProduct' },
+        import: [ { from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' } ],
+        excludeMutations: [],
+        excludeQueries: [],
         'types': {
           'myEnum': ['Red', 'Green'],
           'myEnum2': [['Red', 0], ['Green', 1]],
@@ -64,6 +64,7 @@ module.exports = (sequelize, DataTypes) => {
                 if(data.name == 'fail'){
                   throw Error('rollback transaction');
                 }
+
                 return Product.update({ name: 'New Updated Product'}, { where: { id: 3 } }).then(() => data);
             },
             fetch: (data, source, args, context, info) => {
