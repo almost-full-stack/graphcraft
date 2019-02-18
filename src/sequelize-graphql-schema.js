@@ -1412,14 +1412,31 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         };
       }
 
-      const hasBulkOption = getBulkOption(models[inputTypeName].graphql.bulk, 'create');
+      const hasBulkOptionCreate = getBulkOption(models[inputTypeName].graphql.bulk, 'create');
+      const hasBulkOptionEdit = getBulkOption(models[inputTypeName].graphql.bulk, 'edit');
 
-      if(hasBulkOption){
+      if(hasBulkOptionCreate){
         mutations[camelCase(aliases.create || (inputTypeName + 'AddBulk'))] = {
-          type: (typeof hasBulkOption === 'string') ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+          type: (typeof hasBulkOptionCreate === 'string') ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create bulk ' + inputTypeName + ' and return number of rows or created rows.',
           args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
-          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, hasBulkOption)
+          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, hasBulkOptionCreate)
+        };
+      }
+
+      if(hasBulkOptionEdit){
+
+        mutations[camelCase(aliases.edit || (inputTypeName + 'EditBulk'))] = {
+          type: outputTypes[inputTypeName] ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+          description: 'Update bulk ' + inputTypeName + ' and return number of rows modified or updated rows.',
+          args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
+          resolve: async (source, args, context, info) => {
+            const whereClause = {[key]: {[Models.Sequelize.Op.in]: args[inputTypeName].map((input) => input[key])}};
+
+            await mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', null, hasBulkOptionEdit);
+
+            return resolver(models[inputTypeName], {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, whereClause, context, info);
+          }
         };
       }
 
