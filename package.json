@@ -40,7 +40,8 @@
     "dataloader-sequelize": "^1.7.8",
     "graphql-relay": "^0.5.0",
     "graphql-request": "^1.8.2",
-    "graphql-sequelize": "^9.3.3"
+    "graphql-sequelize": "^9.3.3",
+    "uuid": "^3.3.2"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
@@ -59,7 +60,8 @@
     "sequelize": "^4.41.2",
     "sequelize-cli": "^5.4.0",
     "sqlite3": "^4.0.4",
-    "stringifier": "^2.0.0"
+    "stringifier": "^2.0.0",
+    "graphql": "^14.1.1"
   },
   "peerDependencies": {
     "sequelize": "^4.41.2",

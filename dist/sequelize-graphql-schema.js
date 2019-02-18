@@ -3,9 +3,7 @@
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _invoke(body, then) {
-  var result = body();
-
-  if (result && result.then) {
+  var result = body();if (result && result.then) {
     return result.then(then);
   }return then(result);
 }
@@ -58,6 +56,7 @@ var _require4 = require('dataloader-sequelize'),
 var DataLoader = require('dataloader');
 var TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 var cls = require('continuation-local-storage');
+var uuid = require('uuid/v4');
 var sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 var dataloaderContext = void 0;
 
@@ -116,8 +115,7 @@ var remoteResolver = _async(function (source, args, context, info, remoteQuery, 
   var passedArgs = [];
 
   for (var arg in pickedArgs) {
-    queryArgs.push('$' + arg + ':' + pickedArgs[arg].type);
-    passedArgs.push(arg + ':$' + arg);
+    queryArgs.push('$' + arg + ':' + pickedArgs[arg].type);passedArgs.push(arg + ':$' + arg);
   };
 
   var fields = _.keys(type.getFields());
@@ -211,14 +209,35 @@ var mutationResolver = _async(function (model, inputTypeName, source, args, cont
       return _await(execBefore(model, source, args, context, info, type, where), function () {
         return _await(findOneRecord(model, type === 'destroy' ? where : null), function (preData) {
           var operationType = isBulk && type === 'create' ? 'bulkCreate' : type;
+
+          if (typeof isBulk === 'string' && args[inputTypeName].length && !args[inputTypeName][0][isBulk]) {
+
+            var bulkAddId = uuid();
+
+            args[inputTypeName].forEach(function (input) {
+              input[isBulk] = bulkAddId;
+            });
+          }
+
           var validate = true;
           return _await(model[operationType](type === 'destroy' ? { where: where } : args[inputTypeName], { where: where, validate: validate }), function (data) {
-
-            if (model.graphql.extend.hasOwnProperty(type)) {
-              return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
-            }
-
-            return operationType === 'bulkCreate' ? args[inputTypeName].length : data;
+            return _invoke(function () {
+              if (typeof isBulk === 'string') {
+                return _await(model.findAll({ where: _defineProperty({}, isBulk, args[inputTypeName][0][isBulk]) }), function (_model$findAll) {
+                  data = _model$findAll;
+                });
+              }
+            }, function () {
+              return _invoke(function () {
+                if (model.graphql.extend.hasOwnProperty(type)) {
+                  return _await(model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where), function (_model$graphql$extend) {
+                    data = _model$graphql$extend;
+                  });
+                }
+              }, function () {
+                return operationType === 'bulkCreate' && isBulk === true ? data.length : data;
+              });
+            });
           });
         });
       });
@@ -293,6 +312,13 @@ var generateTypesFromObject = function generateTypesFromObject(remoteData) {
 
   return { types: types, queries: queries };
 };
+
+function getBulkOption(options, key) {
+  var bulkOption = options.filter(function (option) {
+    return Array.isArray(option) ? option[0] == key : option == key;
+  });
+  return bulkOption.length ? Array.isArray(bulkOption[0]) ? bulkOption[0][1] : true : false;
+}
 
 /**
 * Returns the association fields of an entity.
@@ -491,7 +517,9 @@ var generateModelTypes = function generateModelTypes(models, remoteTypes) {
       outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes, false, cache);
       inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, true, cache);
     }
-  }return { outputTypes: outputTypes, inputTypes: inputTypes };
+  }
+
+  return { outputTypes: outputTypes, inputTypes: inputTypes };
 };
 
 var generateModelTypesFromRemote = function generateModelTypesFromRemote(context) {
@@ -682,13 +710,15 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
         };
       }
 
-      if (models[inputTypeName].graphql.bulk.indexOf('create') > -1) {
+      var hasBulkOption = getBulkOption(models[inputTypeName].graphql.bulk, 'create');
+
+      if (hasBulkOption) {
         mutations[camelCase(aliases.create || inputTypeName + 'AddBulk')] = {
-          type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
-          description: 'Create bulk ' + inputTypeName + ' and return number of rows created.',
+          type: typeof hasBulkOption === 'string' ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+          description: 'Create bulk ' + inputTypeName + ' and return number of rows or created rows.',
           args: Object.assign(_defineProperty({}, inputTypeName, { type: new GraphQLList(inputType) }), includeArguments()),
           resolve: function resolve(source, args, context, info) {
-            return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, true);
+            return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, hasBulkOption);
           }
         };
       }

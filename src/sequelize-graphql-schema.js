@@ -23,6 +23,7 @@ const {createContext, EXPECTED_OPTIONS_KEY} = require('dataloader-sequelize');
 const DataLoader = require('dataloader');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const cls = require('continuation-local-storage');
+const uuid = require('uuid/v4');
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 let dataloaderContext;
 
@@ -198,16 +199,29 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
     const preData = await findOneRecord(model, type === 'destroy' ? where : null);
     const operationType = (isBulk && type === 'create') ? 'bulkCreate' : type;
+
+    if(typeof isBulk === 'string' && args[inputTypeName].length && !args[inputTypeName][0][isBulk]){
+
+      const bulkAddId = uuid();
+
+      args[inputTypeName].forEach((input) => {
+        input[isBulk] = bulkAddId;
+      });
+
+    }
+
     const validate = true;
-    const data = await model[operationType](type === 'destroy' ? { where } : args[inputTypeName], { where, validate });
+    let data = await model[operationType](type === 'destroy' ? { where } : args[inputTypeName], { where, validate });
+
+    if(typeof isBulk === 'string'){
+      data = await model.findAll({where: {[isBulk]: args[inputTypeName][0][isBulk]}});
+    }
 
     if(model.graphql.extend.hasOwnProperty(type)){
-      return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
+      data = await model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
     }
 
-    if(operationType === 'bulkCreate'){
-      return args[inputTypeName].length;
-    }
+    if(operationType === 'bulkCreate' && isBulk === true) return data.length;
 
     return data;
 
@@ -282,6 +296,11 @@ const generateTypesFromObject = function(remoteData){
   return { types, queries };
 
 };
+
+function getBulkOption(options, key){
+  const bulkOption = options.filter((option) => Array.isArray(option) ? option[0] == key : option == key);
+  return bulkOption.length ? (Array.isArray(bulkOption[0]) ? bulkOption[0][1] : true) : false;
+}
 
 /**
 * Returns the association fields of an entity.
@@ -662,12 +681,14 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
         };
       }
 
-      if(models[inputTypeName].graphql.bulk.indexOf('create') > -1){
+      const hasBulkOption = getBulkOption(models[inputTypeName].graphql.bulk, 'create');
+
+      if(hasBulkOption){
         mutations[camelCase(aliases.create || (inputTypeName + 'AddBulk'))] = {
-          type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
-          description: 'Create bulk ' + inputTypeName + ' and return number of rows created.',
+          type: (typeof hasBulkOption === 'string') ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+          description: 'Create bulk ' + inputTypeName + ' and return number of rows or created rows.',
           args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
-          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, true)
+          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, hasBulkOption)
         };
       }
 
