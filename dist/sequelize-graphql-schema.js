@@ -3,7 +3,10 @@
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _invoke(body, then) {
-  var result = body();if (result && result.then) {
+  var result = body();
+
+  if (result && result.then) {
+
     return result.then(then);
   }return then(result);
 }function _invokeIgnored(body) {
@@ -11,6 +14,7 @@ function _invoke(body, then) {
     return result.then(_empty);
   }
 }function _empty() {}
+
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 function _async(f) {
@@ -18,6 +22,7 @@ function _async(f) {
     for (var args = [], i = 0; i < arguments.length; i++) {
       args[i] = arguments[i];
     }try {
+
       return Promise.resolve(f.apply(this, args));
     } catch (e) {
       return Promise.reject(e);
@@ -55,7 +60,8 @@ var _ = require('lodash');
 
 var _require4 = require('dataloader-sequelize'),
     createContext = _require4.createContext,
-    EXPECTED_OPTIONS_KEY = _require4.EXPECTED_OPTIONS_KEY;
+    EXPECTED_OPTIONS_KEY = _require4.EXPECTED_OPTIONS_KEY,
+    resetCache = _require4.resetCache;
 
 var DataLoader = require('dataloader');
 var TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
@@ -109,9 +115,7 @@ var errorHandler = function errorHandler(error) {
   }
 
   return error;
-};
-
-var remoteResolver = _async(function (source, args, context, info, remoteQuery, remoteArguments, type) {
+};var remoteResolver = _async(function (source, args, context, info, remoteQuery, remoteArguments, type) {
 
   var availableArgs = _.keys(remoteQuery.args);
   var pickedArgs = _.pick(remoteArguments, availableArgs);
@@ -119,7 +123,8 @@ var remoteResolver = _async(function (source, args, context, info, remoteQuery, 
   var passedArgs = [];
 
   for (var arg in pickedArgs) {
-    queryArgs.push('$' + arg + ':' + pickedArgs[arg].type);passedArgs.push(arg + ':$' + arg);
+    queryArgs.push('$' + arg + ':' + pickedArgs[arg].type);
+    passedArgs.push(arg + ':$' + arg);
   };
 
   var fields = _.keys(type.getFields());
@@ -521,15 +526,13 @@ var generateCustomGraphQLTypes = function generateCustomGraphQLTypes(model, type
   }
 
   return customTypes;
-};
-
-/**
-* Returns a collection of `GraphQLObjectType` generated from Sequelize models.
-*
-* It creates an object whose properties are `GraphQLObjectType` created
-* from Sequelize models.
-* @param {*} models The sequelize models used to create the types
-*/
+}; /**
+   * Returns a collection of `GraphQLObjectType` generated from Sequelize models.
+   *
+   * It creates an object whose properties are `GraphQLObjectType` created
+   * from Sequelize models.
+   * @param {*} models The sequelize models used to create the types
+   */
 // This function is exported
 var generateModelTypes = function generateModelTypes(models, remoteTypes) {
   var outputTypes = remoteTypes || {};
@@ -911,6 +914,7 @@ module.exports = function (_options) {
     generateSchema: generateSchema,
     dataloaderContext: dataloaderContext,
     errorHandler: errorHandler,
-    TRANSACTION_NAMESPACE: TRANSACTION_NAMESPACE
+    TRANSACTION_NAMESPACE: TRANSACTION_NAMESPACE,
+    resetCache: resetCache
   };
 };

@@ -19,7 +19,7 @@ const camelCase = require('camelcase');
 const remoteSchema = require('./remoteSchema');
 const { GraphQLClient } = require('graphql-request');
 const _ = require('lodash');
-const {createContext, EXPECTED_OPTIONS_KEY} = require('dataloader-sequelize');
+const {createContext, EXPECTED_OPTIONS_KEY, resetCache} = require('dataloader-sequelize');
 const DataLoader = require('dataloader');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const cls = require('continuation-local-storage');
@@ -872,6 +872,7 @@ module.exports = _options => {
     generateSchema,
     dataloaderContext,
     errorHandler,
-    TRANSACTION_NAMESPACE
+    TRANSACTION_NAMESPACE,
+    resetCache
   };
 };
