@@ -12,7 +12,6 @@ function _invoke(body, then) {
 if (result && result.then) {
     return result.then(then);
   }
-<<<<<<< HEAD
 
 return then(result);
 } function _invokeIgnored(body) {
@@ -30,9 +29,6 @@ function _defineProperty(obj, key, value) {
 }
 
 return obj;
-=======
-  return then(result);
->>>>>>> e6002de... automatic sequelize transactions on all default mutations.
 }
 
 function _async(f) {
@@ -50,11 +46,7 @@ function _async(f) {
     return then ? then(value) : value;
   }value = Promise.resolve(value);
 
-<<<<<<< HEAD
 return then ? value.then(then) : value;
-=======
-  return then ? value.then(then) : value;
->>>>>>> e6002de... automatic sequelize transactions on all default mutations.
 }
 const _require = require('graphql'),
     GraphQLObjectType = _require.GraphQLObjectType,
@@ -86,20 +78,12 @@ const _require4 = require('dataloader-sequelize'),
     EXPECTED_OPTIONS_KEY = _require4.EXPECTED_OPTIONS_KEY,
     resetCache = _require4.resetCache;
 
-<<<<<<< HEAD
 const DataLoader = require('dataloader');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const cls = require('continuation-local-storage');
 const uuid = require('uuid/v4');
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 let dataloaderContext = void 0;
-=======
-var DataLoader = require('dataloader');
-var TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
-var cls = require('continuation-local-storage');
-var sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
-var dataloaderContext = void 0;
->>>>>>> e6002de... automatic sequelize transactions on all default mutations.
 
 let options = {
   exclude: [],
@@ -162,13 +146,9 @@ const remoteResolver = _async((source, args, context, info, remoteQuery, remoteA
     passedArgs.push(arg + ':$' + arg);
   }
 
-<<<<<<< HEAD
   const fields = _.keys(type.getFields());
 
   const query = 'query ' + remoteQuery.name + '(' + queryArgs.join(', ') + '){\n    ' + remoteQuery.name + '(' + passedArgs.join(', ') + '){\n      ' + fields.join(', ') + '\n    }\n  }';
-=======
-  var fields = _.keys(type.getFields());var query = 'query ' + remoteQuery.name + '(' + queryArgs.join(', ') + '){\n    ' + remoteQuery.name + '(' + passedArgs.join(', ') + '){\n      ' + fields.join(', ') + '\n    }\n  }';
->>>>>>> e6002de... automatic sequelize transactions on all default mutations.
 
   const variables = _.pick(args, availableArgs);
   const key = remoteQuery.to || 'id';
@@ -258,7 +238,6 @@ return findOptions;
   });
 });
 
-<<<<<<< HEAD
 const mutationResolver = _async((model, inputTypeName, source, args, context, info, type, where, isBulk) => {
   return _await(options.authorizer(source, args, context, info), () => {
 
@@ -344,26 +323,6 @@ return resolveMutation();
 
 return resolveMutation();
 
-=======
-var mutationResolver = _async(function (model, inputTypeName, source, args, context, info, type, where, isBulk) {
-  return _await(options.authorizer(source, args, context, info), function () {
-    return model.graphql.overwrite.hasOwnProperty(type) ? model.graphql.overwrite[type](source, args, context, info, where) : Models.sequelize.transaction(_async(function (transaction) {
-      return _await(execBefore(model, source, args, context, info, type, where), function () {
-        return _await(findOneRecord(model, type === 'destroy' ? where : null), function (preData) {
-          var operationType = isBulk && type === 'create' ? 'bulkCreate' : type;
-          var validate = true;
-          return _await(model[operationType](type === 'destroy' ? { where: where } : args[inputTypeName], { where: where, validate: validate }), function (data) {
-
-            if (model.graphql.extend.hasOwnProperty(type)) {
-              return model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
-            }
-
-            return operationType === 'bulkCreate' ? args[inputTypeName].length : data;
-          });
-        });
-      });
-    }));
->>>>>>> e6002de... automatic sequelize transactions on all default mutations.
   });
 });
 
@@ -954,16 +913,12 @@ const generateSchema = function generateSchema(models, types, context, Sequelize
   Sequelize = models.Sequelize || Sequelize;
 
   if (options.dataloader) dataloaderContext = createContext(models.sequelize);
-<<<<<<< HEAD
   if (Sequelize) {
     Sequelize.useCLS(sequelizeNamespace);
   } else {
     console.warn('Sequelize not found at Models.Sequelize or not passed as argument. Automatic tranasctions for mutations are disabled.');
     options.transactionedMutations = false;
   }
-=======
-  Models.Sequelize.useCLS(sequelizeNamespace);
->>>>>>> e6002de... automatic sequelize transactions on all default mutations.
 
   const availableModels = {};
 
@@ -1035,11 +990,7 @@ return {
     generateSchema: generateSchema,
     dataloaderContext: dataloaderContext,
     errorHandler: errorHandler,
-<<<<<<< HEAD
     TRANSACTION_NAMESPACE: TRANSACTION_NAMESPACE,
     resetCache: resetCache
-=======
-    TRANSACTION_NAMESPACE: TRANSACTION_NAMESPACE
->>>>>>> e6002de... automatic sequelize transactions on all default mutations.
   };
 };
