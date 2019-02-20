@@ -3,18 +3,16 @@
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _invoke(body, then) {
-  var result = body();
-
-  if (result && result.then) {
-
+  var result = body();if (result && result.then) {
     return result.then(then);
-  }return then(result);
+  }
+
+  return then(result);
 }function _invokeIgnored(body) {
   var result = body();if (result && result.then) {
     return result.then(_empty);
   }
 }function _empty() {}
-
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 function _async(f) {
@@ -224,11 +222,14 @@ var mutationResolver = _async(function (model, inputTypeName, source, args, cont
           return _invoke(function () {
             if (isBulk && type === 'update') {
 
-              var key = model.primaryKeyAttributes[0];
+              var keys = model.primaryKeyAttributes;
               var updatePromises = [];
 
               args[inputTypeName].forEach(function (input) {
-                updatePromises.push(model.update(input, { where: _defineProperty({}, key, input[key]) }));
+                updatePromises.push(model.update(input, { where: keys.reduce(function (all, key) {
+                    all[key] = input[key];
+                    return all;
+                  }, {}) }));
               });
 
               return _await(Promise.all(updatePromises), function (_Promise$all) {
@@ -384,6 +385,7 @@ var generateAssociationFields = function generateAssociationFields(associations,
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
       fields[associationName].resolve = _async(function (source, args, context, info) {
         return _await(execBefore(relation.target, source, args, context, info, 'fetch'), function () {
+          console.log(target.target);
           return _await(resolver(relation, _defineProperty({}, EXPECTED_OPTIONS_KEY, dataloaderContext))(source, args, context, info), function (data) {
             var _exit = false;
             return _invoke(function () {
@@ -520,19 +522,20 @@ var generateCustomGraphQLTypes = function generateCustomGraphQLTypes(model, type
   if (model.graphql && model.graphql.types) {
 
     for (var type in model.graphql.types) {
-
       customTypes[type] = getCustomType(type);
     }
   }
 
   return customTypes;
-}; /**
-   * Returns a collection of `GraphQLObjectType` generated from Sequelize models.
-   *
-   * It creates an object whose properties are `GraphQLObjectType` created
-   * from Sequelize models.
-   * @param {*} models The sequelize models used to create the types
-   */
+};
+
+/**
+* Returns a collection of `GraphQLObjectType` generated from Sequelize models.
+*
+* It creates an object whose properties are `GraphQLObjectType` created
+* from Sequelize models.
+* @param {*} models The sequelize models used to create the types
+*/
 // This function is exported
 var generateModelTypes = function generateModelTypes(models, remoteTypes) {
   var outputTypes = remoteTypes || {};

@@ -203,12 +203,15 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
     if(isBulk && type === 'update'){
 
-      const key = model.primaryKeyAttributes[0];
+      const keys = model.primaryKeyAttributes;
       const updatePromises = [];
 
       args[inputTypeName].forEach((input) => {
         updatePromises.push(
-          model.update(input, {where: {[key]: input[key]}})
+          model.update(input, {where: keys.reduce((all, key) => {
+            all[key] = input[key];
+            return all;
+          }, {})})
         );
       });
 
@@ -354,7 +357,7 @@ const generateAssociationFields = (associations, types, isInput = false) => {
       fields[associationName].resolve = async (source, args, context, info) => {
 
         await execBefore(relation.target, source, args, context, info, 'fetch');
-
+        console.log(target.target)
         const data = await resolver(relation, {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, args, context, info);
 
         if(relation.target.graphql.extend.fetch && data.length){
