@@ -395,7 +395,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
         if (args["set"] == true) {
           let _refModel = _source.through && _source.through.model ? _source.target : aModel.target;
           let _name = assocSuffix(_refModel, true);
-          if (aModel.associationType === 'hasMany' || aModel.associationType === 'hasOne') {
+          if (aModel.associationType === 'HasMany' || aModel.associationType === 'HasOne') {
             // we cannot use set() to remove because of a bug: https://github.com/sequelize/sequelize/issues/8588
             let _getOp = "get" + _name;
             let assoc = await _sourceInst[_getOp]({
