@@ -281,7 +281,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
       if (_source.through && _source.through.model) {
         delete _args[name][_source.target.name];
         delete _args[name][_source.foreignIdentifierField];
-        _name = ["BelongsTo", "HasOne"].indexOf(_source.associationType) >= 0 ? source.target.options.name.singular : source.target.options.name.plural;
+        _name = ["BelongsTo", "HasOne"].indexOf(_source.associationType) >= 0 ? _source.target.options.name.singular : source.target.options.name.plural;
         _op = opType + _.upperFirst(_name);
       } else {
         _name = ["BelongsTo", "HasOne"].indexOf(_source.associationType) >= 0 ? _model.options.name.singular : _model.options.name.plural;
@@ -379,20 +379,26 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
         _data[name] = []
 
         if (args["set"] == true) {
-          // we cannot use set() to remove because of a bug: https://github.com/sequelize/sequelize/issues/8588
-          let _name=_.upperFirst(_source.through && _source.through.model ? _source.target.options.name.plural : aModel.target.options.name.plural);
-          let _getOp = "get" + _name;
-          let assoc = await _sourceInst[_getOp]({transaction});
-          if (assoc) {
-            if (_.isArray(assoc)) {
-              for (var k in assoc) {
-                var v = assoc[k];
+          let _name = _.upperFirst(_source.through && _source.through.model ? _source.target.options.name.plural : aModel.target.options.name.plural);
+          if (aModel.associationType === 'hasMany' || aModel.associationType === 'hasOne') {
+            // we cannot use set() to remove because of a bug: https://github.com/sequelize/sequelize/issues/8588
+            let _getOp = "get" + _name;
+            let assoc = await _sourceInst[_getOp]({
+              transaction
+            });
+            if (assoc) {
+              if (_.isArray(assoc)) {
+                for (var k in assoc) {
+                  var v = assoc[k];
+                  await operation("destroy", aModel.target, _source, [], null, null, _sourceInst, transaction, v)
+                }
+              } else {
                 await operation("destroy", aModel.target, _source, [], null, null, _sourceInst, transaction, v)
               }
             }
-            else {
-                await operation("destroy", aModel.target, _source, [], null, null, _sourceInst, transaction, v)
-            }
+          } else {
+            let _op = "set" + _name;
+            await _sourceInst[_op]([],{transaction});
           }
         }
 
@@ -662,7 +668,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
       if (attr && attr.references) {
           const modelName = attr.references.model;
           const assocModel = model.sequelize.modelManager.getModel(modelName, {attribute: "tableName"});
-          const reference = model.associations[assocModel.name];
+          const reference = model.associations[assocModel.name] ? model.associations[assocModel.name] : assocModel;
           buildAssoc(assocModel, reference, "BelongsTo", reference.name, true);
       }
   }
