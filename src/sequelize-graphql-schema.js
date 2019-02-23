@@ -102,6 +102,20 @@ const whereQueryVarsToValues = (o, vals) => {
   });
 }
 
+/**
+ * @typedef Name
+ * @property {string} singular
+ * @property {string} plural 
+ */
+
+/**
+ * @param {Name} name
+ * @returns string
+ */
+const assocSuffix = (model, plural = false) => {
+  return _.upperFirst(plural && !model.options.freezeTableName ? model.options.name.plural : model.options.name.singular);
+}
+
 const remoteResolver = async (source, args, context, info, remoteQuery, remoteArguments, type) => {
 
   const availableArgs = _.keys(remoteQuery.args);
@@ -281,11 +295,11 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
       if (_source.through && _source.through.model) {
         delete _args[name][_source.target.name];
         delete _args[name][_source.foreignIdentifierField];
-        _name = ["BelongsTo", "HasOne"].indexOf(_source.associationType) >= 0 ? _source.target.options.name.singular : source.target.options.name.plural;
-        _op = opType + _.upperFirst(_name);
+        _name = assocSuffix(_source.target, ["BelongsTo", "HasOne"].indexOf(_source.associationType) < 0);
+        _op = opType + _name;
       } else {
-        _name = ["BelongsTo", "HasOne"].indexOf(_source.associationType) >= 0 ? _model.options.name.singular : _model.options.name.plural;
-        _op = opType + _.upperFirst(_name);
+        _name = assocSuffix(_model, ["BelongsTo", "HasOne"].indexOf(_source.associationType) < 0);
+        _op = opType + _name;
       }
 
       res = await sourceInst[_op](assocInst, opType == "add" ? {
@@ -379,7 +393,8 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
         _data[name] = []
 
         if (args["set"] == true) {
-          let _name = _.upperFirst(_source.through && _source.through.model ? _source.target.options.name.plural : aModel.target.options.name.plural);
+          let _refModel = _source.through && _source.through.model ? _source.target : aModel.target;
+          let _name = assocSuffix(_refModel, true);
           if (aModel.associationType === 'hasMany' || aModel.associationType === 'hasOne') {
             // we cannot use set() to remove because of a bug: https://github.com/sequelize/sequelize/issues/8588
             let _getOp = "get" + _name;
