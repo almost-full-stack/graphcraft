@@ -253,7 +253,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
   var data = {};
 
-  const operation = async function (opType, _model, _source, _args, name, assocInst, sourceInst, transaction) {
+  const operation = async function (opType, _model, _source, _args, name, assocInst, sourceInst, transaction, toDestroy = null) {
     let hookType = opType == "set" ? "update" : type;
 
     if (_model.graphql && _model.graphql.overwrite.hasOwnProperty(hookType)) {
@@ -277,13 +277,15 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
     let res;
     if (opType == "add" || opType == "set") {
-      let _op;
+      let _op, _name ;
       if (_source.through && _source.through.model) {
         delete _args[name][_source.target.name];
         delete _args[name][_source.foreignIdentifierField];
-        _op = opType + _source.target.name;
+        _name = ["BelongsTo", "HasOne"].indexOf(_source.associationType) >= 0 ? source.target.options.name.singular : source.target.options.name.plural;
+        _op = opType + _.upperFirst(_name);
       } else {
-        _op = opType + _model.name;
+        _name = ["BelongsTo", "HasOne"].indexOf(_source.associationType) >= 0 ? _model.options.name.singular : _model.options.name.plural;
+        _op = opType + _.upperFirst(_name);
       }
 
       res = await sourceInst[_op](assocInst, opType == "add" ? {
@@ -295,15 +297,18 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
       return await finalize(res);
 
     } else {
-      res = await _model[opType](type === 'destroy' ? {
-        where
+      // allow destroy on instance if specified
+      let _inst = toDestroy && opType == 'destroy' ? toDestroy : _model;
+      res = await _inst[opType](opType === 'destroy' ? {
+        where,
+        transaction
       } : _args[name], {
         where,
         validate,
         transaction
       });
 
-      if (opType != "create")
+      if (opType != "create" && opType != "destroy")
         return await finalize(await _model.findOne({
           where, transaction
         }))
@@ -342,7 +347,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
               [aModel.target.name]: crObj,
               transaction
             }
-            let node = await operation("create", aModel.target, _model, _at, aModel.target.name, {}, _sourceInst, transaction);
+            let node = await operation("create", aModel.target, _model, _at, aModel.target.name, null, _sourceInst, transaction);
             let data = await operation("add", _model, aModel, _a, name, node, _sourceInst, transaction);
             let edge = data[0][0];
             edge[aModel.target.name] = node;
@@ -357,7 +362,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
           }
         } else {
           const _model = aModel.target
-          let newInst = await operation("create", _model, aModel.target, _a, aModel.target.name, {}, _sourceInst, transaction);
+          let newInst = await operation("create", _model, aModel.target, _a, name, {}, _sourceInst, transaction);
           return await operation("set", _model, aModel, _a, name, newInst, _sourceInst, transaction);
         }
       }
@@ -374,8 +379,21 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
         _data[name] = []
 
         if (args["set"] == true) {
-          let _op = "set" + (_source.through && _source.through.model ? _source.target.name : aModel.target.name)+"s";
-          await _sourceInst[_op]([],{transaction});
+          // we cannot use set() to remove because of a bug: https://github.com/sequelize/sequelize/issues/8588
+          let _name=_.upperFirst(_source.through && _source.through.model ? _source.target.options.name.plural : aModel.target.options.name.plural);
+          let _getOp = "get" + _name;
+          let assoc = await _sourceInst[_getOp]({transaction});
+          if (assoc) {
+            if (_.isArray(assoc)) {
+              for (var k in assoc) {
+                var v = assoc[k];
+                await operation("destroy", aModel.target, _source, [], null, null, _sourceInst, transaction, v)
+              }
+            }
+            else {
+                await operation("destroy", aModel.target, _source, [], null, null, _sourceInst, transaction, v)
+            }
+          }
         }
 
         for (let p in _args[name]) {
@@ -643,8 +661,9 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
       const attr = rawAttributes[key];
       if (attr && attr.references) {
           const modelName = attr.references.model;
-          const refModel=model.sequelize.modelManager.getModel(modelName, {attribute: "tableName"});
-          buildAssoc(refModel, refModel, "BelongsTo", refModel.name, true);
+          const assocModel = model.sequelize.modelManager.getModel(modelName, {attribute: "tableName"});
+          const reference = model.associations[assocModel.name];
+          buildAssoc(assocModel, reference, "BelongsTo", reference.name, true);
       }
   }
 
