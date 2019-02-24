@@ -377,7 +377,8 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
         } else {
           const _model = aModel.target
           let newInst = await operation("create", _model, aModel.target, _a, name, {}, _sourceInst, transaction);
-          return await operation("set", _model, aModel, _a, name, newInst, _sourceInst, transaction);
+          await operation("add", _model, aModel, _a, name, newInst, _sourceInst, transaction);
+          return newInst;
         }
       }
 
