@@ -589,6 +589,8 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
     data = await operation(operationType, model, source, args, inputTypeName, null, null);
   }
 
+  await options.logger(data, source, args, context, info);
+
   if (isBulk) {
     return args[inputTypeName].length;
   }
@@ -1491,8 +1493,8 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
               } : {};
               return options.authorizer(source, args, context, info).then(_ => {
                 return models[inputTypeName].graphql.mutations[mutation].resolver(source, args, context, info, where);
-              }).then(data => {
-                return data;
+              }).then((data) => {
+                return options.logger(data, source, args, context, info).then(() => data);
               });
             }
           };
