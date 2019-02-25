@@ -3,11 +3,11 @@
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _invoke(body, then) {
-  var result = body();if (result && result.then) {
-    return result.then(then);
-  }
+  var result = body();
 
-  return then(result);
+  if (result && result.then) {
+    return result.then(then);
+  }return then(result);
 }function _invokeIgnored(body) {
   var result = body();if (result && result.then) {
     return result.then(_empty);
@@ -268,7 +268,10 @@ var mutationResolver = _async(function (model, inputTypeName, source, args, cont
                 });
               }
             }, function () {
-              return operationType === 'bulkCreate' && isBulk === true ? data.length : data;
+              return operationType === 'bulkCreate' && isBulk === true ? data.length : _await(options.logger(data, source, args, context, info), function () {
+
+                return data;
+              });
             });
           });
         });
@@ -385,7 +388,6 @@ var generateAssociationFields = function generateAssociationFields(associations,
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
       fields[associationName].resolve = _async(function (source, args, context, info) {
         return _await(execBefore(relation.target, source, args, context, info, 'fetch'), function () {
-          console.log(target.target);
           return _await(resolver(relation, _defineProperty({}, EXPECTED_OPTIONS_KEY, dataloaderContext))(source, args, context, info), function (data) {
             var _exit = false;
             return _invoke(function () {
@@ -510,18 +512,16 @@ var generateCustomGraphQLTypes = function generateCustomGraphQLTypes(model, type
     } else {
       if (!type.toUpperCase().endsWith('INPUT')) {
         return new GraphQLObjectType({
-          name: type,
-          fields: function fields() {
+          name: type, fields: function fields() {
             return _fields2;
           }
         });
       }
     }
-  };
-
-  if (model.graphql && model.graphql.types) {
+  };if (model.graphql && model.graphql.types) {
 
     for (var type in model.graphql.types) {
+
       customTypes[type] = getCustomType(type);
     }
   }
@@ -823,7 +823,9 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
               return options.authorizer(source, args, context, info).then(function (_) {
                 return models[inputTypeName].graphql.mutations[mutation].resolver(source, args, context, info, where);
               }).then(function (data) {
-                return data;
+                return options.logger(data, source, args, context, info).then(function () {
+                  return data;
+                });
               });
             }
           };

@@ -245,6 +245,8 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
     if(operationType === 'bulkCreate' && isBulk === true) return data.length;
 
+    await options.logger(data, source, args, context, info);
+
     return data;
 
   });
@@ -357,7 +359,6 @@ const generateAssociationFields = (associations, types, isInput = false) => {
       fields[associationName].resolve = async (source, args, context, info) => {
 
         await execBefore(relation.target, source, args, context, info, 'fetch');
-        console.log(target.target)
         const data = await resolver(relation, {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, args, context, info);
 
         if(relation.target.graphql.extend.fetch && data.length){
@@ -780,8 +781,8 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
               const where = key && args[inputTypeName] ? { [key]: args[inputTypeName][key] } : { };
               return options.authorizer(source, args, context, info).then(_ => {
                 return models[inputTypeName].graphql.mutations[mutation].resolver(source, args, context, info, where);
-              }).then(data => {
-                return data;
+              }).then((data) => {
+                return options.logger(data, source, args, context, info).then(() => data);
               });
             }
           };
