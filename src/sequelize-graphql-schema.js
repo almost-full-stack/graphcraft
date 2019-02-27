@@ -48,7 +48,8 @@ let options = {
   remote: {},
   dataloader: false,
   customTypes: [],
-  logger() {
+  transactionedMutations: true,
+  logger(){
     return Promise.resolve();
   },
   authorizer() {
