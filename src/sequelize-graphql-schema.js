@@ -32,6 +32,7 @@ let options = {
   includeArguments: { },
   remote: { },
   dataloader: false,
+  transactionedMutations: true,
   logger(){
     return Promise.resolve();
   },
@@ -193,7 +194,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
     return model.graphql.overwrite[type](source, args, context, info, where);
   }
 
-  return Models.sequelize.transaction(async (transaction) => {
+  const resolveMutation = async () => {
 
     await execBefore(model, source, args, context, info, type, where);
 
@@ -249,7 +250,17 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
     return data;
 
-  });
+  };
+
+  if(options.transactionedMutations){
+
+    return Models.sequelize.transaction((transaction) => {
+      return resolveMutation();
+    });
+
+  }else{
+    return resolveMutation();
+  }
 
 };
 

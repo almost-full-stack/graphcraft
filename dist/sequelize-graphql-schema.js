@@ -3,9 +3,7 @@
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _invoke(body, then) {
-  var result = body();
-
-  if (result && result.then) {
+  var result = body();if (result && result.then) {
     return result.then(then);
   }return then(result);
 }function _invokeIgnored(body) {
@@ -20,7 +18,6 @@ function _async(f) {
     for (var args = [], i = 0; i < arguments.length; i++) {
       args[i] = arguments[i];
     }try {
-
       return Promise.resolve(f.apply(this, args));
     } catch (e) {
       return Promise.reject(e);
@@ -73,6 +70,7 @@ var options = {
   includeArguments: {},
   remote: {},
   dataloader: false,
+  transactionedMutations: true,
   logger: function logger() {
     return Promise.resolve();
   },
@@ -113,7 +111,9 @@ var errorHandler = function errorHandler(error) {
   }
 
   return error;
-};var remoteResolver = _async(function (source, args, context, info, remoteQuery, remoteArguments, type) {
+};
+
+var remoteResolver = _async(function (source, args, context, info, remoteQuery, remoteArguments, type) {
 
   var availableArgs = _.keys(remoteQuery.args);
   var pickedArgs = _.pick(remoteArguments, availableArgs);
@@ -212,7 +212,12 @@ var queryResolver = _async(function (model, inputTypeName, source, args, context
 
 var mutationResolver = _async(function (model, inputTypeName, source, args, context, info, type, where, isBulk) {
   return _await(options.authorizer(source, args, context, info), function () {
-    return model.graphql.overwrite.hasOwnProperty(type) ? model.graphql.overwrite[type](source, args, context, info, where) : Models.sequelize.transaction(_async(function (transaction) {
+
+    if (model.graphql.overwrite.hasOwnProperty(type)) {
+      return model.graphql.overwrite[type](source, args, context, info, where);
+    }
+
+    var resolveMutation = _async(function () {
       return _await(execBefore(model, source, args, context, info, type, where), function () {
 
         var data = null;
@@ -276,7 +281,16 @@ var mutationResolver = _async(function (model, inputTypeName, source, args, cont
           });
         });
       });
-    }));
+    });
+
+    if (options.transactionedMutations) {
+
+      return Models.sequelize.transaction(function (transaction) {
+        return resolveMutation();
+      });
+    } else {
+      return resolveMutation();
+    }
   });
 });
 
@@ -512,13 +526,16 @@ var generateCustomGraphQLTypes = function generateCustomGraphQLTypes(model, type
     } else {
       if (!type.toUpperCase().endsWith('INPUT')) {
         return new GraphQLObjectType({
-          name: type, fields: function fields() {
+          name: type,
+          fields: function fields() {
             return _fields2;
           }
         });
       }
     }
-  };if (model.graphql && model.graphql.types) {
+  };
+
+  if (model.graphql && model.graphql.types) {
 
     for (var type in model.graphql.types) {
 
