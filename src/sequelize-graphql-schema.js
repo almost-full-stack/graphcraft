@@ -181,8 +181,6 @@ const defaultMutationArgs = () => {
 
 const execBefore = (model, source, args, context, info, type, where) => {
   if(model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)){
-    if (args.where)
-      whereQueryVarsToValues(args.where,info.variableValues);
 
     return model.graphql.before[type](source, args, context, info, where);
   }else{
@@ -200,6 +198,9 @@ const findOneRecord = (model, where) => {
 
 const queryResolver = (model, isAssoc = false, field = null) => {
   return async (source, args, context, info) => {
+    if (args.where)
+      whereQueryVarsToValues(args.where,info.variableValues);
+
     var _model = !field && isAssoc && model.target ? model.target : model;
     const type = 'fetch';
   
@@ -258,6 +259,8 @@ const queryResolver = (model, isAssoc = false, field = null) => {
 }
 
 const mutationResolver = async (model, inputTypeName, source, args, context, info, type, where, isBulk) => {
+  if (args.where)
+    whereQueryVarsToValues(args.where,info.variableValues);
 
   await options.authorizer(source, args, context, info);
 

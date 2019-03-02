@@ -37,9 +37,9 @@
   "dependencies": {
     "camelcase": "^5.0.0",
     "dataloader-sequelize": "^1.7.6",
-    "graphql-relay": "^0.5.5",
+    "graphql-relay": "^0.6.0",
     "graphql-request": "^1.8.2",
-    "graphql-sequelize": "^9.2.0"
+    "graphql-sequelize": "^9.3.4"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
@@ -62,7 +62,7 @@
     "stringifier": "^2.0.0"
   },
   "peerDependencies": {
-    "graphql": "^0.13.2",
+    "graphql": "^14.1.1",
     "sequelize": "^4.41.2"
   },
   "jest": {
