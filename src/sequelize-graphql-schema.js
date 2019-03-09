@@ -112,8 +112,8 @@ const whereQueryVarsToValues = (o, vals) => {
  * @param {Name} name
  * @returns string
  */
-const assocSuffix = (model, plural = false) => {
-  return _.upperFirst(plural && !model.options.freezeTableName ? model.options.name.plural : model.options.name.singular);
+const assocSuffix = (model, plural = false, asName = null) => {
+  return _.upperFirst(asName ? asName : (plural && !model.options.freezeTableName ? model.options.name.plural : model.options.name.singular));
 }
 
 const remoteResolver = async (source, args, context, info, remoteQuery, remoteArguments, type) => {
@@ -298,10 +298,10 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
       if (_source.through && _source.through.model) {
         delete _args[name][_source.target.name];
         delete _args[name][_source.foreignIdentifierField];
-        _name = assocSuffix(_source.target, ["BelongsTo", "HasOne"].indexOf(_source.associationType) < 0);
+        _name = assocSuffix(_source.target, ["BelongsTo", "HasOne"].indexOf(_source.associationType) < 0, _source.as);
         _op = opType + _name;
       } else {
-        _name = assocSuffix(_model, ["BelongsTo", "HasOne"].indexOf(_source.associationType) < 0);
+        _name = assocSuffix(_model, ["BelongsTo", "HasOne"].indexOf(_source.associationType) < 0, _source.as);
         _op = opType + _name;
       }
 
@@ -398,7 +398,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
         if (args["set"] == true) {
           let _refModel = _source.through && _source.through.model ? _source.target : aModel.target;
-          let _name = assocSuffix(_refModel, true);
+          let _name = assocSuffix(_refModel, true, aModel.as);
           if (aModel.associationType === 'HasMany' || aModel.associationType === 'HasOne') {
             // we cannot use set() to remove because of a bug: https://github.com/sequelize/sequelize/issues/8588
             let _getOp = "get" + _name;
