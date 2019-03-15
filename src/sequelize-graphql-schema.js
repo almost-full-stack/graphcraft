@@ -6,30 +6,29 @@ const {
   GraphQLNonNull,
   GraphQLString,
   GraphQLBoolean
-} = require('graphql');
+} = require('graphql')
 const {
   resolver,
   defaultListArgs,
   defaultArgs,
-  JSONType,
   relay
-} = require('graphql-sequelize');
+} = require('graphql-sequelize')
 
-const Sequelize = require("sequelize");
+const Sequelize = require('sequelize')
 
-const attributeFields = require("./graphql-sequelize/attributeFields");
+const attributeFields = require('./graphql-sequelize/attributeFields')
 
 const {
   sequelizeConnection
-} = relay;
+} = relay
 
-const camelCase = require('camelcase');
-const remoteSchema = require('./remoteSchema');
-const { GraphQLClient } = require('graphql-request');
-const _ = require('lodash');
-const {createContext, EXPECTED_OPTIONS_KEY} = require('dataloader-sequelize');
-const DataLoader = require('dataloader');
-let dataloaderContext;
+const camelCase = require('camelcase')
+const remoteSchema = require('./remoteSchema')
+const { GraphQLClient } = require('graphql-request')
+const _ = require('lodash')
+const { createContext, EXPECTED_OPTIONS_KEY } = require('dataloader-sequelize')
+const DataLoader = require('dataloader')
+let dataloaderContext
 
 let options = {
   exclude: [],
