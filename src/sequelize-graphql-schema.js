@@ -596,9 +596,9 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
         // if n:m join table, we have to create the connection input type for it
         const _name = getTypeName(aModel, isInput, false, true);
         if (!types[_name]) {
-          var t = generateGraphQLType(aModel, types, cache, isInput, false, assocModel, model)
-          t.name = _name;
-          types[_name] = new GraphQLList(t);
+          const gqlType = generateGraphQLType(aModel, types, cache, isInput, false, assocModel, model)
+          gqlType.name = _name;
+          types[_name] = new GraphQLList(gqlType);
         }
         fields[associationName].type = types[_name];
       }
@@ -864,10 +864,10 @@ const generateModelTypes = (models, remoteTypes) => {
   let outputTypes = remoteTypes || {};
   let inputTypes = {};
   let inputUpdateTypes = {};
+  const cache = {};
   for (let modelName in models) {
     // Only our models, not Sequelize nor sequelize
     if (models[modelName].hasOwnProperty('name') && modelName !== 'Sequelize') {
-      const cache = {};
       outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
       inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
       outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes,  cache, false, false, null, models[modelName]);
