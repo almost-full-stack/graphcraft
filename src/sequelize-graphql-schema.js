@@ -924,6 +924,20 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           type: GraphQLInt,
           description: 'An empty default Query.',
           resolve: () => 1
+        },
+        [camelCase(modelType.name + 'Count')]: {
+          type: GraphQLInt,
+          args: {
+            where: defaultListArgs().where
+          },
+          resolve: async (source, {
+            where
+          }) => {
+            return models[modelTypeName].count({
+              where
+            })
+          },
+          description: `A count of the total number of objects in this connection, ignoring pagination.`
         }
       };
 
