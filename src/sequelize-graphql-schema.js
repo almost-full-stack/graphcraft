@@ -580,6 +580,9 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
       //  return fields;
     }
 
+    if (!associationName) // edge case
+      return false;
+
     // BelongsToMany is represented as a list, just like HasMany
     const type = associationType === 'BelongsToMany' ||
       associationType === 'HasMany' ?
