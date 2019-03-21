@@ -261,6 +261,9 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
   if (args.where)
     whereQueryVarsToValues(args.where,info.variableValues);
 
+  if (where)
+    whereQueryVarsToValues(where,info.variableValues);
+
   await options.authorizer(source, args, context, info);
 
   const preData = await findOneRecord(model, type === 'destroy' ? where : null);
@@ -1037,11 +1040,12 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'Update a ' + inputTypeName,
           args: Object.assign({
+            where: defaultListArgs().where,
             [key]: { type: new GraphQLNonNull(GraphQLInt)},
             [inputTypeName]: { type: inputUpdateType } 
           }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
-            const where = { [key]: args[key] };
+            const where = { ...args["where"], [key]: args[key] };
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', where)
             .then(boolean => {
               // `boolean` equals the number of rows affected (0 or 1)
@@ -1055,9 +1059,9 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         mutations[camelCase(aliases.destroy || (inputTypeName + 'Delete'))] = {
           type: GraphQLInt,
           description: 'Delete a ' + inputTypeName,
-          args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments(), defaultMutationArgs()),
+          args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) }, where: defaultListArgs().where }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
-            const where = { [key]: args[key] };
+            const where = { ...args["where"], [key]: args[key] };
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'destroy', where);
           }
         };
