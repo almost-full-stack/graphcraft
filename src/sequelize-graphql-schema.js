@@ -247,6 +247,10 @@ const queryResolver = (model, isAssoc = false, field = null) => {
         separate: isAssoc
       })(source, args, context, info);
     }
+
+    // little trick to pass args 
+    // on source params for connection fields
+    data.__args=args;
   
     if(_model.graphql.extend.hasOwnProperty(type)){
       return _model.graphql.extend[type](data, source, args, context, info);
@@ -652,7 +656,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
                 type: new GraphQLNonNull(GraphQLInt),
                 description: `Total count of ${assocModel.name} results associated with ${model.name} without limits applied.`,
                 resolve: (source, args, context, info) => {
-                  let where = args['where']
+                  let where = source.__args["where"];
                   return assocModel.count({ where })
                 }
               }
