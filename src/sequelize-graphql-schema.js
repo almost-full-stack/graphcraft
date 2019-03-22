@@ -251,8 +251,6 @@ const queryResolver = (model, isAssoc = false, field = null) => {
 
     // little trick to pass args 
     // on source params for connection fields
-
-    console.log(source)
     data.__args=args;
     data.__parent=source;
   
