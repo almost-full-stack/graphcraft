@@ -11,6 +11,7 @@ const {
   resolver,
   defaultListArgs,
   defaultArgs,
+  argsToFindOptions,
   relay
 } = require('graphql-sequelize')
 
@@ -250,7 +251,10 @@ const queryResolver = (model, isAssoc = false, field = null) => {
 
     // little trick to pass args 
     // on source params for connection fields
+
+    console.log(source)
     data.__args=args;
+    data.__parent=source;
   
     if(_model.graphql.extend.hasOwnProperty(type)){
       return _model.graphql.extend[type](data, source, args, context, info);
@@ -656,8 +660,10 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
                 type: new GraphQLNonNull(GraphQLInt),
                 description: `Total count of ${assocModel.name} results associated with ${model.name} without limits applied.`,
                 resolve: (source, args, context, info) => {
-                  let where = source.__args["where"];
-                  return assocModel.count({ where })
+                  let _args = argsToFindOptions.default(source.__args);
+                  let where = _args["where"];
+                  let suffix = assocSuffix(assocModel, ["BelongsTo", "HasOne"].indexOf(associationType) < 0);
+                  return source.__parent["count"+suffix]({ where })
                 }
               }
             },
