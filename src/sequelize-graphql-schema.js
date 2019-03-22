@@ -643,9 +643,17 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
             connectionFields: {
               total: {
                 type: new GraphQLNonNull(GraphQLInt),
-                description: `Total count of ${type.name} results associated with ${assocModel.name}.`,
+                description: `Total count of ${assocModel.name} results associated with ${model.name} with all filters applied.`,
                 resolve: (source, args, context, info) => {
                   return source.edges.length;
+                }
+              },
+              count: {
+                type: new GraphQLNonNull(GraphQLInt),
+                description: `Total count of ${assocModel.name} results associated with ${model.name} without limits applied.`,
+                resolve: (source, args, context, info) => {
+                  let where = args['where']
+                  return assocModel.count({ where })
                 }
               }
             },
