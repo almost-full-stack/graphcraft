@@ -102,6 +102,16 @@ const whereQueryVarsToValues = (o, vals) => {
   });
 }
 
+const getTypeByString = (type) => {
+  type = type.toLowerCase();
+
+  return type === 'int' ? GraphQLInt 
+            : type === 'boolean' ? GraphQLBoolean 
+            : type === 'string' ? GraphQLString
+            : options.customTypes[type] ? options.customTypes[type] 
+            : null;
+}
+
 /**
  * @typedef Name
  * @property {string} singular
@@ -509,12 +519,10 @@ const generateGraphQLField = (type) => {
 
   const typeReference = sanitizeFieldName(type);
 
-  type = typeReference.type.toLowerCase();
+  let field = getTypeByString(typeReference.type);
 
-  let field = type === 'int' ? GraphQLInt 
-            : type === 'boolean' ? GraphQLBoolean 
-            : options.customTypes[typeReference.type] ? options.customTypes[typeReference.type] 
-            : GraphQLString;
+  if (!field)
+    field=GraphQLString;
 
   if(typeReference.isArray){
     field = new GraphQLList(field);
@@ -942,10 +950,10 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
 
       const modelType = outputTypes[modelTypeName];
       let queries = {
-        [modelType.name + 'Default']: {
-          type: GraphQLInt,
-          description: 'An empty default Query.',
-          resolve: () => 1
+        [camelCase(modelType.name + 'Default')]: {
+          type: GraphQLString,
+          description: 'An empty default Query. Can be overwritten for metadata.',
+          resolve: () => "1"
         },
         [camelCase(modelType.name + 'Count')]: {
           type: GraphQLInt,
@@ -979,21 +987,19 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
 
         for(let query in models[modelTypeName].graphql.queries){
 
-          let isArray = false;
-          let outPutType = GraphQLInt;
+          let outPutType = (queries[camelCase(query)] && queries[camelCase(query)].type) || GraphQLInt;
+          let description = models[modelTypeName].graphql.queries[query].description || (queries[camelCase(query)] && queries[camelCase(query)].description) || null;
           let typeName = models[modelTypeName].graphql.queries[query].output;
 
           if(typeName){
-            if(typeName.startsWith('[')){
-              typeName = typeName.replace('[', '');
-              typeName = typeName.replace(']', '');
-              isArray = true;
-            }
+            const typeReference = sanitizeFieldName(typeName);
 
-            if(isArray){
-              outPutType = new GraphQLList(outputTypes[typeName]);
+            let field = getTypeByString(typeReference.type);
+
+            if(typeReference.isArray){
+              outPutType = new GraphQLList(field || outputTypes[typeReference.type]);
             }else{
-              outPutType = outputTypes[models[modelTypeName].graphql.queries[query].output];
+              outPutType = field || outputTypes[typeReference.type];
             }
           }
 
@@ -1001,6 +1007,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
 
           queries[camelCase(query)] = {
             type: outPutType,
+            description,
             args: Object.assign(inputArg, defaultListArgs(), includeArguments(), paranoidType),
             resolve: (source, args, context, info) => {
               return options.authorizer(source, args, context, info).then(_ => {
