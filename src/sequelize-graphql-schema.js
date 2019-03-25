@@ -25,26 +25,33 @@ const {
 
 const camelCase = require('camelcase')
 const remoteSchema = require('./remoteSchema')
-const { GraphQLClient } = require('graphql-request')
+const {
+  GraphQLClient
+} = require('graphql-request')
 const _ = require('lodash')
-const { createContext, EXPECTED_OPTIONS_KEY } = require('dataloader-sequelize')
+const {
+  createContext,
+  EXPECTED_OPTIONS_KEY
+} = require('dataloader-sequelize')
 const DataLoader = require('dataloader')
 let dataloaderContext
 
 let options = {
   exclude: [],
-  includeArguments: { },
-  remote: { },
+  includeArguments: {},
+  remote: {},
   dataloader: false,
   customTypes: [],
-  logger(){
+  logger() {
     return Promise.resolve();
   },
-  authorizer(){
+  authorizer() {
     return Promise.resolve();
   },
   errorHandler: {
-    'ETIMEDOUT': {statusCode: 503}
+    'ETIMEDOUT': {
+      statusCode: 503
+    }
   }
 };
 
@@ -54,31 +61,31 @@ const defaultModelGraphqlOptions = {
       create: [],
       update: [],
       fetch: []
-    }, 
+    },
     only: { // allow to use only listed attributes (inclusive filter, it ignores exclude option)
       create: null,
       update: null,
       fetch: null
-    },   
+    },
     include: {}, // attributes in key:type format which are to be included in Model Input
     import: []
   },
   scopes: null,
-  alias: { },
+  alias: {},
   bulk: [],
-  mutations: { },
+  mutations: {},
   excludeMutations: [],
   excludeQueries: [],
-  extend: { },
-  before: { },
-  overwrite: { }
+  extend: {},
+  before: {},
+  overwrite: {}
 };
 
 let Models = {};
 
 const errorHandler = (error) => {
-  for(let name in options.errorHandler){
-    if(error.message.indexOf(name) > -1) {
+  for (let name in options.errorHandler) {
+    if (error.message.indexOf(name) > -1) {
       Object.assign(error, options.errorHandler[name]);
       break;
     }
@@ -105,11 +112,11 @@ const whereQueryVarsToValues = (o, vals) => {
 const getTypeByString = (type) => {
   lType = type.toLowerCase();
 
-  return lType === 'int' ? GraphQLInt 
-            : lType === 'boolean' ? GraphQLBoolean 
-            : lType === 'string' ? GraphQLString
-            : options.customTypes[type] ? options.customTypes[type] 
-            : null;
+  return lType === 'int' ? GraphQLInt :
+    lType === 'boolean' ? GraphQLBoolean :
+    lType === 'string' ? GraphQLString :
+    options.customTypes[type] ? options.customTypes[type] :
+    null;
 }
 
 /**
@@ -133,7 +140,7 @@ const remoteResolver = async (source, args, context, info, remoteQuery, remoteAr
   let queryArgs = [];
   let passedArgs = [];
 
-  for(const arg in pickedArgs){
+  for (const arg in pickedArgs) {
     queryArgs.push(`$${arg}:${pickedArgs[arg].type}`);
     passedArgs.push(`${arg}:$${arg}`);
   };
@@ -149,28 +156,30 @@ const remoteResolver = async (source, args, context, info, remoteQuery, remoteAr
   const variables = _.pick(args, availableArgs);
   const key = remoteQuery.to || 'id';
 
-  if(_.indexOf(availableArgs, key) > -1 && !variables.where){
+  if (_.indexOf(availableArgs, key) > -1 && !variables.where) {
     variables[key] = source[remoteQuery.with];
-  }else if(_.indexOf(availableArgs, 'where') > -1){
+  } else if (_.indexOf(availableArgs, 'where') > -1) {
     variables.where = variables.where || {};
     variables.where[key] = source[remoteQuery.with];
   }
 
   const headers = _.pick(context.headers, remoteQuery.headers);
-  const client = new GraphQLClient(remoteQuery.endpoint, { headers });
+  const client = new GraphQLClient(remoteQuery.endpoint, {
+    headers
+  });
   const data = await client.request(query, variables);
 
   return data[remoteQuery.name];
 
 };
 
-const getTypeName=(model, isInput, isUpdate, isAssoc) => {
-  return isInput ? model.name+(isUpdate? "Edit" : "Add")+"Input"+(isAssoc ? "Connection" : "") : model.name
+const getTypeName = (model, isInput, isUpdate, isAssoc) => {
+  return isInput ? model.name + (isUpdate ? "Edit" : "Add") + "Input" + (isAssoc ? "Connection" : "") : model.name
 }
 
 const includeArguments = () => {
   let includeArguments = {};
-  for(let argument in options.includeArguments){
+  for (let argument in options.includeArguments) {
     includeArguments[argument] = generateGraphQLField(options.includeArguments[argument]);
   }
   return includeArguments;
@@ -190,18 +199,20 @@ const defaultMutationArgs = () => {
 }
 
 const execBefore = (model, source, args, context, info, type, where) => {
-  if(model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)){
+  if (model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)) {
 
     return model.graphql.before[type](source, args, context, info, where);
-  }else{
+  } else {
     return Promise.resolve();
   }
 };
 
 const findOneRecord = (model, where) => {
-  if(where){
-    return model.findOne({ where });
-  }else{
+  if (where) {
+    return model.findOne({
+      where
+    });
+  } else {
     return Promise.resolve();
   }
 };
@@ -209,44 +220,46 @@ const findOneRecord = (model, where) => {
 const queryResolver = (model, isAssoc = false, field = null) => {
   return async (source, args, context, info) => {
     if (args.where)
-      whereQueryVarsToValues(args.where,info.variableValues);
+      whereQueryVarsToValues(args.where, info.variableValues);
 
     var _model = !field && isAssoc && model.target ? model.target : model;
     const type = 'fetch';
-  
+
     if (!isAssoc) // authorization should not be executed for nested queries
       await options.authorizer(source, args, context, info);
-  
-    if(_model.graphql.overwrite.hasOwnProperty(type)){
+
+    if (_model.graphql.overwrite.hasOwnProperty(type)) {
       return _model.graphql.overwrite[type](source, args, context, info);
     }
-  
+
     await execBefore(_model, source, args, context, info, type);
-  
+
     const before = (findOptions, args, context) => {
-  
+
       const orderArgs = args.order || '';
       const orderBy = [];
-  
-      if(orderArgs != ""){
+
+      if (orderArgs != "") {
         const orderByClauses = orderArgs.split(',');
         orderByClauses.forEach((clause) => {
-          if(clause.indexOf('reverse:') === 0){
+          if (clause.indexOf('reverse:') === 0) {
             orderBy.push([clause.substring(8), 'DESC']);
-          }else{
+          } else {
             orderBy.push([clause, 'ASC']);
           }
         });
-  
+
         findOptions.order = orderBy;
       }
-  
+
       findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : _model.options.paranoid;
       return findOptions;
     };
-  
-    const scope = Array.isArray(_model.graphql.scopes) ? { method: [_model.graphql.scopes[0], _.get(args, _model.graphql.scopes[1], _model.graphql.scopes[2] || null)] } : _model.graphql.scopes;
-  
+
+    const scope = Array.isArray(_model.graphql.scopes) ? {
+      method: [_model.graphql.scopes[0], _.get(args, _model.graphql.scopes[1], _model.graphql.scopes[2] || null)]
+    } : _model.graphql.scopes;
+
     var data;
     if (field) {
       const modelNode = source.node[_model.name];
@@ -261,24 +274,26 @@ const queryResolver = (model, isAssoc = false, field = null) => {
 
     // little trick to pass args 
     // on source params for connection fields
-    data.__args=args;
-    data.__parent=source;
-  
-    if(_model.graphql.extend.hasOwnProperty(type)){
+    if (data) {
+      data.__args = args;
+      data.__parent = source;
+    }
+
+    if (_model.graphql.extend.hasOwnProperty(type)) {
       return _model.graphql.extend[type](data, source, args, context, info);
     }
-  
+
     return data;
-  
+
   };
 }
 
 const mutationResolver = async (model, inputTypeName, source, args, context, info, type, where, isBulk) => {
   if (args.where)
-    whereQueryVarsToValues(args.where,info.variableValues);
+    whereQueryVarsToValues(args.where, info.variableValues);
 
   if (where)
-    whereQueryVarsToValues(where,info.variableValues);
+    whereQueryVarsToValues(where, info.variableValues);
 
   await options.authorizer(source, args, context, info);
 
@@ -312,7 +327,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
     let res;
     if (opType == "add" || opType == "set") {
-      let _op, _name ;
+      let _op, _name;
       if (_source.through && _source.through.model) {
         delete _args[name][_source.target.name];
         delete _args[name][_source.foreignIdentifierField];
@@ -345,7 +360,8 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
       if (opType != "create" && opType != "destroy")
         return await finalize(await _model.findOne({
-          where, transaction
+          where,
+          transaction
         }))
 
       return await finalize(res);
@@ -435,7 +451,9 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
             }
           } else {
             let _op = "set" + _name;
-            await _sourceInst[_op]([],{transaction});
+            await _sourceInst[_op]([], {
+              transaction
+            });
           }
         }
 
@@ -478,30 +496,32 @@ function fixIds(
   source,
   isUpdate
 ) {
-  const newId= (modelName, allowNull = false)=> {return {
+  const newId = (modelName, allowNull = false) => {
+    return {
       name: 'id',
       description: `The ID for ${modelName}`,
       type: allowNull ? GraphQLInt : new GraphQLNonNull(GraphQLInt)
-  }}
+    }
+  }
 
   // Fix Relay ID
   const rawAttributes = model.rawAttributes;
   _.each(Object.keys(rawAttributes), (key) => {
-      if (key === "clientMutationId") {
-          return;
-      }
-      // Check if reference attribute
-      const attr = rawAttributes[key];
-      if (!attr) {
-          return;
-      }
-      if (attr.references) {
-          const modelName = attr.references.model;
-          fields[key] = newId(modelName, isUpdate || (assoc || attr.allowNull));
-      } else if (attr.autoIncrement) {
-          // Make autoIncrement fields optional (allowNull=True)
-          fields[key] = newId(model.name, true);
-      }
+    if (key === "clientMutationId") {
+      return;
+    }
+    // Check if reference attribute
+    const attr = rawAttributes[key];
+    if (!attr) {
+      return;
+    }
+    if (attr.references) {
+      const modelName = attr.references.model;
+      fields[key] = newId(modelName, isUpdate || (assoc || attr.allowNull));
+    } else if (attr.autoIncrement) {
+      // Make autoIncrement fields optional (allowNull=True)
+      fields[key] = newId(model.name, true);
+    }
   });
 }
 
@@ -512,7 +532,11 @@ const sanitizeFieldName = (type) => {
   type = type.replace(']', '');
   type = type.replace('!', '');
 
-  return { type, isArray, isRequired };
+  return {
+    type,
+    isArray,
+    isRequired
+  };
 };
 
 const generateGraphQLField = (type) => {
@@ -522,24 +546,26 @@ const generateGraphQLField = (type) => {
   let field = getTypeByString(typeReference.type);
 
   if (!field)
-    field=GraphQLString;
+    field = GraphQLString;
 
-  if(typeReference.isArray){
+  if (typeReference.isArray) {
     field = new GraphQLList(field);
   }
 
-  if(typeReference.isRequired){
+  if (typeReference.isRequired) {
     field = GraphQLNonNull(field);
   }
 
-  return { type: field };
+  return {
+    type: field
+  };
 };
 
-const toGraphQLType = function(name, schema){
+const toGraphQLType = function (name, schema) {
 
   let fields = {};
 
-  for(const field in schema){
+  for (const field in schema) {
     fields[field] = generateGraphQLField(schema[field]);
   }
 
@@ -550,19 +576,19 @@ const toGraphQLType = function(name, schema){
 
 };
 
-const generateTypesFromObject = function(remoteData){
+const generateTypesFromObject = function (remoteData) {
 
   const types = {};
   let queries = [];
 
   remoteData.forEach((item) => {
 
-    for(const type in item.types){
+    for (const type in item.types) {
       types[type] = toGraphQLType(type, item.types[type]);
     }
     item.queries.forEach((query) => {
       let args = {};
-      for(const arg in query.args){
+      for (const arg in query.args) {
         args[arg] = generateGraphQLField(query.args[arg]);
       }
       query.args = args;
@@ -570,26 +596,29 @@ const generateTypesFromObject = function(remoteData){
     queries = queries.concat(item.queries);
   });
 
-  return { types, queries };
+  return {
+    types,
+    queries
+  };
 
 };
 
 /**
-* Returns the association fields of an entity.
-*
-* It iterates over all the associations and produces an object compatible with GraphQL-js.
-* BelongsToMany and HasMany associations are represented as a `GraphQLList` whereas a BelongTo
-* is simply an instance of a type.
-* @param {*} associations A collection of sequelize associations
-* @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
-*/
+ * Returns the association fields of an entity.
+ *
+ * It iterates over all the associations and produces an object compatible with GraphQL-js.
+ * BelongsToMany and HasMany associations are represented as a `GraphQLList` whereas a BelongTo
+ * is simply an instance of a type.
+ * @param {*} associations A collection of sequelize associations
+ * @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
+ */
 const generateAssociationFields = (model, associations, types, cache, isInput = false, isUpdate = false, assoc = null, source = null) => {
   let fields = {}
 
-  const buildAssoc=(assocModel, relation, associationType, associationName, foreign = false)=>{
+  const buildAssoc = (assocModel, relation, associationType, associationName, foreign = false) => {
     if (!types[assocModel.name]) {
       //if (assocModel != source) { // avoid circular loop
-        types[assocModel.name] = generateGraphQLType(assocModel, types, cache, isInput, isUpdate, assocModel, source)
+      types[assocModel.name] = generateGraphQLType(assocModel, types, cache, isInput, isUpdate, assocModel, source)
       //} else 
       //  return fields;
     }
@@ -611,7 +640,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
       if (associationType === "BelongsToMany") {
         const aModel = relation.through.model;
         if (!aModel.graphql)
-          aModel.graphql=defaultModelGraphqlOptions;
+          aModel.graphql = defaultModelGraphqlOptions;
         // if n:m join table, we have to create the connection input type for it
         const _name = getTypeName(aModel, isInput, false, true);
         if (!types[_name]) {
@@ -625,11 +654,11 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
       if (!relation.isRemote) {
         // 1:1 doesn't need connectionFields
         if (["BelongsTo", "HasOne"].indexOf(associationType) < 0) {
-          var edgeFields={}
+          var edgeFields = {}
           if (associationType === "BelongsToMany") {
             const aModel = relation.through.model;
             if (!aModel.graphql)
-              aModel.graphql=defaultModelGraphqlOptions;
+              aModel.graphql = defaultModelGraphqlOptions;
 
             var exclude = aModel.graphql.attributes.exclude;
             exclude = Array.isArray(exclude) ? exclude : exclude["fetch"];
@@ -669,7 +698,9 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
                   let _args = argsToFindOptions.default(source.__args);
                   let where = _args["where"];
                   let suffix = assocSuffix(assocModel, ["BelongsTo", "HasOne"].indexOf(associationType) < 0);
-                  return source.__parent["count"+suffix]({ where })
+                  return source.__parent["count" + suffix]({
+                    where
+                  })
                 }
               }
             },
@@ -698,27 +729,29 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
   }
 
   for (let associationName in associations) {
-      const relation=associations[associationName]
-      res=buildAssoc(relation.target, relation, relation.associationType, associationName)
-      if (res)
-        return res;
+    const relation = associations[associationName]
+    res = buildAssoc(relation.target, relation, relation.associationType, associationName)
+    if (res)
+      return res;
   }
 
   //Discovers hidden relations that are implicit created
   // (for example for join table in n:m case)
   const rawAttributes = model.rawAttributes;
   for (let key in rawAttributes) {
-      if (key === "clientMutationId") {
-          return;
-      }
+    if (key === "clientMutationId") {
+      return;
+    }
 
-      const attr = rawAttributes[key];
-      if (attr && attr.references) {
-          const modelName = attr.references.model;
-          const assocModel = model.sequelize.modelManager.getModel(modelName, {attribute: "tableName"});
-          const reference = model.associations[assocModel.name] ? model.associations[assocModel.name] : assocModel;
-          buildAssoc(assocModel, reference, "BelongsTo", reference.name, true);
-      }
+    const attr = rawAttributes[key];
+    if (attr && attr.references) {
+      const modelName = attr.references.model;
+      const assocModel = model.sequelize.modelManager.getModel(modelName, {
+        attribute: "tableName"
+      });
+      const reference = model.associations[assocModel.name] ? model.associations[assocModel.name] : assocModel;
+      buildAssoc(assocModel, reference, "BelongsTo", reference.name, true);
+    }
   }
 
   return fields;
@@ -726,14 +759,16 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
 
 const generateIncludeAttributes = (model, types, isInput = false) => {
   let includeAttributes = {};
-  if(model.graphql.attributes.include){
-    for(let attribute in model.graphql.attributes.include){
+  if (model.graphql.attributes.include) {
+    for (let attribute in model.graphql.attributes.include) {
       var type = null;
-      var typeName=model.graphql.attributes.include[attribute]+(isInput ? "Input" : "");
+      var typeName = model.graphql.attributes.include[attribute] + (isInput ? "Input" : "");
       if (types && types[typeName]) {
-        type = { type: types[typeName] };
+        type = {
+          type: types[typeName]
+        };
       }
-      
+
       if (!type && model.graphql.types && model.graphql.types[typeName]) {
         type = generateGraphQLField(model.graphql.types[typeName]);
       }
@@ -752,17 +787,17 @@ const generateGraphQLFields = (model, types, cache, isInput = false, isUpdate = 
   var only = model.graphql.attributes.only;
   only = Array.isArray(only) ? only : only[!isInput ? "fetch" : isUpdate ? "update" : "create"];
 
-  var fields=Object.assign(
-    attributeFields(model, Object.assign({}, { 
+  var fields = Object.assign(
+    attributeFields(model, Object.assign({}, {
       exclude,
-      only, 
+      only,
       allowNull: !isInput || isUpdate,
       checkDefaults: isInput,
       commentToDescription: true,
-      cache 
+      cache
     })),
     generateAssociationFields(model, model.associations, types, cache, isInput, isUpdate, assoc, source),
-    generateIncludeAttributes(model,types,isInput)
+    generateIncludeAttributes(model, types, isInput)
   );
 
   if (assoc && ((model.name == assoc.name && model.associations[assoc.name]) || model.name != assoc.name)) {
@@ -790,13 +825,13 @@ const generateGraphQLFields = (model, types, cache, isInput = false, isUpdate = 
 }
 
 /**
-* Returns a new `GraphQLObjectType` created from a sequelize model.
-*
-* It creates a `GraphQLObjectType` object with a name and fields. The
-* fields are generated from its sequelize associations.
-* @param {*} model The sequelize model used to create the `GraphQLObjectType`
-* @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
-*/
+ * Returns a new `GraphQLObjectType` created from a sequelize model.
+ *
+ * It creates a `GraphQLObjectType` object with a name and fields. The
+ * fields are generated from its sequelize associations.
+ * @param {*} model The sequelize model used to create the `GraphQLObjectType`
+ * @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
+ */
 const generateGraphQLType = (model, types, cache, isInput = false, isUpdate = false, assoc = null, source = null) => {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
 
@@ -804,7 +839,7 @@ const generateGraphQLType = (model, types, cache, isInput = false, isUpdate = fa
     return generateGraphQLFields(model, types, cache, isInput, isUpdate, assoc, source);
   }
 
-  var fields=assoc ? thunk : thunk()
+  var fields = assoc ? thunk : thunk()
 
   let name = getTypeName(model, isInput, isUpdate, assoc);
   // can be already created by generateGraphQLFields recursion
@@ -825,38 +860,40 @@ const getCustomType = (model, type, customTypes, isInput, ignoreInputCheck = fal
     return generateGraphQLField(model.graphql.types[type]);
   }
 
-  for(let field in model.graphql.types[type]){
+  for (let field in model.graphql.types[type]) {
 
     const fieldReference = sanitizeFieldName(model.graphql.types[type][field]);
 
-    if(customTypes[fieldReference.type] !== undefined || model.graphql.types[fieldReference.type] != undefined){
+    if (customTypes[fieldReference.type] !== undefined || model.graphql.types[fieldReference.type] != undefined) {
       let customField = customTypes[fieldReference.type] || getCustomType(model, fieldReference.type, customTypes, isInput, true);
 
-      if(fieldReference.isArray){
+      if (fieldReference.isArray) {
         customField = new GraphQLList(customField);
       }
 
-      if(fieldReference.isRequired){
+      if (fieldReference.isRequired) {
         customField = GraphQLNonNull(customField);
       }
 
-      fields[fieldReference.type] = { type: customField };
+      fields[fieldReference.type] = {
+        type: customField
+      };
 
-    }else{
+    } else {
       fields[field] = generateGraphQLField(model.graphql.types[type][field]);
     }
 
   }
 
-  if(isInput && !ignoreInputCheck){
-    if(type.toUpperCase().endsWith('INPUT')){
+  if (isInput && !ignoreInputCheck) {
+    if (type.toUpperCase().endsWith('INPUT')) {
       return new GraphQLInputObjectType({
         name: type,
         fields: () => fields
       });
     }
-  }else{
-    if(!type.toUpperCase().endsWith('INPUT')){
+  } else {
+    if (!type.toUpperCase().endsWith('INPUT')) {
       return new GraphQLObjectType({
         name: type,
         fields: () => fields
@@ -869,9 +906,9 @@ const getCustomType = (model, type, customTypes, isInput, ignoreInputCheck = fal
 const generateCustomGraphQLTypes = (model, types, isInput = false) => {
   const customTypes = {};
 
-  if(model.graphql && model.graphql.types){
+  if (model.graphql && model.graphql.types) {
 
-    for(let type in model.graphql.types){
+    for (let type in model.graphql.types) {
       if (typeof model.graphql.types[type] !== "string")
         customTypes[type] = getCustomType(model, type, customTypes, isInput);
     }
@@ -882,12 +919,12 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
 };
 
 /**
-* Returns a collection of `GraphQLObjectType` generated from Sequelize models.
-*
-* It creates an object whose properties are `GraphQLObjectType` created
-* from Sequelize models.
-* @param {*} models The sequelize models used to create the types
-*/
+ * Returns a collection of `GraphQLObjectType` generated from Sequelize models.
+ *
+ * It creates an object whose properties are `GraphQLObjectType` created
+ * from Sequelize models.
+ * @param {*} models The sequelize models used to create the types
+ */
 // This function is exported
 const generateModelTypes = (models, remoteTypes) => {
   let outputTypes = remoteTypes || {};
@@ -899,21 +936,25 @@ const generateModelTypes = (models, remoteTypes) => {
     if (models[modelName].hasOwnProperty('name') && modelName !== 'Sequelize') {
       outputTypes = Object.assign(outputTypes, generateCustomGraphQLTypes(models[modelName], null, false));
       inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
-      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes,  cache, false, false, null, models[modelName]);
+      outputTypes[modelName] = generateGraphQLType(models[modelName], outputTypes, cache, false, false, null, models[modelName]);
       inputTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, cache, true, false, null, models[modelName]);
       inputUpdateTypes[modelName] = generateGraphQLType(models[modelName], inputTypes, cache, true, true, null, models[modelName]);
     }
   }
 
-  return { outputTypes, inputTypes, inputUpdateTypes };
+  return {
+    outputTypes,
+    inputTypes,
+    inputUpdateTypes
+  };
 };
 
 const generateModelTypesFromRemote = (context) => {
-  if(options.remote){
+  if (options.remote) {
 
     let promises = [];
 
-    for(let opt in options.remote.import){
+    for (let opt in options.remote.import) {
 
       options.remote.import[opt].headers = options.remote.import[opt].headers || options.remote.headers;
       promises.push(remoteSchema(options.remote.import[opt], context));
@@ -922,24 +963,24 @@ const generateModelTypesFromRemote = (context) => {
 
     return Promise.all(promises);
 
-  }else{
+  } else {
     return Promise.resolve(null);
   }
 };
 
 /**
-* Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
-*
-* It creates an object whose properties are `GraphQLObjectType` created
-* from Sequelize models.
-* @param {*} models The sequelize models used to create the root `GraphQLSchema`
-*/
+ * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
+ *
+ * It creates an object whose properties are `GraphQLObjectType` created
+ * from Sequelize models.
+ * @param {*} models The sequelize models used to create the root `GraphQLSchema`
+ */
 const generateQueryRootType = (models, outputTypes, inputTypes) => {
 
   let createQueriesFor = {};
 
-  for(let outputTypeName in outputTypes){
-    if(models[outputTypeName]){
+  for (let outputTypeName in outputTypes) {
+    if (models[outputTypeName]) {
       createQueriesFor[outputTypeName] = outputTypes[outputTypeName];
     }
   }
@@ -971,11 +1012,15 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
         }
       };
 
-      const paranoidType = models[modelType.name].options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
+      const paranoidType = models[modelType.name].options.paranoid ? {
+        paranoid: {
+          type: GraphQLBoolean
+        }
+      } : {};
 
       const aliases = models[modelType.name].graphql.alias;
 
-      if(models[modelType.name].graphql.excludeQueries.indexOf('query') === -1){
+      if (models[modelType.name].graphql.excludeQueries.indexOf('query') === -1) {
         queries[camelCase(aliases.fetch || (modelType.name + 'Get'))] = {
           type: new GraphQLList(modelType),
           args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
@@ -983,27 +1028,31 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
         }
       };
 
-      if(models[modelTypeName].graphql && models[modelTypeName].graphql.queries){
+      if (models[modelTypeName].graphql && models[modelTypeName].graphql.queries) {
 
-        for(let query in models[modelTypeName].graphql.queries){
+        for (let query in models[modelTypeName].graphql.queries) {
 
           let outPutType = (queries[camelCase(query)] && queries[camelCase(query)].type) || GraphQLInt;
           let description = models[modelTypeName].graphql.queries[query].description || (queries[camelCase(query)] && queries[camelCase(query)].description) || null;
           let typeName = models[modelTypeName].graphql.queries[query].output;
 
-          if(typeName){
+          if (typeName) {
             const typeReference = sanitizeFieldName(typeName);
 
             let field = getTypeByString(typeReference.type);
 
-            if(typeReference.isArray){
+            if (typeReference.isArray) {
               outPutType = new GraphQLList(field || outputTypes[typeReference.type]);
-            }else{
+            } else {
               outPutType = field || outputTypes[typeReference.type];
             }
           }
 
-          const inputArg = models[modelTypeName].graphql.queries[query].input ? { [models[modelTypeName].graphql.queries[query].input]: { type: inputTypes[models[modelTypeName].graphql.queries[query].input] } } : {};
+          const inputArg = models[modelTypeName].graphql.queries[query].input ? {
+            [models[modelTypeName].graphql.queries[query].input]: {
+              type: inputTypes[models[modelTypeName].graphql.queries[query].input]
+            }
+          } : {};
 
           queries[camelCase(query)] = {
             type: outPutType,
@@ -1021,7 +1070,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
 
       return Object.assign(fields, queries);
 
-    }, { })
+    }, {})
   });
 };
 
@@ -1029,8 +1078,8 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
 
   let createMutationFor = {};
 
-  for(let inputTypeName in inputTypes){
-    if(models[inputTypeName]){
+  for (let inputTypeName in inputTypes) {
+    if (models[inputTypeName]) {
       createMutationFor[inputTypeName] = inputTypes[inputTypeName];
     }
   }
@@ -1052,83 +1101,114 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         }
       };
 
-      if(models[inputTypeName].graphql.excludeMutations.indexOf('create') === -1){
+      if (models[inputTypeName].graphql.excludeMutations.indexOf('create') === -1) {
         mutations[camelCase(aliases.create || (inputTypeName + 'Add'))] = {
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create a ' + inputTypeName,
-          args: Object.assign({ [inputTypeName]: { type: inputType } }, includeArguments(), defaultMutationArgs()),
+          args: Object.assign({
+            [inputTypeName]: {
+              type: inputType
+            }
+          }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create')
         };
       }
 
-      if(models[inputTypeName].graphql.excludeMutations.indexOf('update') === -1){
+      if (models[inputTypeName].graphql.excludeMutations.indexOf('update') === -1) {
         mutations[camelCase(aliases.update || (inputTypeName + 'Edit'))] = {
           type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'Update a ' + inputTypeName,
           args: Object.assign({
             where: defaultListArgs().where,
-            [key]: { type: new GraphQLNonNull(GraphQLInt)},
-            [inputTypeName]: { type: inputUpdateType } 
+            [key]: {
+              type: new GraphQLNonNull(GraphQLInt)
+            },
+            [inputTypeName]: {
+              type: inputUpdateType
+            }
           }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
-            const where = { ...args["where"], [key]: args[key] };
+            const where = {
+              ...args["where"],
+              [key]: args[key]
+            };
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', where)
-            .then(boolean => {
-              // `boolean` equals the number of rows affected (0 or 1)
-              return resolver(models[inputTypeName], {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, where, context, info);
-            });
+              .then(boolean => {
+                // `boolean` equals the number of rows affected (0 or 1)
+                return resolver(models[inputTypeName], {
+                  [EXPECTED_OPTIONS_KEY]: dataloaderContext
+                })(source, where, context, info);
+              });
           }
         };
       }
 
-      if(models[inputTypeName].graphql.excludeMutations.indexOf('destroy') === -1){
+      if (models[inputTypeName].graphql.excludeMutations.indexOf('destroy') === -1) {
         mutations[camelCase(aliases.destroy || (inputTypeName + 'Delete'))] = {
           type: GraphQLInt,
           description: 'Delete a ' + inputTypeName,
-          args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) }, where: defaultListArgs().where }, includeArguments(), defaultMutationArgs()),
+          args: Object.assign({
+            [key]: {
+              type: new GraphQLNonNull(GraphQLInt)
+            },
+            where: defaultListArgs().where
+          }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
-            const where = { ...args["where"], [key]: args[key] };
+            const where = {
+              ...args["where"],
+              [key]: args[key]
+            };
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'destroy', where);
           }
         };
       }
 
-      if(models[inputTypeName].graphql.bulk.indexOf('create') > -1){
+      if (models[inputTypeName].graphql.bulk.indexOf('create') > -1) {
         mutations[camelCase(aliases.create || (inputTypeName + 'AddBulk'))] = {
           type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create bulk ' + inputTypeName + ' and return number of rows created.',
-          args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments(), defaultMutationArgs()),
+          args: Object.assign({
+            [inputTypeName]: {
+              type: new GraphQLList(inputType)
+            }
+          }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, true)
         };
       }
 
-      if(models[inputTypeName].graphql && models[inputTypeName].graphql.mutations){
+      if (models[inputTypeName].graphql && models[inputTypeName].graphql.mutations) {
 
-        for(let mutation in models[inputTypeName].graphql.mutations){
+        for (let mutation in models[inputTypeName].graphql.mutations) {
 
           let isArray = false;
           let outPutType = GraphQLInt;
           let typeName = models[inputTypeName].graphql.mutations[mutation].output;
 
-          if(typeName){
-            if(typeName.startsWith('[')){
+          if (typeName) {
+            if (typeName.startsWith('[')) {
               typeName = typeName.replace('[', '');
               typeName = typeName.replace(']', '');
               isArray = true;
             }
 
-            if(isArray){
+            if (isArray) {
               outPutType = new GraphQLList(outputTypes[typeName]);
-            }else{
+            } else {
               outPutType = outputTypes[typeName];
             }
           }
 
           mutations[camelCase(mutation)] = {
             type: outPutType,
-            args: Object.assign({ [models[inputTypeName].graphql.mutations[mutation].input]: { type: inputTypes[models[inputTypeName].graphql.mutations[mutation].input] } }, includeArguments()),
+            args: Object.assign({
+              [models[inputTypeName].graphql.mutations[mutation].input]: {
+                type: inputTypes[models[inputTypeName].graphql.mutations[mutation].input]
+              }
+            }, includeArguments()),
             resolve: (source, args, context, info) => {
-              const where = key && args[inputTypeName] ? { [key]: args[inputTypeName][key] } : { };
+              const where = key && args[inputTypeName] ? {
+                [key]: args[inputTypeName][key]
+              } : {};
               return options.authorizer(source, args, context, info).then(_ => {
                 return models[inputTypeName].graphql.mutations[mutation].resolver(source, args, context, info, where);
               }).then(data => {
@@ -1144,7 +1224,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
 
       return toReturn;
 
-    }, { })
+    }, {})
   });
 };
 
@@ -1153,39 +1233,41 @@ const generateSchema = (models, types, context) => {
 
   Models = models;
 
-  if(options.dataloader) dataloaderContext = createContext(models.sequelize);
+  if (options.dataloader) dataloaderContext = createContext(models.sequelize);
 
   let availableModels = {};
-  for (let modelName in models){
+  for (let modelName in models) {
     models[modelName].graphql = models[modelName].graphql || defaultModelGraphqlOptions;
     models[modelName].graphql.attributes = Object.assign({}, defaultModelGraphqlOptions.attributes, models[modelName].graphql.attributes);
     models[modelName].graphql = Object.assign({}, defaultModelGraphqlOptions, models[modelName].graphql || {});
-    if(options.exclude.indexOf(modelName) === -1){
+    if (options.exclude.indexOf(modelName) === -1) {
       availableModels[modelName] = models[modelName];
     }
   }
 
-  if(options.remote && options.remote.import){
+  if (options.remote && options.remote.import) {
 
     return generateModelTypesFromRemote(context).then((result) => {
 
       const remoteSchema = generateTypesFromObject(result);
 
-      for(const modelName in availableModels){
-        if(availableModels[modelName].graphql.import){
+      for (const modelName in availableModels) {
+        if (availableModels[modelName].graphql.import) {
 
           availableModels[modelName].graphql.import.forEach((association) => {
 
-            for(let index = 0; index < remoteSchema.queries.length; index ++){
-                if(remoteSchema.queries[index].output === association.from){
-                    availableModels[modelName].associations[(association.as || association.from)] = {
-                      associationType: remoteSchema.queries[index].isList ? 'HasMany' : 'BelongsTo',
-                      isRemote: true,
-                      target: { name: association.from },
-                      query: Object.assign({}, association, remoteSchema.queries[index])
-                    };
-                    break;
-                }
+            for (let index = 0; index < remoteSchema.queries.length; index++) {
+              if (remoteSchema.queries[index].output === association.from) {
+                availableModels[modelName].associations[(association.as || association.from)] = {
+                  associationType: remoteSchema.queries[index].isList ? 'HasMany' : 'BelongsTo',
+                  isRemote: true,
+                  target: {
+                    name: association.from
+                  },
+                  query: Object.assign({}, association, remoteSchema.queries[index])
+                };
+                break;
+              }
             }
 
           });
@@ -1205,7 +1287,7 @@ const generateSchema = (models, types, context) => {
 
     });
 
-  }else{
+  } else {
 
     const modelTypes = types || generateModelTypes(availableModels);
 
