@@ -103,11 +103,11 @@ const whereQueryVarsToValues = (o, vals) => {
 }
 
 const getTypeByString = (type) => {
-  type = type.toLowerCase();
+  lType = type.toLowerCase();
 
-  return type === 'int' ? GraphQLInt 
-            : type === 'boolean' ? GraphQLBoolean 
-            : type === 'string' ? GraphQLString
+  return lType === 'int' ? GraphQLInt 
+            : lType === 'boolean' ? GraphQLBoolean 
+            : lType === 'string' ? GraphQLString
             : options.customTypes[type] ? options.customTypes[type] 
             : null;
 }
