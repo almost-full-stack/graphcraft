@@ -695,9 +695,12 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
                 type: new GraphQLNonNull(GraphQLInt),
                 description: `Total count of ${assocModel.name} results associated with ${model.name} without limits applied.`,
                 resolve: (source, args, context, info) => {
+                  if (!source.__parent)
+                    return 0;
+
                   let _args = argsToFindOptions.default(source.__args);
                   let where = _args["where"];
-                  let suffix = assocSuffix(assocModel, ["BelongsTo", "HasOne"].indexOf(associationType) < 0);
+                  let suffix = assocSuffix(assocModel, ["BelongsTo", "HasOne"].indexOf(associationType) < 0, associationName);
                   return source.__parent["count" + suffix]({
                     where
                   })
