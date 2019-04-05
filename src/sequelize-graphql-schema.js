@@ -772,7 +772,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
 
       const reference = model.associations[assocModel.name];
 
-      buildAssoc(assocModel, reference, "BelongsTo", reference.name, true);
+      buildAssoc(assocModel, reference, "BelongsTo", reference.name || reference.as, true);
     }
   }
 
