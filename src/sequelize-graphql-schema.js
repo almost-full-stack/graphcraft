@@ -749,7 +749,29 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
       const assocModel = model.sequelize.modelManager.getModel(modelName, {
         attribute: "tableName"
       });
-      const reference = model.associations[assocModel.name] ? model.associations[assocModel.name] : assocModel;
+
+      // TODO: improve it or ask sequelize community to fix it
+      // ISSUE: belongsToMany  
+      // when you have to create the association resolvers for
+      // a model used as "through" for n:m relation
+      // our library cannot find the correct information
+      // since the association from "through" table to the target
+      // is not created by Sequelize. So we've to create it here
+      // to allow graphql-sequelize understand how to build the query.
+      // example of the issue:
+      // tableA belongsToMany tableB (through tableC)
+      // tableC doesn't belongsTo tableB and tableA
+      // so graphql-sequelize resolver is not able to understand how to
+      // build the query.
+      // HACK-FIX(?):
+      if (!model.associations[assocModel.name] ) {
+        model.belongsTo(assocModel, {
+          foreignKey: attr.field
+        });
+      }
+
+      const reference = model.associations[assocModel.name];
+
       buildAssoc(assocModel, reference, "BelongsTo", reference.name, true);
     }
   }
