@@ -17,6 +17,7 @@ const {
 
 const Sequelize = require('sequelize')
 
+require("./jsdoc.def")
 const attributeFields = require('./graphql-sequelize/attributeFields')
 
 const {
@@ -55,6 +56,7 @@ let options = {
   }
 };
 
+/** @type {SeqGraphQL} */
 const defaultModelGraphqlOptions = {
   attributes: {
     exclude: { // list attributes which are to be ignored in Model Input (exclusive filter)
