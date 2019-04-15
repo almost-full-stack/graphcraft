@@ -460,7 +460,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
         }
 
         for (let p in _args[name]) {
-          obj = _args[name][p];
+          let obj = _args[name][p];
           let newInst = await processAssoc(aModel, name, obj, true);
           if (newInst) {
             _data[name].push(newInst);
@@ -735,7 +735,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
 
   for (let associationName in associations) {
     const relation = associations[associationName]
-    res = buildAssoc(relation.target, relation, relation.associationType, associationName)
+    let res = buildAssoc(relation.target, relation, relation.associationType, associationName)
     if (res)
       return res;
   }
