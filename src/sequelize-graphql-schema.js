@@ -33,6 +33,7 @@ let options = {
   remote: { },
   dataloader: false,
   transactionedMutations: true,
+  privateMode: false,
   logger(){
     return Promise.resolve();
   },
@@ -255,6 +256,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
   if(options.transactionedMutations){
 
     return Models.sequelize.transaction((transaction) => {
+      context.transaction = transaction;
       return resolveMutation();
     });
 
@@ -574,7 +576,6 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           resolve: () => 1
         }
       };
-
       const paranoidType = models[modelType.name].options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
 
       const aliases = models[modelType.name].graphql.alias;
