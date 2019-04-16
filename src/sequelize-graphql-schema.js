@@ -49,6 +49,7 @@ let options = {
   dataloader: false,
   customTypes: [],
   transactionedMutations: true,
+  privateMode: false,
   logger(){
     return Promise.resolve();
   },
@@ -584,6 +585,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
 
   if (args["transaction"]) {
     data = await Models.sequelize.transaction(async (transaction) => {
+      context.transaction = transaction;
       return operation(operationType, model, source, args, inputTypeName, null, null, transaction);
     });
   } else {
@@ -1244,12 +1246,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           description: `A count of the total number of objects in this connection, ignoring pagination.`
         }
       };
-
-      const paranoidType = models[modelType.name].options.paranoid ? {
-        paranoid: {
-          type: GraphQLBoolean
-        }
-      } : {};
+      const paranoidType = models[modelType.name].options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
 
       const aliases = models[modelType.name].graphql.alias;
 
