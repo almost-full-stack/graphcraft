@@ -862,12 +862,18 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
 };
 
 // This function is exported
-var generateSchema = function generateSchema(models, types, context) {
+var generateSchema = function generateSchema(models, types, context, Sequelize) {
 
   Models = models;
+  Sequelize = models.Sequelize || Sequelize;
 
   if (options.dataloader) dataloaderContext = createContext(models.sequelize);
-  Models.Sequelize.useCLS(sequelizeNamespace);
+  if (Sequelize) {
+    Sequelize.useCLS(sequelizeNamespace);
+  } else {
+    console.warn('Sequelize not found at Models.Sequelize or not passed as argument. Automatic tranasctions for mutations are disabled.');
+    options.transactionedMutations = false;
+  }
 
   var availableModels = {};
   for (var modelName in models) {

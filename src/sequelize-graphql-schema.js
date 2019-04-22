@@ -811,12 +811,18 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
 };
 
 // This function is exported
-const generateSchema = (models, types, context) => {
+const generateSchema = (models, types, context, Sequelize) => {
 
   Models = models;
+  Sequelize = models.Sequelize || Sequelize;
 
   if(options.dataloader) dataloaderContext = createContext(models.sequelize);
-  Models.Sequelize.useCLS(sequelizeNamespace);
+  if(Sequelize){
+    Sequelize.useCLS(sequelizeNamespace);
+  }else{
+    console.warn('Sequelize not found at Models.Sequelize or not passed as argument. Automatic tranasctions for mutations are disabled.');
+    options.transactionedMutations = false;
+  }
 
   let availableModels = {};
   for (let modelName in models){
