@@ -32,6 +32,8 @@ let options = {
   includeArguments: { },
   remote: { },
   dataloader: false,
+  transactionedMutations: true,
+  privateMode: false,
   logger(){
     return Promise.resolve();
   },
@@ -193,7 +195,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
     return model.graphql.overwrite[type](source, args, context, info, where);
   }
 
-  return Models.sequelize.transaction(async (transaction) => {
+  const resolveMutation = async () => {
 
     await execBefore(model, source, args, context, info, type, where);
 
@@ -203,12 +205,15 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
     if(isBulk && type === 'update'){
 
-      const key = model.primaryKeyAttributes[0];
+      const keys = model.primaryKeyAttributes;
       const updatePromises = [];
 
       args[inputTypeName].forEach((input) => {
         updatePromises.push(
-          model.update(input, {where: {[key]: input[key]}})
+          model.update(input, {where: keys.reduce((all, key) => {
+            all[key] = input[key];
+            return all;
+          }, {})})
         );
       });
 
@@ -242,9 +247,22 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
     if(operationType === 'bulkCreate' && isBulk === true) return data.length;
 
+    await options.logger(data, source, args, context, info);
+
     return data;
 
-  });
+  };
+
+  if(options.transactionedMutations){
+
+    return Models.sequelize.transaction((transaction) => {
+      context.transaction = transaction;
+      return resolveMutation();
+    });
+
+  }else{
+    return resolveMutation();
+  }
 
 };
 
@@ -354,7 +372,6 @@ const generateAssociationFields = (associations, types, isInput = false) => {
       fields[associationName].resolve = async (source, args, context, info) => {
 
         await execBefore(relation.target, source, args, context, info, 'fetch');
-
         const data = await resolver(relation, {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, args, context, info);
 
         if(relation.target.graphql.extend.fetch && data.length){
@@ -559,7 +576,6 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           resolve: () => 1
         }
       };
-
       const paranoidType = models[modelType.name].options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
 
       const aliases = models[modelType.name].graphql.alias;
@@ -777,8 +793,8 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
               const where = key && args[inputTypeName] ? { [key]: args[inputTypeName][key] } : { };
               return options.authorizer(source, args, context, info).then(_ => {
                 return models[inputTypeName].graphql.mutations[mutation].resolver(source, args, context, info, where);
-              }).then(data => {
-                return data;
+              }).then((data) => {
+                return options.logger(data, source, args, context, info).then(() => data);
               });
             }
           };
@@ -795,12 +811,18 @@ const generateMutationRootType = (models, inputTypes, outputTypes) => {
 };
 
 // This function is exported
-const generateSchema = (models, types, context) => {
+const generateSchema = (models, types, context, Sequelize) => {
 
   Models = models;
+  Sequelize = models.Sequelize || Sequelize;
 
   if(options.dataloader) dataloaderContext = createContext(models.sequelize);
-  Models.Sequelize.useCLS(sequelizeNamespace);
+  if(Sequelize){
+    Sequelize.useCLS(sequelizeNamespace);
+  }else{
+    console.warn('Sequelize not found at Models.Sequelize or not passed as argument. Automatic tranasctions for mutations are disabled.');
+    options.transactionedMutations = false;
+  }
 
   let availableModels = {};
   for (let modelName in models){

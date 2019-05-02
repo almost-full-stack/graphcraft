@@ -3,10 +3,7 @@
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _invoke(body, then) {
-  var result = body();
-
-  if (result && result.then) {
-
+  var result = body();if (result && result.then) {
     return result.then(then);
   }return then(result);
 }function _invokeIgnored(body) {
@@ -14,7 +11,6 @@ function _invoke(body, then) {
     return result.then(_empty);
   }
 }function _empty() {}
-
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 function _async(f) {
@@ -22,7 +18,6 @@ function _async(f) {
     for (var args = [], i = 0; i < arguments.length; i++) {
       args[i] = arguments[i];
     }try {
-
       return Promise.resolve(f.apply(this, args));
     } catch (e) {
       return Promise.reject(e);
@@ -75,6 +70,8 @@ var options = {
   includeArguments: {},
   remote: {},
   dataloader: false,
+  transactionedMutations: true,
+  privateMode: false,
   logger: function logger() {
     return Promise.resolve();
   },
@@ -115,7 +112,9 @@ var errorHandler = function errorHandler(error) {
   }
 
   return error;
-};var remoteResolver = _async(function (source, args, context, info, remoteQuery, remoteArguments, type) {
+};
+
+var remoteResolver = _async(function (source, args, context, info, remoteQuery, remoteArguments, type) {
 
   var availableArgs = _.keys(remoteQuery.args);
   var pickedArgs = _.pick(remoteArguments, availableArgs);
@@ -214,7 +213,12 @@ var queryResolver = _async(function (model, inputTypeName, source, args, context
 
 var mutationResolver = _async(function (model, inputTypeName, source, args, context, info, type, where, isBulk) {
   return _await(options.authorizer(source, args, context, info), function () {
-    return model.graphql.overwrite.hasOwnProperty(type) ? model.graphql.overwrite[type](source, args, context, info, where) : Models.sequelize.transaction(_async(function (transaction) {
+
+    if (model.graphql.overwrite.hasOwnProperty(type)) {
+      return model.graphql.overwrite[type](source, args, context, info, where);
+    }
+
+    var resolveMutation = _async(function () {
       return _await(execBefore(model, source, args, context, info, type, where), function () {
 
         var data = null;
@@ -224,11 +228,14 @@ var mutationResolver = _async(function (model, inputTypeName, source, args, cont
           return _invoke(function () {
             if (isBulk && type === 'update') {
 
-              var key = model.primaryKeyAttributes[0];
+              var keys = model.primaryKeyAttributes;
               var updatePromises = [];
 
               args[inputTypeName].forEach(function (input) {
-                updatePromises.push(model.update(input, { where: _defineProperty({}, key, input[key]) }));
+                updatePromises.push(model.update(input, { where: keys.reduce(function (all, key) {
+                    all[key] = input[key];
+                    return all;
+                  }, {}) }));
               });
 
               return _await(Promise.all(updatePromises), function (_Promise$all) {
@@ -267,12 +274,25 @@ var mutationResolver = _async(function (model, inputTypeName, source, args, cont
                 });
               }
             }, function () {
-              return operationType === 'bulkCreate' && isBulk === true ? data.length : data;
+              return operationType === 'bulkCreate' && isBulk === true ? data.length : _await(options.logger(data, source, args, context, info), function () {
+
+                return data;
+              });
             });
           });
         });
       });
-    }));
+    });
+
+    if (options.transactionedMutations) {
+
+      return Models.sequelize.transaction(function (transaction) {
+        context.transaction = transaction;
+        return resolveMutation();
+      });
+    } else {
+      return resolveMutation();
+    }
   });
 });
 
@@ -526,13 +546,15 @@ var generateCustomGraphQLTypes = function generateCustomGraphQLTypes(model, type
   }
 
   return customTypes;
-}; /**
-   * Returns a collection of `GraphQLObjectType` generated from Sequelize models.
-   *
-   * It creates an object whose properties are `GraphQLObjectType` created
-   * from Sequelize models.
-   * @param {*} models The sequelize models used to create the types
-   */
+};
+
+/**
+* Returns a collection of `GraphQLObjectType` generated from Sequelize models.
+*
+* It creates an object whose properties are `GraphQLObjectType` created
+* from Sequelize models.
+* @param {*} models The sequelize models used to create the types
+*/
 // This function is exported
 var generateModelTypes = function generateModelTypes(models, remoteTypes) {
   var outputTypes = remoteTypes || {};
@@ -597,7 +619,6 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
           return 1;
         }
       });
-
       var paranoidType = models[modelType.name].options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
 
       var aliases = models[modelType.name].graphql.alias;
@@ -820,7 +841,9 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
               return options.authorizer(source, args, context, info).then(function (_) {
                 return models[inputTypeName].graphql.mutations[mutation].resolver(source, args, context, info, where);
               }).then(function (data) {
-                return data;
+                return options.logger(data, source, args, context, info).then(function () {
+                  return data;
+                });
               });
             }
           };
@@ -839,12 +862,18 @@ var generateMutationRootType = function generateMutationRootType(models, inputTy
 };
 
 // This function is exported
-var generateSchema = function generateSchema(models, types, context) {
+var generateSchema = function generateSchema(models, types, context, Sequelize) {
 
   Models = models;
+  Sequelize = models.Sequelize || Sequelize;
 
   if (options.dataloader) dataloaderContext = createContext(models.sequelize);
-  Models.Sequelize.useCLS(sequelizeNamespace);
+  if (Sequelize) {
+    Sequelize.useCLS(sequelizeNamespace);
+  } else {
+    console.warn('Sequelize not found at Models.Sequelize or not passed as argument. Automatic tranasctions for mutations are disabled.');
+    options.transactionedMutations = false;
+  }
 
   var availableModels = {};
   for (var modelName in models) {

@@ -28,7 +28,7 @@ const app = express();
 const models = require('./models');
 
 app.use('/', (req, res) => {
-  const schemaPromise = generateSchema(models, null, req);
+  const schemaPromise = generateSchema(models, null, req, models.Sequelize);
 
   if(schemaPromise.then){
 
