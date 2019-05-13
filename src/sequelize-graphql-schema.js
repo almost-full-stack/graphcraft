@@ -1030,9 +1030,13 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           },
           resolve: async (source, {
             where
-          }) => {
+          }, context, info) => {
+            let args = argsToFindOptions.default({ where });
+
+            if (args.where)
+                whereQueryVarsToValues(args.where, info.variableValues);
             return models[modelTypeName].count({
-              where
+              where: args.where
             })
           },
           description: `A count of the total number of objects in this connection, ignoring pagination.`
