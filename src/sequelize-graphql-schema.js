@@ -219,7 +219,7 @@ const findOneRecord = (model, where) => {
   }
 };
 
-const queryResolver = (model, isAssoc = false, field = null) => {
+const queryResolver = (model, isAssoc = false, field = null, assocModel = null) => {
   return async (source, args, context, info) => {
     if (args.where)
       whereQueryVarsToValues(args.where, info.variableValues);
@@ -250,8 +250,28 @@ const queryResolver = (model, isAssoc = false, field = null) => {
             orderBy.push([clause, 'ASC']);
           }
         });
+      }
 
-        findOptions.order = orderBy;
+      if (args.orderEdges) {
+        const orderByClauses = args.orderEdges.split(',');
+        orderByClauses.forEach((clause) => {
+          var colName='`'+model.through.model.name+'`.`'+(clause.indexOf('reverse:') === 0 ? clause.substring(8) : clause)+'`';
+          orderBy.push([Sequelize.col(colName) , clause.indexOf('reverse:') === 0 ? 'DESC' : 'ASC']);
+        });
+      }
+
+      findOptions.order = orderBy;
+
+      if (args.whereEdges) {
+        if (!findOptions.where)
+          findOptions.where = {}
+
+        for (var key in args.whereEdges) {
+          if (!args.whereEdges.hasOwnProperty(key)) continue;
+
+          var colName='`'+model.through.model.name+'`.`'+key+'`';
+          findOptions.where[colName] = Sequelize.where(Sequelize.col(colName), args.whereEdges[key])
+        }
       }
 
       findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : _model.options.paranoid;
@@ -712,10 +732,13 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
             edgeFields
           });
 
-          connection.resolve = queryResolver(relation, true)
+          connection.resolve = queryResolver(relation, true, null, assocModel)
 
           fields[associationName].type = connection.connectionType;
-          fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), connection.connectionArgs);
+          fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), {
+              whereEdges: defaultListArgs().where,
+              orderEdges: defaultListArgs().order
+          }, connection.connectionArgs);
           fields[associationName].resolve = connection.resolve;
         } else {
           // GraphQLInputObjectType do not accept fields with resolve
