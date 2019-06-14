@@ -236,7 +236,7 @@ const queryResolver = (model, isAssoc = false, field = null, assocModel = null) 
 
     await execBefore(_model, source, args, context, info, type);
 
-    const before = (findOptions, args, context) => {
+    const before = (findOptions, args, context, info) => {
 
       const orderArgs = args.order || '';
       const orderBy = [];
@@ -268,6 +268,8 @@ const queryResolver = (model, isAssoc = false, field = null, assocModel = null) 
 
         for (var key in args.whereEdges) {
           if (!args.whereEdges.hasOwnProperty(key)) continue;
+
+          whereQueryVarsToValues(args.whereEdges, info.variableValues);
 
           var colName='`'+model.through.model.name+'`.`'+key+'`';
           findOptions.where[colName] = Sequelize.where(Sequelize.col(colName), args.whereEdges[key])
