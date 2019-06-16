@@ -15,6 +15,10 @@ const {
   relay
 } = require('graphql-sequelize')
 
+const { PubSub } = require('graphql-subscriptions');
+
+const pubsub = new PubSub();
+
 const Sequelize = require('sequelize')
 
 require("./jsdoc.def")
@@ -76,7 +80,10 @@ const defaultModelGraphqlOptions = {
   alias: {},
   bulk: [],
   mutations: {},
+  subscriptions: {},
+  queries: {},
   excludeMutations: [],
+  excludeSubscriptions: [],
   excludeQueries: [],
   extend: {},
   before: {},
@@ -312,7 +319,7 @@ const queryResolver = (model, isAssoc = false, field = null, assocModel = null) 
   };
 }
 
-const mutationResolver = async (model, inputTypeName, source, args, context, info, type, where, isBulk) => {
+const mutationResolver = async (model, inputTypeName, mutationName, source, args, context, info, type, where, isBulk) => {
   if (args.where)
     whereQueryVarsToValues(args.where, info.variableValues);
 
@@ -346,7 +353,17 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
         return _model.graphql.extend[hookType](type === 'destroy' ? preData : res, _source, _args, context, info, where);
       }
 
-      return Object.assign(res, _data);
+      res = Object.assign(res, _data)
+
+      var subsData = type === 'destroy' ? preData : res
+      subsData._SeqGQLMeta = JSON.stringify({
+        mutationType: type
+      })
+
+      pubsub.publish(mutationName, subsData)
+      pubsub.publish(inputTypeName, subsData)
+
+      return res
     }
 
     let res;
@@ -864,6 +881,10 @@ const generateGraphQLFields = (model, types, cache, isInput = false, isUpdate = 
     };
   }
 
+  fields["_SeqGQLMeta"] = {
+    type: GraphQLString
+  }
+
   if (isInput) {
     fixIds(model, fields, assoc, source, isUpdate);
 
@@ -1076,7 +1097,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
 
       const aliases = models[modelType.name].graphql.alias;
 
-      if (models[modelType.name].graphql.excludeQueries.indexOf('query') === -1) {
+      if (models[modelType.name].graphql.excludeQueries.indexOf('fetch') === -1) {
         queries[camelCase(aliases.fetch || (modelType.name + 'Get'))] = {
           type: new GraphQLList(modelType),
           args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
@@ -1158,7 +1179,8 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
       };
 
       if (models[inputTypeName].graphql.excludeMutations.indexOf('create') === -1) {
-        mutations[camelCase(aliases.create || (inputTypeName + 'Add'))] = {
+        let mutationName = camelCase(aliases.create || (inputTypeName + 'Add'))
+        mutations[mutationName] = {
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create a ' + inputTypeName,
           args: Object.assign({
@@ -1166,12 +1188,13 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
               type: inputType
             }
           }, includeArguments(), defaultMutationArgs()),
-          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create')
+          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'create')
         };
       }
 
       if (models[inputTypeName].graphql.excludeMutations.indexOf('update') === -1) {
-        mutations[camelCase(aliases.update || (inputTypeName + 'Edit'))] = {
+        let mutationName = camelCase(aliases.update || (inputTypeName + 'Edit'))
+        mutations[mutationName] = {
           type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'Update a ' + inputTypeName,
           args: Object.assign({
@@ -1188,7 +1211,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
               ...args["where"],
               [key]: args[key]
             };
-            return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', where)
+            return mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'update', where)
               .then(boolean => {
                 // `boolean` equals the number of rows affected (0 or 1)
                 return resolver(models[inputTypeName], {
@@ -1200,7 +1223,8 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
       }
 
       if (models[inputTypeName].graphql.excludeMutations.indexOf('destroy') === -1) {
-        mutations[camelCase(aliases.destroy || (inputTypeName + 'Delete'))] = {
+        let mutationName = camelCase(aliases.destroy || (inputTypeName + 'Delete')) 
+        mutations[mutationName] = {
           type: GraphQLInt,
           description: 'Delete a ' + inputTypeName,
           args: Object.assign({
@@ -1214,13 +1238,14 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
               ...args["where"],
               [key]: args[key]
             };
-            return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'destroy', where);
+            return mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'destroy', where);
           }
         };
       }
 
       if (models[inputTypeName].graphql.bulk.indexOf('create') > -1) {
-        mutations[camelCase(aliases.create || (inputTypeName + 'AddBulk'))] = {
+        let mutationName = camelCase(aliases.bulk || (inputTypeName + 'AddBulk'))
+        mutations[mutationName] = {
           type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create bulk ' + inputTypeName + ' and return number of rows created.',
           args: Object.assign({
@@ -1228,7 +1253,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
               type: new GraphQLList(inputType)
             }
           }, includeArguments(), defaultMutationArgs()),
-          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, true)
+          resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'create', null, true)
         };
       }
 
@@ -1277,6 +1302,155 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
       };
 
       const toReturn = Object.assign(fields, mutations);
+
+      return toReturn;
+
+    }, {})
+  });
+};
+
+const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outputTypes) => {
+
+  let createSubsFor = {};
+
+  for (let inputTypeName in inputTypes) {
+    if (models[inputTypeName]) {
+      createSubsFor[inputTypeName] = inputTypes[inputTypeName];
+    }
+  }
+
+  return new GraphQLObjectType({
+    name: 'Root_Subscription',
+    fields: Object.keys(createSubsFor).reduce((fields, inputTypeName) => {
+
+      const inputType = inputTypes[inputTypeName];
+      const inputUpdateType = inputUpdateTypes[inputTypeName];
+      const key = models[inputTypeName].primaryKeyAttributes[0];
+      const aliases = models[inputTypeName].graphql.alias;
+
+      let subscriptions = {};
+
+      {
+        let subsName = camelCase(aliases.subscribe || (inputTypeName + 'Subs'));
+        subscriptions[subsName] = {
+          type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
+          description: 'On creation/update/delete of ' + inputTypeName,
+          args: {},
+          subscribe: () => pubsub.asyncIterator(inputTypeName),
+          resolve: (payload, args, context, info) => { return payload; }
+        };
+      }
+
+      if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('create') === -1) {
+        let subsName = camelCase(aliases.subscreate || (inputTypeName + 'AddSubs'));
+        subscriptions[subsName] = {
+          type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
+          description: 'On creation of ' + inputTypeName,
+          args: Object.assign({
+            [inputTypeName]: {
+              type: inputType
+            }
+          }, includeArguments(), defaultMutationArgs()),
+          subscribe: () => pubsub.asyncIterator(inputTypeName + 'Add'),
+          resolve: (payload, args, context, info) => { return payload; }
+        };
+      }
+
+      if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('update') === -1) {
+        let subsName = camelCase(aliases.subsupdate || (inputTypeName + 'Edit'))
+        subscriptions[subsName] = {
+          type: outputTypes[inputTypeName] || GraphQLInt,
+          description: 'On update of ' + inputTypeName,
+          args: Object.assign({
+            where: defaultListArgs().where,
+            [key]: {
+              type: new GraphQLNonNull(GraphQLInt)
+            },
+            [inputTypeName]: {
+              type: inputUpdateType
+            }
+          }, includeArguments(), defaultMutationArgs()),
+          subscribe: () => pubsub.asyncIterator(inputTypeName + 'Edit'),
+          resolve: (payload, args, context, info) => { return payload; }
+        };
+      }
+
+      if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('destroy') === -1) {
+        let subsName = camelCase(aliases.subsdestroy || (inputTypeName + 'DeleteSubs'))
+        subscriptions[subsName] = {
+          type: GraphQLInt,
+          description: 'Delete a ' + inputTypeName,
+          args: Object.assign({
+            [key]: {
+              type: new GraphQLNonNull(GraphQLInt)
+            },
+            where: defaultListArgs().where
+          }, includeArguments(), defaultMutationArgs()),
+          subscribe: () => pubsub.asyncIterator(inputTypeName + 'Delete'),
+          resolve: (payload, args, context, info) => { return payload; }
+        };
+      }
+
+      if (models[inputTypeName].graphql.bulk.indexOf('create') > -1) {
+        let subsName = camelCase(aliases.subsbulk || (inputTypeName + 'AddBulkSubs'))
+        subscriptions[subsName] = {
+          type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+          description: 'Subscribe to create bulk ' + inputTypeName + ' and return number of rows created.',
+          args: Object.assign({
+            [inputTypeName]: {
+              type: new GraphQLList(inputType)
+            }
+          }, includeArguments(), defaultMutationArgs()),
+          subscribe: () => pubsub.asyncIterator(inputTypeName + 'AddBulk'),
+          resolve: (payload, args, context, info) => { return payload; }
+        };
+      }
+
+      if (models[inputTypeName].graphql && models[inputTypeName].graphql.subscriptions) {
+
+        for (let subscription in models[inputTypeName].graphql.subscriptions) {
+
+          let isArray = false;
+          let outPutType = GraphQLInt;
+          let typeName = models[inputTypeName].graphql.subscriptions[subscription].output;
+
+          if (typeName) {
+            if (typeName.startsWith('[')) {
+              typeName = typeName.replace('[', '');
+              typeName = typeName.replace(']', '');
+              isArray = true;
+            }
+
+            if (isArray) {
+              outPutType = new GraphQLList(outputTypes[typeName]);
+            } else {
+              outPutType = outputTypes[typeName];
+            }
+          }
+
+          subscriptions[camelCase(subscription)] = {
+            type: outPutType,
+            args: Object.assign({
+              [models[inputTypeName].graphql.subscriptions[subscription].input]: {
+                type: inputTypes[models[inputTypeName].graphql.subscriptions[subscription].input]
+              }
+            }, includeArguments()),
+            resolve: (source, args, context, info) => {
+              const where = key && args[inputTypeName] ? {
+                [key]: args[inputTypeName][key]
+              } : {};
+              return options.authorizer(source, args, context, info).then(_ => {
+                return models[inputTypeName].graphql.mutations[subscription].resolver(source, args, context, info, where);
+              }).then(data => {
+                return data;
+              });
+            }
+          };
+        }
+
+      };
+
+      const toReturn = Object.assign(fields, subscriptions);
 
       return toReturn;
 
@@ -1349,7 +1523,8 @@ const generateSchema = (models, types, context) => {
 
     return {
       query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
-      mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.inputUpdateTypes, modelTypes.outputTypes)
+      mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.inputUpdateTypes, modelTypes.outputTypes),
+      subscription: generateSubscriptionRootType(availableModels, modelTypes.inputTypes, modelTypes.inputUpdateTypes, modelTypes.outputTypes)
     };
   }
 
