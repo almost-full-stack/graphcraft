@@ -15,7 +15,7 @@ const {
   relay
 } = require('graphql-sequelize')
 
-const { PubSub } = require('graphql-subscriptions');
+const { PubSub, withFilter } = require('graphql-subscriptions');
 
 const pubsub = new PubSub();
 
@@ -87,6 +87,7 @@ const defaultModelGraphqlOptions = {
   excludeQueries: [],
   extend: {},
   before: {},
+  subsFilter: {},
   overwrite: {}
 };
 
@@ -361,7 +362,6 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
       })
 
       pubsub.publish(mutationName, subsData)
-      pubsub.publish(inputTypeName, subsData)
 
       return res
     }
@@ -529,6 +529,21 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
 
   return type == "destroy" ? parseInt(data) : data;
 };
+
+const subscriptionResolver = (model) => {
+  return async (data, args, context, info) => {
+    if (args.where)
+      whereQueryVarsToValues(args.where, info.variableValues);
+
+    if (model.graphql.extend.hasOwnProperty("subscription")) {
+      return model.graphql.extend["subscription"](data, null, args, context, info, null);
+    }
+
+    return data
+
+  };
+}
+
 
 function fixIds(
   model,
@@ -1331,17 +1346,26 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
       let subscriptions = {};
 
       {
+        let _filter = models[inputTypeName].graphql.subsFilter.default;
+        let filter= _filter ? _filter : () => true
         let subsName = camelCase(aliases.subscribe || (inputTypeName + 'Subs'));
         subscriptions[subsName] = {
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
           description: 'On creation/update/delete of ' + inputTypeName,
           args: {},
-          subscribe: () => pubsub.asyncIterator(inputTypeName),
-          resolve: (payload, args, context, info) => { return payload; }
+          subscribe: withFilter(() =>  pubsub.asyncIterator([
+              camelCase(inputTypeName + 'Add'),
+              camelCase(inputTypeName + 'Edit'),
+              camelCase(inputTypeName + 'Delete'),
+              camelCase(inputTypeName + 'AddBulk')
+          ]),filter),
+          resolve: subscriptionResolver(models[inputTypeName])
         };
       }
 
       if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('create') === -1) {
+        let _filter = models[inputTypeName].graphql.subsFilter.create;
+        let filter= _filter ? _filter : () => true
         let subsName = camelCase(aliases.subscreate || (inputTypeName + 'AddSubs'));
         subscriptions[subsName] = {
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
@@ -1351,13 +1375,15 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
               type: inputType
             }
           }, includeArguments(), defaultMutationArgs()),
-          subscribe: () => pubsub.asyncIterator(inputTypeName + 'Add'),
-          resolve: (payload, args, context, info) => { return payload; }
+          subscribe: withFilter(() => pubsub.asyncIterator(camelCase(inputTypeName + 'Add')), filter),
+          resolve: subscriptionResolver(models[inputTypeName])
         };
       }
 
       if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('update') === -1) {
-        let subsName = camelCase(aliases.subsupdate || (inputTypeName + 'Edit'))
+        let _filter = models[inputTypeName].graphql.subsFilter.update;
+        let filter= _filter ? _filter : () => true
+        let subsName = camelCase(aliases.subsupdate || (inputTypeName + 'EditSubs'))
         subscriptions[subsName] = {
           type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'On update of ' + inputTypeName,
@@ -1370,12 +1396,14 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
               type: inputUpdateType
             }
           }, includeArguments(), defaultMutationArgs()),
-          subscribe: () => pubsub.asyncIterator(inputTypeName + 'Edit'),
-          resolve: (payload, args, context, info) => { return payload; }
+          subscribe: withFilter(() => pubsub.asyncIterator(camelCase(inputTypeName + 'Edit')), filter),
+          resolve: subscriptionResolver(models[inputTypeName])
         };
       }
 
       if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('destroy') === -1) {
+        let _filter = models[inputTypeName].graphql.subsFilter.destroy;
+        let filter= _filter ? _filter : () => true
         let subsName = camelCase(aliases.subsdestroy || (inputTypeName + 'DeleteSubs'))
         subscriptions[subsName] = {
           type: GraphQLInt,
@@ -1386,12 +1414,14 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
             },
             where: defaultListArgs().where
           }, includeArguments(), defaultMutationArgs()),
-          subscribe: () => pubsub.asyncIterator(inputTypeName + 'Delete'),
-          resolve: (payload, args, context, info) => { return payload; }
+          subscribe: withFilter(() => pubsub.asyncIterator(camelCase(inputTypeName + 'Delete')), filter),
+          resolve: subscriptionResolver(models[inputTypeName])
         };
       }
 
       if (models[inputTypeName].graphql.bulk.indexOf('create') > -1) {
+        let _filter = models[inputTypeName].graphql.subsFilter.create;
+        let filter= _filter ? _filter : () => true
         let subsName = camelCase(aliases.subsbulk || (inputTypeName + 'AddBulkSubs'))
         subscriptions[subsName] = {
           type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
@@ -1401,8 +1431,8 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
               type: new GraphQLList(inputType)
             }
           }, includeArguments(), defaultMutationArgs()),
-          subscribe: () => pubsub.asyncIterator(inputTypeName + 'AddBulk'),
-          resolve: (payload, args, context, info) => { return payload; }
+          subscribe: withFilter(() => pubsub.asyncIterator(camelCase(inputTypeName + 'AddBulk')), filter),
+          resolve: subscriptionResolver(models[inputTypeName])
         };
       }
 
