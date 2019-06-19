@@ -37,7 +37,6 @@
   "dependencies": {
     "camelcase": "^5.0.0",
     "cls-hooked": "^4.2.2",
-    "continuation-local-storage": "^3.2.1",
     "dataloader-sequelize": "^1.7.8",
     "graphql-relay": "^0.5.5",
     "graphql-request": "^1.8.2",
