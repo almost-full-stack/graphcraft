@@ -36,7 +36,7 @@
   "homepage": "https://github.com/alirizwan/sequelize-graphql-schema#readme",
   "dependencies": {
     "camelcase": "^5.0.0",
-    "continuation-local-storage": "^3.2.1",
+    "cls-hooked": "^4.2.2",
     "dataloader-sequelize": "^1.7.8",
     "graphql-relay": "^0.5.0",
     "graphql-request": "^1.8.2",

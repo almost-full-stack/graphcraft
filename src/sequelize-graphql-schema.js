@@ -22,7 +22,7 @@ const _ = require('lodash');
 const {createContext, EXPECTED_OPTIONS_KEY, resetCache} = require('dataloader-sequelize');
 const DataLoader = require('dataloader');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
-const cls = require('continuation-local-storage');
+const cls = require('cls-hooked');
 const uuid = require('uuid/v4');
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 let dataloaderContext;
