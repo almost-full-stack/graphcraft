@@ -452,6 +452,11 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
               [_model.name]: data[0][0]
             }
           }
+        } else if (aModel.associationType === 'BelongsTo') {
+          const _model = aModel.target
+          let newInst = await operation("create", _model, aModel.target, _a, name, {}, _sourceInst, transaction);
+          await operation("set", _model, aModel, _a, name, newInst, _sourceInst, transaction);
+          return newInst;
         } else {
           const _model = aModel.target
           let newInst = await operation("create", _model, aModel.target, _a, name, {}, _sourceInst, transaction);
