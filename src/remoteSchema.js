@@ -5,8 +5,8 @@ module.exports = async (options, context) => {
 
   const defaultOptions = {
     endpoint: null,
-    queries: [ ],
-    headers: null,
+    queries: [],
+    headers: null
   };
 
   const IgnoreTypes = ['Int', 'SequelizeJSON', 'String', 'Boolean'];
@@ -100,22 +100,22 @@ module.exports = async (options, context) => {
       }
     }`;
 
-  function getTypes(type, AllTypes, array){
+  function getTypes(type, AllTypes, array) {
 
     array = array || [];
 
     type.fields.forEach((field) => {
 
-      if(options.queries.indexOf(field.name) > -1){
+      if (options.queries.indexOf(field.name) > -1) {
         QueriesToImport.push(field);
 
         field.args.forEach((arg) => {
-          if(IgnoreTypes.indexOf(arg.type.name || arg.type.ofType.name) == -1){
+          if (IgnoreTypes.indexOf(arg.type.name || arg.type.ofType.name) == -1) {
             array.push(AllTypes[arg.type.name || arg.type.ofType.name]);
           }
         });
 
-        if(IgnoreTypes.indexOf(field.type.name || field.type.ofType.name) == -1){
+        if (IgnoreTypes.indexOf(field.type.name || field.type.ofType.name) == -1) {
           array.push(AllTypes[field.type.name || field.type.ofType.name]);
         }
 
@@ -136,11 +136,11 @@ module.exports = async (options, context) => {
   const schema = data.__schema;
   const queryTypeName = schema.queryType.name;
   const Types = schema.types;
-  let AllTypes = { };
-  let QueriesToImport = [];
-  let TypesToImport = [];
+  const AllTypes = { };
+  const QueriesToImport = [];
+  const TypesToImport = [];
 
-  for(let index = 0; index < Types.length; index ++){
+  for (let index = 0; index < Types.length; index++) {
     AllTypes[Types[index].name] = Types[index];
   }
 
@@ -148,20 +148,22 @@ module.exports = async (options, context) => {
 
   queryType.fields.forEach((field) => {
 
-    if(options.queries[field.name]){
+    if (options.queries[field.name]) {
 
       let outputName = null;
 
       field.args.forEach((arg) => {
-        if(IgnoreTypes.indexOf(arg.type.name || arg.type.ofType.name) == -1){
-          let tempType = AllTypes[arg.type.name || arg.type.ofType.name];
+        if (IgnoreTypes.indexOf(arg.type.name || arg.type.ofType.name) == -1) {
+          const tempType = AllTypes[arg.type.name || arg.type.ofType.name];
+
           tempType.name = options.queries[field.name].as || tempType.name;
           TypesToImport.push(tempType);
         }
       });
 
-      if(IgnoreTypes.indexOf(field.type.name || field.type.ofType.name) == -1){
-        let tempType = AllTypes[field.type.name || field.type.ofType.name];
+      if (IgnoreTypes.indexOf(field.type.name || field.type.ofType.name) == -1) {
+        const tempType = AllTypes[field.type.name || field.type.ofType.name];
+
         tempType.name = options.queries[field.name].as || tempType.name;
         outputName = tempType.name;
         TypesToImport.push(tempType);
@@ -174,15 +176,15 @@ module.exports = async (options, context) => {
 
   });
 
-  let FilteredTypes = {};
-  let FilteredQueries = [];
+  const FilteredTypes = {};
+  const FilteredQueries = [];
 
   TypesToImport.forEach((type) => {
 
-    let obj = {};
+    const obj = {};
 
     type.fields.forEach((field) => {
-      if(field.type.kind == 'SCALAR' || field.type.ofType.kind == 'SCALAR'){
+      if (field.type.kind == 'SCALAR' || field.type.ofType.kind == 'SCALAR') {
         obj[field.name] = field.type.name || field.type.ofType.name;
       }
     });
@@ -193,7 +195,7 @@ module.exports = async (options, context) => {
 
   QueriesToImport.forEach((query) => {
 
-    let obj = { args: { }, name: query.name, endpoint: options.endpoint, headers: options.headers, output: query.outputName, isList: query.type.kind === 'LIST' ? true : false, options: options.options };
+    const obj = { args: { }, name: query.name, endpoint: options.endpoint, headers: options.headers, output: query.outputName, isList: query.type.kind === 'LIST', options: options.options };
 
     query.args.forEach((arg) => {
       obj.args[arg.name] = arg.type.name;

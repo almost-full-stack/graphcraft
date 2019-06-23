@@ -1,4 +1,5 @@
 'use strict';
+
 module.exports = (sequelize, DataTypes) => {
 
   const Attribute = sequelize.define('Attribute', {
@@ -22,8 +23,9 @@ module.exports = (sequelize, DataTypes) => {
     },
     extend: {
       fetch: (data, source, args, context, info) => {
-        data.key = "Added by extension.";
-        return Promise.resolve(data);
+        data.key = 'Added by extension.';
+
+return Promise.resolve(data);
       }
     }
   };

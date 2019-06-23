@@ -61,7 +61,9 @@
     "sequelize-cli": "^5.4.0",
     "sqlite3": "^4.0.4",
     "stringifier": "^2.0.0",
-    "graphql": "^14.1.1"
+    "graphql": "^14.1.1",
+    "eslint-plugin-jest": "^22.0.0",
+    "husky": "^1.1.4"
   },
   "peerDependencies": {
     "sequelize": "^4.41.2",
@@ -70,5 +72,11 @@
   "jest": {
     "testEnvironment": "node",
     "verbose": true
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "git add"
+    ]
   }
 }
