@@ -50,7 +50,7 @@ let options = {
   customTypes: [],
   transactionedMutations: true,
   privateMode: false,
-  logger(){
+  logger() {
     return Promise.resolve();
   },
   authorizer() {
@@ -150,13 +150,13 @@ const remoteResolver = async (source, args, context, info, remoteQuery, remoteAr
 
   const availableArgs = _.keys(remoteQuery.args);
   const pickedArgs = _.pick(remoteArguments, availableArgs);
-  let queryArgs = [];
-  let passedArgs = [];
+  const queryArgs = [];
+  const passedArgs = [];
 
   for (const arg in pickedArgs) {
     queryArgs.push(`$${arg}:${pickedArgs[arg].type}`);
     passedArgs.push(`${arg}:$${arg}`);
-  };
+  }
 
   const fields = _.keys(type.getFields());
 
@@ -195,7 +195,8 @@ const includeArguments = () => {
   for (let argument in options.includeArguments) {
     includeArguments[argument] = generateGraphQLField(options.includeArguments[argument]);
   }
-  return includeArguments;
+
+return includeArguments;
 };
 
 const keyArguments = (keys) => {
@@ -226,6 +227,9 @@ const execBefore = (model, source, args, context, info, type, where) => {
   } else {
     return Promise.resolve();
   }
+
+return Promise.resolve();
+
 };
 
 const findOneRecord = (model, where) => {
@@ -236,6 +240,9 @@ const findOneRecord = (model, where) => {
   } else {
     return Promise.resolve();
   }
+
+return Promise.resolve();
+
 };
 
 const queryResolver = (model, isAssoc = false, field = null, assocModel = null) => {
@@ -692,7 +699,7 @@ const generateGraphQLField = (type) => {
 
 const toGraphQLType = function (name, schema) {
 
-  let fields = {};
+  const fields = {};
 
   for (const field in schema) {
     fields[field] = generateGraphQLField(schema[field]);
@@ -732,9 +739,10 @@ const generateTypesFromObject = function (remoteData) {
 
 };
 
-function getBulkOption(options, key){
-  const bulkOption = options.filter((option) => Array.isArray(option) ? option[0] == key : option == key);
-  return bulkOption.length ? (Array.isArray(bulkOption[0]) ? bulkOption[0][1] : true) : false;
+function getBulkOption(options, key) {
+  const bulkOption = options.filter((option) => (Array.isArray(option) ? option[0] == key : option == key));
+
+return bulkOption.length ? (Array.isArray(bulkOption[0]) ? bulkOption[0][1] : true) : false;
 }
 
 /**
@@ -1183,7 +1191,7 @@ const generateModelTypes = (models, remoteTypes) => {
 const generateModelTypesFromRemote = (context) => {
   if (options.remote) {
 
-    let promises = [];
+    const promises = [];
 
     for (let opt in options.remote.import) {
 
@@ -1197,6 +1205,9 @@ const generateModelTypesFromRemote = (context) => {
   } else {
     return Promise.resolve(null);
   }
+
+return Promise.resolve(null);
+
 };
 
 /**
@@ -1208,7 +1219,7 @@ const generateModelTypesFromRemote = (context) => {
  */
 const generateQueryRootType = (models, outputTypes, inputTypes) => {
 
-  let createQueriesFor = {};
+  const createQueriesFor = {};
 
   for (let outputTypeName in outputTypes) {
     if (models[outputTypeName]) {
@@ -1256,7 +1267,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
           resolve: queryResolver(models[modelType.name])
         }
-      };
+      }
 
       if (models[modelTypeName].graphql && models[modelTypeName].graphql.queries) {
 
@@ -1274,6 +1285,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           if (typeName) {
 
             const typeReference = sanitizeFieldName(typeName);
+
             typeName = typeReference.type;
             isArray = typeReference.isArray;
             isRequired = typeReference.isRequired;
@@ -1291,6 +1303,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           if (inputTypeNameField) {
 
             const typeReference = sanitizeFieldName(inputTypeNameField);
+
             inputTypeNameField = typeReference.type;
 
             if (typeReference.isArray) {
@@ -1311,14 +1324,14 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
             description,
             args: Object.assign(inputArg, defaultListArgs(), includeArguments(), paranoidType),
             resolve: (source, args, context, info) => {
-              return options.authorizer(source, args, context, info).then(_ => {
+              return options.authorizer(source, args, context, info).then((_) => {
                 return models[modelTypeName].graphql.queries[query].resolver(source, args, context, info);
               });
             }
           };
         }
 
-      };
+      }
 
       return Object.assign(fields, queries);
 
@@ -1328,7 +1341,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
 
 const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTypes) => {
 
-  let createMutationFor = {};
+  const createMutationFor = {};
 
   for (let inputTypeName in inputTypes) {
     if (models[inputTypeName]) {
@@ -1345,7 +1358,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
       const key = models[inputTypeName].primaryKeyAttributes[0];
       const aliases = models[inputTypeName].graphql.alias;
 
-      let mutations = {
+      const mutations = {
         [inputTypeName + 'Default']: {
           type: GraphQLInt,
           description: 'An empty default Mutation.',
@@ -1415,7 +1428,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
       const hasBulkOptionCreate = getBulkOption(models[inputTypeName].graphql.bulk, 'create');
       const hasBulkOptionEdit = getBulkOption(models[inputTypeName].graphql.bulk, 'edit');
 
-      if(hasBulkOptionCreate){
+      if (hasBulkOptionCreate) {
         mutations[camelCase(aliases.create || (inputTypeName + 'AddBulk'))] = {
           type: (typeof hasBulkOptionCreate === 'string') ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create bulk ' + inputTypeName + ' and return number of rows or created rows.',
@@ -1424,18 +1437,18 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         };
       }
 
-      if(hasBulkOptionEdit){
+      if (hasBulkOptionEdit) {
 
         mutations[camelCase(aliases.edit || (inputTypeName + 'EditBulk'))] = {
           type: outputTypes[inputTypeName] ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Update bulk ' + inputTypeName + ' and return number of rows modified or updated rows.',
           args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
           resolve: async (source, args, context, info) => {
-            const whereClause = {[key]: {[Models.Sequelize.Op.in]: args[inputTypeName].map((input) => input[key])}};
+            const whereClause = { [key]: { [Models.Sequelize.Op.in]: args[inputTypeName].map((input) => input[key]) } };
 
             await mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', null, hasBulkOptionEdit);
 
-            return resolver(models[inputTypeName], {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, whereClause, context, info);
+            return resolver(models[inputTypeName], { [EXPECTED_OPTIONS_KEY]: dataloaderContext })(source, whereClause, context, info);
           }
         };
       }
@@ -1454,6 +1467,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           if (typeName) {
 
             const typeReference = sanitizeFieldName(typeName);
+
             typeName = typeReference.type;
             isArray = typeReference.isArray;
             isRequired = typeReference.isRequired;
@@ -1469,6 +1483,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           if (inputTypeNameField) {
 
             const typeReference = sanitizeFieldName(inputTypeNameField);
+
             inputTypeNameField = typeReference.type;
 
             if (typeReference.isArray) {
@@ -1498,7 +1513,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           };
         }
 
-      };
+      }
 
       const toReturn = Object.assign(fields, mutations);
 
@@ -1678,10 +1693,10 @@ const generateSchema = (models, types, context, Sequelize) => {
   Models = models;
   Sequelize = models.Sequelize || Sequelize;
 
-  if(options.dataloader) dataloaderContext = createContext(models.sequelize);
-  if(Sequelize){
+  if (options.dataloader) dataloaderContext = createContext(models.sequelize);
+  if (Sequelize) {
     Sequelize.useCLS(sequelizeNamespace);
-  }else{
+  } else {
     console.warn('Sequelize not found at Models.Sequelize or not passed as argument. Automatic tranasctions for mutations are disabled.');
     options.transactionedMutations = false;
   }
@@ -1747,13 +1762,14 @@ const generateSchema = (models, types, context, Sequelize) => {
       mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.inputUpdateTypes, modelTypes.outputTypes),
       subscription: generateSubscriptionRootType(availableModels, modelTypes.inputTypes, modelTypes.inputUpdateTypes, modelTypes.outputTypes)
     };
-  }
+
 
 };
 
-module.exports = _options => {
+module.exports = (_options) => {
   options = Object.assign(options, _options);
-  return {
+
+return {
     generateGraphQLType,
     generateModelTypes,
     generateSchema,
