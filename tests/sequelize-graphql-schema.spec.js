@@ -1,8 +1,9 @@
-var { GraphQLSchema, introspectionQuery } = require('graphql');
+const { GraphQLSchema, introspectionQuery } = require('graphql');
 const express = require('express');
 const graphqlHTTP = require('express-graphql');
-const {generateSchema} = require('../src/sequelize-graphql-schema')({
-  exclude: [ ],
+const { generateSchema } = require('../src/sequelize-graphql-schema')({
+  exclude: [],
+
   /*remote: {
     import: {
       'Instrument': {
@@ -30,26 +31,25 @@ const models = require('./models');
 app.use('/', (req, res) => {
   const schemaPromise = generateSchema(models, null, req, models.Sequelize);
 
-  if(schemaPromise.then){
+  if (schemaPromise.then) {
 
-    return schemaPromise.then(schema => {
+    return schemaPromise.then((schema) => {
       return graphqlHTTP({
         schema: new GraphQLSchema(schema),
         graphiql: true
       })(req, res);
     });
 
-  }else{
+  }
 
     return graphqlHTTP({
       schema: new GraphQLSchema(schemaPromise),
       graphiql: true
     })(req, res);
 
-  }
 
 });
 
-app.listen(3000, function() {
+app.listen(3000, () => {
   console.log('RUNNING ON 3000');
 });
