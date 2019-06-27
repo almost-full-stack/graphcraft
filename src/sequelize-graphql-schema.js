@@ -346,7 +346,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
 
     const finalize = async (res) => {
       let _data = {};
-      if ((opType === "create" || opType === "update") && !isBulk) {
+      if ((opType === "create" || opType === "update" || opType === "upsert") && !isBulk) {
         _data = await createAssoc(_model, res, _args[name], transaction);
       }
 
@@ -412,7 +412,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
   const createAssoc = async (_source, _sourceInst, _args, transaction) => {
     let _data = {}
 
-    const processAssoc = async (aModel, name, fields, isList) => {
+    const processAssoc = async (aModel, name, fields, isList, toUpdate = false) => {
       if (typeof fields === "object" && aModel) {
 
         let _a = {
@@ -439,7 +439,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
               [aModel.target.name]: crObj,
               transaction
             }
-            let node = await operation("create", aModel.target, _model, _at, aModel.target.name, null, _sourceInst, transaction);
+            let node = await operation(toUpdate ? "upsert" : "create", aModel.target, _model, _at, aModel.target.name, null, _sourceInst, transaction);
             let data = await operation("add", _model, aModel, _a, name, node, _sourceInst, transaction);
             let edge = data[0][0];
             edge[aModel.target.name] = node;
@@ -452,15 +452,10 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
               [_model.name]: data[0][0]
             }
           }
-        } else if (aModel.associationType === 'BelongsTo') {
-          const _model = aModel.target
-          let newInst = await operation("create", _model, aModel.target, _a, name, {}, _sourceInst, transaction);
-          await operation("set", _model, aModel, _a, name, newInst, _sourceInst, transaction);
-          return newInst;
         } else {
           const _model = aModel.target
-          let newInst = await operation("create", _model, aModel.target, _a, name, {}, _sourceInst, transaction);
-          await operation("add", _model, aModel, _a, name, newInst, _sourceInst, transaction);
+          let newInst = await operation(toUpdate ? "upsert" : "create", _model, aModel.target, _a, name, {}, _sourceInst, transaction);
+          await operation(aModel.associationType === 'BelongsTo' ? "set" : "add", _model, aModel, _a, name, newInst, _sourceInst, transaction);
           return newInst;
         }
       }
@@ -480,19 +475,44 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
           let _refModel = _source.through && _source.through.model ? _source.target : aModel.target;
           let _name = assocSuffix(_refModel, true, aModel.as);
           if (aModel.associationType === 'HasMany' || aModel.associationType === 'HasOne') {
+
             // we cannot use set() to remove because of a bug: https://github.com/sequelize/sequelize/issues/8588
             let _getOp = "get" + _name;
             let assoc = await _sourceInst[_getOp]({
               transaction
             });
             if (assoc) {
+              const toUpdate = (inst) => {
+                for (let p in _args[name]) {
+                  let obj = _args[name][p];
+                  var found;
+                  for (let k in aModel.target.primaryKeyAttributes) {
+                    found = true;
+                    let pk = aModel.target.primaryKeyAttributes[k]
+                    if (obj[pk] != inst[pk]) {
+                      found = false;
+                      break;
+                    }
+                  }
+
+                  if (found) {
+                    obj._toUpdate = true;
+                    return true;
+                  }
+                }
+
+                return false;
+              }
+
               if (_.isArray(assoc)) {
                 for (var k in assoc) {
                   var v = assoc[k];
-                  await operation("destroy", aModel.target, _source, [], null, null, _sourceInst, transaction, v)
+                  if (!toUpdate(v))
+                    await operation("destroy", aModel.target, _source, [], null, null, _sourceInst, transaction, v)
                 }
               } else {
-                await operation("destroy", aModel.target, _source, [], null, null, _sourceInst, transaction, v)
+                if (!toUpdate(assoc))
+                    await operation("destroy", aModel.target, _source, [], null, null, _sourceInst, transaction, v)
               }
             }
           } else {
@@ -505,7 +525,9 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
 
         for (let p in _args[name]) {
           let obj = _args[name][p];
-          let newInst = await processAssoc(aModel, name, obj, true);
+          let toUpdate = obj._toUpdate;
+          delete obj._toUpdate;
+          let newInst = await processAssoc(aModel, name, obj, true, toUpdate);
           if (newInst) {
             _data[name].push(newInst);
           }
