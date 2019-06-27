@@ -1228,7 +1228,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
 
       const inputType = inputTypes[inputTypeName];
       const inputUpdateType = inputUpdateTypes[inputTypeName];
-      const keys = models[inputTypeName].primaryKeyAttributes;
+      const key = models[inputTypeName].primaryKeyAttributes[0];
       const aliases = models[inputTypeName].graphql.alias;
 
       let mutations = {
@@ -1245,9 +1245,8 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create a ' + inputTypeName,
           args: Object.assign({
-            [inputTypeName]: {
-              type: inputType
-            }
+            [key]: { type: new GraphQLNonNull(GraphQLInt)},
+            [inputTypeName]: { type: inputUpdateType } 
           }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'create')
         };
@@ -1259,11 +1258,12 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'Update a ' + inputTypeName,
           args: Object.assign({
+            [key]: { type: new GraphQLNonNull(GraphQLInt)},
             where: defaultListArgs().where,
             [inputTypeName]: {
               type: inputUpdateType
             }
-          }, keyArguments(keys), includeArguments(), defaultMutationArgs()),
+          }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
             const where = {
               ...args["where"],
@@ -1285,7 +1285,10 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         mutations[mutationName] = {
           type: GraphQLInt,
           description: 'Delete a ' + inputTypeName,
-          args: Object.assign({ where: defaultListArgs().where }, keyArguments(keys), includeArguments(), defaultMutationArgs()),
+          args: Object.assign({
+              [key]: { type: new GraphQLNonNull(GraphQLInt)},
+              where: defaultListArgs().where 
+          }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
             const where = {
               ...args["where"],
