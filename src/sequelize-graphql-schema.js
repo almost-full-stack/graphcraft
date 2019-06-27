@@ -165,6 +165,14 @@ const includeArguments = () => {
   return includeArguments;
 };
 
+const keyArguments = (keys) => {
+  let keyArguments = {};
+  for(let argument in keys){
+    keyArguments[argument] = { type: new GraphQLNonNull(GraphQLInt)};
+  }
+  return keyArguments;
+}
+
 const defaultMutationArgs = () => {
   return {
     set: {
@@ -998,7 +1006,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
 
       const inputType = inputTypes[inputTypeName];
       const inputUpdateType = inputUpdateTypes[inputTypeName];
-      const key = models[inputTypeName].primaryKeyAttributes[0];
+      const keys = models[inputTypeName].primaryKeyAttributes;
       const aliases = models[inputTypeName].graphql.alias;
 
       let mutations = {
@@ -1023,9 +1031,8 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'Update a ' + inputTypeName,
           args: Object.assign({
-            [key]: { type: new GraphQLNonNull(GraphQLInt)},
             [inputTypeName]: { type: inputUpdateType } 
-          }, includeArguments(), defaultMutationArgs()),
+          }, keyArguments(keys), includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
             const where = { [key]: args[key] };
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', where)
@@ -1041,7 +1048,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         mutations[camelCase(aliases.destroy || (inputTypeName + 'Delete'))] = {
           type: GraphQLInt,
           description: 'Delete a ' + inputTypeName,
-          args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments(), defaultMutationArgs()),
+          args: Object.assign(keyArguments(keys), includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
             const where = { [key]: args[key] };
             return mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'destroy', where);
