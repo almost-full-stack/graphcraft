@@ -1245,7 +1245,6 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create a ' + inputTypeName,
           args: Object.assign({
-            [key]: { type: new GraphQLNonNull(GraphQLInt)},
             [inputTypeName]: { type: inputUpdateType } 
           }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'create')
