@@ -330,7 +330,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
   await options.authorizer(source, args, context, info);
 
   const preData = await findOneRecord(model, type === 'destroy' ? where : null);
-  const operationType = (isBulk && type === 'create') ? 'bulkCreate' : type;
+  const operationType = (isBulk && type === 'create') ? 'bulkCreate' : type
   const validate = true;
 
   var data = {};
@@ -390,6 +390,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
     } else {
       // allow destroy on instance if specified
       let _inst = toDestroy && opType == 'destroy' ? toDestroy : _model;
+      console.log(_inst,opType)
       res = await _inst[opType](opType === 'destroy' ? {
         where,
         transaction
@@ -561,7 +562,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
   else
     data = await operation(operationType, model, source, args, inputTypeName, null, null);
 
-  if (operationType === 'bulkCreate') {
+  if (isBulk) {
     return args[inputTypeName].length;
   }
 
@@ -1297,7 +1298,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
       }
 
       if (models[inputTypeName].graphql.bulk.indexOf('create') > -1) {
-        let mutationName = camelCase(aliases.bulk || (inputTypeName + 'AddBulk'))
+        let mutationName = camelCase(aliases.bulkAdd || (inputTypeName + 'AddBulk'))
         mutations[mutationName] = {
           type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create bulk ' + inputTypeName + ' and return number of rows created.',
@@ -1307,6 +1308,28 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
             }
           }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'create', null, true)
+        };
+      }
+
+    if (models[inputTypeName].graphql.bulk.indexOf('destroy') > -1) {
+        let mutationName = camelCase(aliases.bulkDelete || (inputTypeName + 'DeleteBulk'))
+        mutations[mutationName] = {
+          type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+          description: 'Delete bulk ' + inputTypeName + ' and return number of rows deleted.',
+          args: Object.assign({
+            where: defaultListArgs().where,
+            [key]: {
+              type: new GraphQLList(new GraphQLNonNull(GraphQLInt))
+            },
+          }, includeArguments(), defaultMutationArgs()),
+          resolve: (source, args, context, info) => { 
+            const where = {
+              ...args["where"],
+              [key]: args[key]
+            };
+
+            return mutationResolver(models[inputTypeName], key, mutationName, source, args, context, info, 'destroy', where, true)
+          }
         };
       }
 
@@ -1404,7 +1427,7 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
       if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('create') === -1) {
         let _filter = models[inputTypeName].graphql.subsFilter.create;
         let filter= _filter ? _filter : () => true
-        let subsName = camelCase(aliases.subscreate || (inputTypeName + 'AddSubs'));
+        let subsName = camelCase(aliases.subsCreate || (inputTypeName + 'AddSubs'));
         subscriptions[subsName] = {
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
           description: 'On creation of ' + inputTypeName,
@@ -1421,7 +1444,7 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
       if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('update') === -1) {
         let _filter = models[inputTypeName].graphql.subsFilter.update;
         let filter= _filter ? _filter : () => true
-        let subsName = camelCase(aliases.subsupdate || (inputTypeName + 'EditSubs'))
+        let subsName = camelCase(aliases.subsUpdate || (inputTypeName + 'EditSubs'))
         subscriptions[subsName] = {
           type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'On update of ' + inputTypeName,
@@ -1442,7 +1465,7 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
       if (models[inputTypeName].graphql.excludeSubscriptions.indexOf('destroy') === -1) {
         let _filter = models[inputTypeName].graphql.subsFilter.destroy;
         let filter= _filter ? _filter : () => true
-        let subsName = camelCase(aliases.subsdestroy || (inputTypeName + 'DeleteSubs'))
+        let subsName = camelCase(aliases.subsDestroy || (inputTypeName + 'DeleteSubs'))
         subscriptions[subsName] = {
           type: GraphQLInt,
           description: 'Delete a ' + inputTypeName,
@@ -1460,7 +1483,7 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
       if (models[inputTypeName].graphql.bulk.indexOf('create') > -1) {
         let _filter = models[inputTypeName].graphql.subsFilter.create;
         let filter= _filter ? _filter : () => true
-        let subsName = camelCase(aliases.subsbulk || (inputTypeName + 'AddBulkSubs'))
+        let subsName = camelCase(aliases.subsBulkAdd || (inputTypeName + 'AddBulkSubs'))
         subscriptions[subsName] = {
           type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Subscribe to create bulk ' + inputTypeName + ' and return number of rows created.',
