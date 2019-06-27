@@ -390,7 +390,6 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
     } else {
       // allow destroy on instance if specified
       let _inst = toDestroy && opType == 'destroy' ? toDestroy : _model;
-      console.log(_inst,opType)
       res = await _inst[opType](opType === 'destroy' ? {
         where,
         transaction
