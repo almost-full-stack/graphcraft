@@ -398,18 +398,24 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
 
     } else {
       let updWhere = {}
-      if (opType === "upsert") {
-        for (let k in _model.primaryKeyAttributes) {
-          let pk = _model.primaryKeyAttributes[k]
+      switch (opType) {
+        case "upsert":
+          for (let k in _model.primaryKeyAttributes) {
+            let pk = _model.primaryKeyAttributes[k]
 
-          // not association case
-          if (!_args[name][pk]) {
-            opType = "create";
-            break;
+            // not association case
+            if (!_args[name][pk]) {
+              opType = "create";
+              updWhere = where;
+              break;
+            }
+
+            updWhere[pk] = _args[name][pk];
           }
-
-          updWhere[pk] = _args[name][pk];
-        }
+          break;
+        case "update":
+          updWhere = where;
+          break;
       }
 
       // allow destroy on instance if specified
