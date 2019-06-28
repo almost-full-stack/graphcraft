@@ -345,6 +345,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
 
   const operation = async function (opType, _model, _source, _args, name, assocInst, sourceInst, transaction, toDestroy = null) {
     let hookType = opType == "set" ? "update" : type;
+    let isEdit = opType === "update" || opType === "upsert";
 
     if (_model.graphql && _model.graphql.overwrite.hasOwnProperty(hookType)) {
       return _model.graphql.overwrite[hookType](_source, _args, context, info, where);
@@ -396,6 +397,21 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
       return await finalize(res);
 
     } else {
+      let updWhere = {}
+      if (opType === "upsert") {
+        for (let k in _model.primaryKeyAttributes) {
+          let pk = _model.primaryKeyAttributes[k]
+
+          // not association case
+          if (!_args[name][pk]) {
+            opType = "create";
+            break;
+          }
+
+          updWhere[pk] = _args[name][pk];
+        }
+      }
+
       // allow destroy on instance if specified
       let _inst = toDestroy && opType == 'destroy' ? toDestroy : _model;
       res = await _inst[opType](opType === 'destroy' ? {
@@ -407,20 +423,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
         transaction
       });
 
-      if (opType != "create" && opType != "destroy") {
-        let updWhere = {}
-        for (let k in _model.primaryKeyAttributes) {
-          let pk = _model.primaryKeyAttributes[k]
-
-          // not association case
-          if (!_args[name][pk]) {
-              updWhere = where;
-              break;
-          }
-
-          updWhere[pk] = _args[name][pk];
-        }
-
+      if (opType !== "create" && opType !== "destroy") {
         return await finalize(await _model.findOne({
           where: updWhere,
           transaction
