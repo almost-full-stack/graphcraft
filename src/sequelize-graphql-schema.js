@@ -967,28 +967,8 @@ const generateGraphQLFields = (model, types, cache, isInput = false, isUpdate = 
     delete fields.updatedAt;
   }
 
-<<<<<<< HEAD
   return fields;
 }
-=======
-    //Enum
-    if(Array.isArray(model.graphql.types[type])){
-      model.graphql.types[type].forEach((value) => {
-        if(Array.isArray(value)){
-          fields[value[0]] = {value: value[1]};
-        }else{
-          fields[value] = {value: value};
-        }
-      });
-
-      return new GraphQLEnumType({
-        name: type,
-        values: fields
-      });
-    }
-
-    for(let field in model.graphql.types[type]){
->>>>>>> aacb7a5... enum support in custom types.
 
 /**
  * Returns a new `GraphQLObjectType` created from a sequelize model.
@@ -1005,7 +985,7 @@ const generateGraphQLType = (model, types, cache, isInput = false, isUpdate = fa
     return generateGraphQLFields(model, types, cache, isInput, isUpdate, assoc, source);
   }
 
-  var fields = assoc ? thunk : thunk()
+  var fields = assoc ? thunk : thunk();
 
   let name = getTypeName(model, isInput, isUpdate, assoc);
   // can be already created by generateGraphQLFields recursion
@@ -1070,13 +1050,78 @@ const getCustomType = (model, type, customTypes, isInput, ignoreInputCheck = fal
 };
 
 const generateCustomGraphQLTypes = (model, types, isInput = false) => {
+
+  const typeCreated = {};
   const customTypes = {};
+
+  const getCustomType = (type, ignoreInputCheck) => {
+
+    const fields = {};
+
+    //Enum
+    if (Array.isArray(model.graphql.types[type])) {
+      model.graphql.types[type].forEach((value) => {
+        if (Array.isArray(value)) {
+          fields[value[0]] = { value: value[1] };
+        } else {
+          fields[value] = { value: value };
+        }
+      });
+
+      return new GraphQLEnumType({
+        name: type,
+        values: fields
+      });
+    }
+
+    for (const field in model.graphql.types[type]) {
+
+      const fieldReference = sanitizeFieldName(model.graphql.types[type][field]);
+
+      if (customTypes[fieldReference.type] !== undefined || model.graphql.types[fieldReference.type] != undefined) {
+        typeCreated[fieldReference.type] = true;
+
+        let customField = customTypes[fieldReference.type] || getCustomType(fieldReference.type, true);
+
+        if (fieldReference.isArray) {
+          customField = new GraphQLList(customField);
+        }
+
+        if (fieldReference.isRequired) {
+          customField = GraphQLNonNull(customField);
+        }
+
+        fields[fieldReference.type] = { type: customField };
+
+      } else {
+        typeCreated[type] = true;
+        fields[field] = generateGraphQLField(model.graphql.types[type][field]);
+      }
+
+    }
+
+    if (isInput && !ignoreInputCheck) {
+      if (type.toUpperCase().endsWith('INPUT')) {
+        return new GraphQLInputObjectType({
+          name: type,
+          fields: () => fields
+        });
+      }
+    } else if (!type.toUpperCase().endsWith('INPUT')) {
+        return new GraphQLObjectType({
+          name: type,
+          fields: () => fields
+        });
+      }
+
+  };
 
   if (model.graphql && model.graphql.types) {
 
-    for (let type in model.graphql.types) {
-      if (typeof model.graphql.types[type] !== "string")
-        customTypes[type] = getCustomType(model, type, customTypes, isInput);
+    for (const type in model.graphql.types) {
+
+      customTypes[type] = getCustomType(type);
+
     }
 
   }
@@ -1202,29 +1247,21 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
 
         for (let query in models[modelTypeName].graphql.queries) {
 
-<<<<<<< HEAD
-          let outPutType = (queries[camelCase(query)] && queries[camelCase(query)].type) || GraphQLInt;
+          //let outPutType = (queries[camelCase(query)] && queries[camelCase(query)].type) || GraphQLInt;
           let description = models[modelTypeName].graphql.queries[query].description || (queries[camelCase(query)] && queries[camelCase(query)].description) || null;
-=======
           let isArray = false;
           let isRequired = false;
           let outPutType = GraphQLInt;
           let inPutType = GraphQLInt;
->>>>>>> aacb7a5... enum support in custom types.
           let typeName = models[modelTypeName].graphql.queries[query].output;
           let inputTypeNameField = models[modelTypeName].graphql.queries[query].input;
 
-<<<<<<< HEAD
-          if (typeName) {
-            const typeReference = sanitizeFieldName(typeName);
-=======
           if(typeName){
 
             const typeReference = sanitizeFieldName(typeName);
             typeName = typeReference.type;
             isArray = typeReference.isArray;
             isRequired = typeReference.isRequired;
->>>>>>> aacb7a5... enum support in custom types.
 
             let field = getTypeByString(typeReference.type);
 
@@ -1252,15 +1289,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
             }
           }
 
-<<<<<<< HEAD
-          const inputArg = models[modelTypeName].graphql.queries[query].input ? {
-            [models[modelTypeName].graphql.queries[query].input]: {
-              type: inputTypes[models[modelTypeName].graphql.queries[query].input]
-            }
-          } : {};
-=======
           const inputArg = models[modelTypeName].graphql.queries[query].input ? { [inputTypeNameField]: { type: inPutType } } : {};
->>>>>>> aacb7a5... enum support in custom types.
 
           queries[camelCase(query)] = {
             type: outPutType,
