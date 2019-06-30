@@ -341,6 +341,15 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
   const preData = await findOneRecord(model, type === 'destroy' ? where : null);
   const operationType = (isBulk && type === 'create') ? 'bulkCreate' : type
   const validate = true;
+  if(typeof isBulk === 'string' && args[inputTypeName].length && !args[inputTypeName][0][isBulk]){
+
+    const bulkAddId = uuid();
+
+    args[inputTypeName].forEach((input) => {
+      input[isBulk] = bulkAddId;
+    });
+
+  }
 
   var data = {};
 
@@ -364,7 +373,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
         return _model.graphql.extend[hookType](type === 'destroy' ? preData : res, _source, _args, context, info, where);
       }
 
-      res = Object.assign(res, _data)
+      res = Object.assign(res, _data);
 
       var subsData = type === 'destroy' ? preData : res
       subsData._SeqGQLMeta = JSON.stringify({
@@ -718,11 +727,7 @@ const generateTypesFromObject = function (remoteData) {
 
 };
 
-<<<<<<< HEAD
-function getBulkOption(options, key) {
-=======
 function getBulkOption(options, key){
->>>>>>> 5d7ad20... bulkadd option can return inserted rows regardless of dialect.
   const bulkOption = options.filter((option) => Array.isArray(option) ? option[0] == key : option == key);
   return bulkOption.length ? (Array.isArray(bulkOption[0]) ? bulkOption[0][1] : true) : false;
 }
