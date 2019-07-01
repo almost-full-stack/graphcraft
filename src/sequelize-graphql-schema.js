@@ -1764,7 +1764,8 @@ const generateSchema = (models, types, context, Sequelize) => {
     };
 
 
-};
+  };
+}
 
 module.exports = (_options) => {
   options = Object.assign(options, _options);
