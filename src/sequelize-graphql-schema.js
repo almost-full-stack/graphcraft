@@ -1235,10 +1235,17 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
       let queries = {
         [camelCase(modelType.name + 'Default')]: {
           type: GraphQLString,
-          description: 'An empty default Query. Can be overwritten for metadata.',
-          resolve: () => "1"
+          description: 'An empty default Query. Can be overwritten for your needs (for example metadata).',
+          resolve: () => '1'
         },
-        [camelCase(modelType.name + 'Count')]: {
+      };
+
+      const paranoidType = models[modelType.name].options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
+
+      const aliases = models[modelType.name].graphql.alias;
+
+      if (models[modelType.name].graphql.excludeQueries.indexOf('count') === -1) {
+        queries[camelCase(aliases.count || (modelType.name + 'Count'))] = {
           type: GraphQLInt,
           args: {
             where: defaultListArgs().where
@@ -1256,10 +1263,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           },
           description: `A count of the total number of objects in this connection, ignoring pagination.`
         }
-      };
-      const paranoidType = models[modelType.name].options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
-
-      const aliases = models[modelType.name].graphql.alias;
+      }
 
       if (models[modelType.name].graphql.excludeQueries.indexOf('fetch') === -1) {
         queries[camelCase(aliases.fetch || (modelType.name + 'Get'))] = {
