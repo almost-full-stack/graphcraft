@@ -1,20 +1,30 @@
-const { typeMapper } = require('graphql-sequelize');
-const { GraphQLNonNull, GraphQLEnumType } = require('graphql');
-const { globalIdField } = require('graphql-relay');
+const {
+  typeMapper
+} = require('graphql-sequelize');
+
+const {
+  GraphQLNonNull,
+  GraphQLEnumType
+} = require('graphql');
+const {
+  globalIdField
+} = require('graphql-relay');
 
 module.exports = function (Model, options = {}) {
-  const cache = options.cache || {};
-  const result = Object.keys(Model.rawAttributes).reduce((memo, key) => {
+  var cache = options.cache || {};
+  var result = Object.keys(Model.rawAttributes).reduce(function (memo, key) {
     if (options.exclude) {
       if (typeof options.exclude === 'function' && options.exclude(key)) return memo;
-      if (Array.isArray(options.exclude) && !options.exclude.indexOf(key)) return memo;
+      if (Array.isArray(options.exclude) && ~options.exclude.indexOf(key)) return memo;
     }
     if (options.only) {
       if (typeof options.only === 'function' && !options.only(key)) return memo;
-      if (Array.isArray(options.only) && options.only.indexOf(key)) return memo;
+      if (Array.isArray(options.only) && !~options.only.indexOf(key)) return memo;
     }
 
-    const attribute = Model.rawAttributes[key];
+    var attribute = Model.rawAttributes[key],
+      type = attribute.type;
+
 
     if (options.map) {
       if (typeof options.map === 'function') {
@@ -24,20 +34,18 @@ module.exports = function (Model, options = {}) {
       }
     }
 
-    const _type = typeMapper.toGraphQL(attribute.type, Model.sequelize.constructor);
+    var _type = typeMapper.toGraphQL(attribute.type, Model.sequelize.constructor);
 
     memo[key] = {
       type: _type
     };
 
     if (memo[key].type instanceof GraphQLEnumType) {
-      const typeName = `${Model.name}${key}EnumType`;
-
+      var typeName = `${Model.name}${key}EnumType`;
       /*
       Cache enum types to prevent duplicate type name error
       when calling attributeFields multiple times on the same model
       */
-
       if (cache[typeName]) {
         memo[key].type = cache[typeName];
       } else {
@@ -69,7 +77,7 @@ module.exports = function (Model, options = {}) {
   }, {});
 
   if (options.globalId) {
-    result.id = globalIdField(Model.name, (instance) => instance[Model.primaryKeyAttribute]);
+    result.id = globalIdField(Model.name, instance => instance[Model.primaryKeyAttribute]);
   }
 
   return result;

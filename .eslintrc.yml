@@ -53,7 +53,7 @@ rules:
   func-style: 'off'
   generator-star-spacing: error
   global-require: 'off'
-  guard-for-in: 'off'
+  guard-for-in: error
   handle-callback-err: error
   id-blacklist: error
   id-length: 'off'
@@ -79,7 +79,7 @@ rules:
   max-statements: 'off'
   max-statements-per-line: error
   multiline-ternary: 'off'
-  new-cap: 'off'
+  new-cap: error
   new-parens: error
   newline-after-var: error
   newline-before-return: error
@@ -90,9 +90,7 @@ rules:
   no-bitwise: error
   no-caller: error
   no-catch-shadow: 'off'
-  no-confusing-arrow: 
-    - error
-    - allowParens: true
+  no-confusing-arrow: error
   no-continue: error
   no-div-regex: error
   no-duplicate-imports: error
@@ -224,7 +222,6 @@ rules:
   require-await: error
   require-jsdoc: 'off'
   rest-spread-spacing: error
-  semi: error
   semi-spacing: error
   sort-imports: error
   sort-keys: 'off'
