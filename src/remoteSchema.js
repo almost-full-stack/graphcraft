@@ -3,14 +3,12 @@ const _ = require('lodash');
 
 module.exports = async (options, context) => {
 
-  const defaultOptions = {
+  const defaultOptions = { // eslint-disable-line no-unused-vars
     endpoint: null,
     queries: [],
     headers: null
   };
-
   const IgnoreTypes = ['Int', 'SequelizeJSON', 'String', 'Boolean'];
-
   const introspectionQuery = `query IntrospectionQuery {
       __schema {
         queryType { name }
@@ -100,7 +98,7 @@ module.exports = async (options, context) => {
       }
     }`;
 
-  function getTypes(type, AllTypes, array) {
+  function getTypes(type, AllTypes, array) { // eslint-disable-line no-unused-vars
 
     array = array || [];
 
