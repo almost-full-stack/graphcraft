@@ -1,9 +1,9 @@
-const { GraphQLClient } = require('graphql-request');
+const {GraphQLClient} = require('graphql-request');
 const _ = require('lodash');
 
 module.exports = async (options, context) => {
 
-  const defaultOptions = { // eslint-disable-line no-unused-vars
+  const defaultOptions = {// eslint-disable-line no-unused-vars
     endpoint: null,
     queries: [],
     headers: null
@@ -129,7 +129,7 @@ module.exports = async (options, context) => {
 
   headers['graphql-introspection'] = true;
 
-  const client = new GraphQLClient(options.endpoint, { headers });
+  const client = new GraphQLClient(options.endpoint, {headers});
   const data = await client.request(introspectionQuery);
   const schema = data.__schema;
   const queryTypeName = schema.queryType.name;
@@ -193,7 +193,7 @@ module.exports = async (options, context) => {
 
   QueriesToImport.forEach((query) => {
 
-    const obj = { args: { }, name: query.name, endpoint: options.endpoint, headers: options.headers, output: query.outputName, isList: query.type.kind === 'LIST', options: options.options };
+    const obj = {args: { }, name: query.name, endpoint: options.endpoint, headers: options.headers, output: query.outputName, isList: query.type.kind === 'LIST', options: options.options};
 
     query.args.forEach((arg) => {
       obj.args[arg.name] = arg.type.name;
@@ -204,6 +204,6 @@ module.exports = async (options, context) => {
 
   });
 
-  return { types: FilteredTypes, queries: FilteredQueries };
+  return {types: FilteredTypes, queries: FilteredQueries};
 
 };

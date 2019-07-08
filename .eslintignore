@@ -1,3 +1,4 @@
 tests/*
 dist/*
 node_modules
+sequelize-graphql-schema copy.js

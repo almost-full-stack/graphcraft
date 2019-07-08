@@ -182,7 +182,7 @@ rules:
   no-with: error
   object-curly-spacing:
     - error
-    - always
+    - never
   object-property-newline:
     - error
     - allowMultiplePropertiesPerLine: true

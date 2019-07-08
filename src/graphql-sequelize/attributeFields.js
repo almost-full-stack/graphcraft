@@ -1,6 +1,6 @@
-const { typeMapper } = require('graphql-sequelize');
-const { GraphQLNonNull, GraphQLEnumType } = require('graphql');
-const { globalIdField } = require('graphql-relay');
+const {typeMapper} = require('graphql-sequelize');
+const {GraphQLNonNull, GraphQLEnumType} = require('graphql');
+const {globalIdField} = require('graphql-relay');
 
 module.exports = function (Model, options = {}) {
   const cache = options.cache || {};

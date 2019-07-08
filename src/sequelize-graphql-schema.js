@@ -17,19 +17,19 @@ const {
   argsToFindOptions,
   relay
 } = require('graphql-sequelize');
-const { PubSub, withFilter } = require('graphql-subscriptions');
+const {PubSub, withFilter} = require('graphql-subscriptions');
 const pubsub = new PubSub();
-const Sequelize = require('sequelize');
 const attributeFields = require('./graphql-sequelize/attributeFields');
-const { sequelizeConnection } = relay;
+const {sequelizeConnection} = relay;
 const camelCase = require('camelcase');
 const remoteSchema = require('./remoteSchema');
-const { GraphQLClient } = require('graphql-request');
+const {GraphQLClient} = require('graphql-request');
 const _ = require('lodash');
-const { createContext, EXPECTED_OPTIONS_KEY, resetCache } = require('dataloader-sequelize');
+const {createContext, EXPECTED_OPTIONS_KEY, resetCache} = require('dataloader-sequelize');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const cls = require('cls-hooked');
 const uuid = require('uuid/v4');
+const {whereQueryVarsToValues} = require('./libs/utils');
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 let dataloaderContext;
 
@@ -54,15 +54,18 @@ let options = {
   }
 };
 
+const hooks = require('./libs/resolvers/hooks.js');
+const {query} = require('./libs/resolvers')(options, EXPECTED_OPTIONS_KEY, dataloaderContext);
+
 /** @type {SeqGraphQL} */
 const defaultModelGraphqlOptions = {
   attributes: {
-    exclude: { // list attributes which are to be ignored in Model Input (exclusive filter)
+    exclude: {// list attributes which are to be ignored in Model Input (exclusive filter)
       create: [],
       update: [],
       fetch: []
     },
-    only: { // allow to use only listed attributes (inclusive filter, it ignores exclude option)
+    only: {// allow to use only listed attributes (inclusive filter, it ignores exclude option)
       create: null,
       update: null,
       fetch: null
@@ -96,22 +99,6 @@ const errorHandler = (error) => {
   }
 
   return error;
-};
-
-const whereQueryVarsToValues = (o, vals) => {
-  [
-    ...Object.getOwnPropertyNames(o),
-    ...Object.getOwnPropertySymbols(o)
-  ].forEach((k) => {
-    if (_.isFunction(o[k])) {
-      o[k] = o[k](vals);
-
-      return;
-    }
-    if (_.isObject(o[k])) {
-      whereQueryVarsToValues(o[k], vals);
-    }
-  });
 };
 
 const getTypeByString = (type) => {
@@ -205,126 +192,19 @@ const defaultMutationArgs = () => {
   };
 };
 
-const execBefore = (model, source, args, context, info, type, where) => {
-  if (model.graphql && _.has(model.graphql, 'before') && _.has(model.graphql.before, type)) {
-    return model.graphql.before[type](source, args, context, info, where);
-  }
-
-  return Promise.resolve();
-};
-
 const findOneRecord = (model, where) => {
   if (where) {
-    return model.findOne({ where });
+    return model.findOne({where});
   }
 
   return Promise.resolve();
 
-};
-
-const queryResolver = (model, isAssoc = false, field = null, assocModel = null) => {
-  return async (source, args, context, info) => {
-    if (args.where) whereQueryVarsToValues(args.where, info.variableValues);
-
-    const _model = !field && isAssoc && model.target ? model.target : model;
-    const type = 'fetch';
-
-    // authorization should not be executed for nested queries
-    if (!isAssoc) await options.authorizer(source, args, context, info);
-
-    if (_.has(_model.graphql.overwrite, type)) {
-      return _model.graphql.overwrite[type](source, args, context, info);
-    }
-
-    await execBefore(_model, source, args, context, info, type);
-
-    const before = (findOptions, args, context, info) => {
-
-      const orderArgs = args.order || '';
-      const orderBy = [];
-
-      if (orderArgs != '') {
-        const orderByClauses = orderArgs.split(',');
-
-        orderByClauses.forEach((clause) => {
-          if (clause.indexOf('reverse:') === 0) {
-            orderBy.push([clause.substring(8), 'DESC']);
-          } else {
-            orderBy.push([clause, 'ASC']);
-          }
-        });
-      }
-
-      if (args.orderEdges) {
-        const orderByClauses = args.orderEdges.split(',');
-
-        orderByClauses.forEach((clause) => {
-          const colName = '`' + model.through.model.name + '`.`' + (clause.indexOf('reverse:') === 0 ? clause.substring(8) : clause) + '`';
-
-          orderBy.push([Sequelize.col(colName), clause.indexOf('reverse:') === 0 ? 'DESC' : 'ASC']);
-        });
-      }
-
-      findOptions.order = orderBy;
-
-      if (args.whereEdges) {
-        if (!findOptions.where)
-          findOptions.where = {};
-
-        for (const key in args.whereEdges) {
-          if (_.has(args.whereEdges, key)) {
-            whereQueryVarsToValues(args.whereEdges, info.variableValues);
-
-            const colName = '`' + model.through.model.name + '`.`' + key + '`';
-
-            findOptions.where[colName] = Sequelize.where(Sequelize.col(colName), args.whereEdges[key]);
-          }
-        }
-      }
-
-      findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : _model.options.paranoid;
-
-      return findOptions;
-    };
-
-    const scope = Array.isArray(_model.graphql.scopes) ? {
-      method: [_model.graphql.scopes[0], _.get(args, _model.graphql.scopes[1], _model.graphql.scopes[2] || null)]
-    } : _model.graphql.scopes;
-
-    let data;
-
-    if (field) {
-      const modelNode = source.node[_model.name];
-
-      data = modelNode[field];
-    } else {
-      data = await resolver(model instanceof Sequelize.Model ? model.scope(scope) : model, {
-        [EXPECTED_OPTIONS_KEY]: dataloaderContext,
-        before,
-        separate: isAssoc
-      })(source, args, context, info);
-    }
-
-    // little trick to pass args
-    // on source params for connection fields
-    if (data) {
-      data.__args = args;
-      data.__parent = source;
-    }
-
-    if (_.has(_model.graphql.extend, type)) {
-      return _model.graphql.extend[type](data, source, args, context, info);
-    }
-
-    return data;
-
-  };
 };
 
 const mutationResolver = async (model, inputTypeName, mutationName, source, args, context, info, type, where, isBulk) => {
 
-  if (args.where) whereQueryVarsToValues(args.where, info.variableValues);
-  if (where) whereQueryVarsToValues(where, info.variableValues);
+  if (args.where) args.where = whereQueryVarsToValues(args.where, info.variableValues);
+  if (where) where = whereQueryVarsToValues(where, info.variableValues);
 
   await options.authorizer(source, args, context, info);
 
@@ -351,7 +231,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
       return _model.graphql.overwrite[hookType](_source, _args, context, info, where);
     }
 
-    await execBefore(_model, _source, _args, context, info, hookType, where);
+    await hooks.before(_model, _source, _args, context, info, hookType, where);
 
     const finalize = async (res) => {
       let _data = {};
@@ -457,7 +337,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
       });
 
     if (opType !== 'create' && opType !== 'destroy') {
-      return finalize(await _model.findOne({ where: updWhere, transaction }));
+      return finalize(await _model.findOne({where: updWhere, transaction}));
     }
 
     return finalize(res);
@@ -500,12 +380,12 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
 
             edge[aModel.target.name] = node;
 
-            return { [_model.name]: edge };
+            return {[_model.name]: edge};
           }
           const data = await operation('add', _model, aModel, _a, name, fkVal, _sourceInst, transaction);
 
 
-          return { [_model.name]: data[0][0] };
+          return {[_model.name]: data[0][0]};
 
         }
         const _model = aModel.target;
@@ -538,7 +418,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
             // we cannot use set() to remove because of a bug: https://github.com/sequelize/sequelize/issues/8588
             const _getOp = 'get' + _name;
             // eslint-disable-next-line no-await-in-loop
-            const assoc = await _sourceInst[_getOp]({ transaction });
+            const assoc = await _sourceInst[_getOp]({transaction});
 
             if (assoc) {
               const toUpdate = (inst) => {
@@ -583,7 +463,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
             const _op = 'set' + _name;
 
             // eslint-disable-next-line no-await-in-loop
-            await _sourceInst[_op]([], { transaction });
+            await _sourceInst[_op]([], {transaction});
           }
         }
 
@@ -631,7 +511,7 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
 
 const subscriptionResolver = (model) => {
   return async (data, args, context, info) => {
-    if (args.where) whereQueryVarsToValues(args.where, info.variableValues);
+    if (args.where) args.where = whereQueryVarsToValues(args.where, info.variableValues);
 
     if (_.has(model.graphql.extend, 'subscription')) {
       const subData = await model.graphql.extend['subscription'](data, null, args, context, info, null);
@@ -709,7 +589,7 @@ const generateGraphQLField = (type) => {
   if (typeReference.isArray)field = new GraphQLList(field);
   if (typeReference.isRequired) field = GraphQLNonNull(field);
 
-  return { type: field };
+  return {type: field};
 };
 
 const toGraphQLType = function (name, schema) {
@@ -839,7 +719,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
 
           // Pass Through model to resolve function
           _.each(edgeFields, (edgeField, field) => {
-            edgeField.resolve = queryResolver(aModel, true, field);
+            edgeField.resolve = query(aModel, true, field);
           });
         }
 
@@ -876,7 +756,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
           edgeFields
         });
 
-        connection.resolve = queryResolver(relation, true, null, assocModel);
+        connection.resolve = query(relation, true, null, assocModel);
 
         fields[associationName].type = connection.connectionType;
         fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), {
@@ -887,7 +767,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
       } else {
         // GraphQLInputObjectType do not accept fields with resolve
         fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), types[assocModel.name].args);
-        fields[associationName].resolve = queryResolver(relation, true);
+        fields[associationName].resolve = query(relation, true);
       }
     } else {
       fields[associationName].args = Object.assign({}, relation.query.args, defaultListArgs());
@@ -1119,9 +999,9 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
     if (Array.isArray(model.graphql.types[type])) {
       model.graphql.types[type].forEach((value) => {
         if (Array.isArray(value)) {
-          fields[value[0]] = { value: value[1] };
+          fields[value[0]] = {value: value[1]};
         } else {
-          fields[value] = { value: value };
+          fields[value] = {value: value};
         }
       });
 
@@ -1148,7 +1028,7 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
           customField = GraphQLNonNull(customField);
         }
 
-        fields[fieldReference.type] = { type: customField };
+        fields[fieldReference.type] = {type: customField};
 
       } else {
         typeCreated[type] = true;
@@ -1268,7 +1148,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
         },
       };
 
-      const paranoidType = models[modelType.name].options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
+      const paranoidType = models[modelType.name].options.paranoid ? {paranoid: {type: GraphQLBoolean}} : {};
 
       const aliases = models[modelType.name].graphql.alias;
 
@@ -1281,9 +1161,9 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           resolve: (source, {
             where
           }, context, info) => {
-            const args = argsToFindOptions.default({ where });
+            const args = argsToFindOptions.default({where});
 
-            if (args.where) whereQueryVarsToValues(args.where, info.variableValues);
+            if (args.where) args.where = whereQueryVarsToValues(args.where, info.variableValues);
 
             return models[modelTypeName].count({
               where: args.where
@@ -1297,7 +1177,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
         queries[camelCase(aliases.fetch || (modelType.name + 'Get'))] = {
           type: new GraphQLList(modelType),
           args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
-          resolve: queryResolver(models[modelType.name])
+          resolve: query(models[modelType.name])
         };
       }
 
@@ -1344,7 +1224,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
             }
           }
 
-          const inputArg = models[modelTypeName].graphql.queries[query].input ? { [inputTypeNameField]: { type: inPutType } } : {};
+          const inputArg = models[modelTypeName].graphql.queries[query].input ? {[inputTypeNameField]: {type: inPutType}} : {};
 
           queries[camelCase(query)] = {
             type: outPutType,
@@ -1400,7 +1280,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create a ' + inputTypeName,
           args: Object.assign({
-            [inputTypeName]: { type: inputUpdateType }
+            [inputTypeName]: {type: inputUpdateType}
           }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'create')
         };
@@ -1413,7 +1293,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           type: outputTypes[inputTypeName] || GraphQLInt,
           description: 'Update a ' + inputTypeName,
           args: Object.assign({
-            [key]: { type: new GraphQLNonNull(GraphQLInt) },
+            [key]: {type: new GraphQLNonNull(GraphQLInt)},
             where: defaultListArgs().where,
             [inputTypeName]: {
               type: inputUpdateType
@@ -1443,7 +1323,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           type: GraphQLInt,
           description: 'Delete a ' + inputTypeName,
           args: Object.assign({
-            [key]: { type: new GraphQLNonNull(GraphQLInt) },
+            [key]: {type: new GraphQLNonNull(GraphQLInt)},
             where: defaultListArgs().where
           }, includeArguments(), defaultMutationArgs()),
           resolve: (source, args, context, info) => {
@@ -1466,7 +1346,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         mutations[camelCase(aliases.create || (inputTypeName + 'AddBulk'))] = {
           type: (typeof hasBulkOptionCreate === 'string') ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Create bulk ' + inputTypeName + ' and return number of rows or created rows.',
-          args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
+          args: Object.assign({[inputTypeName]: {type: new GraphQLList(inputType)}}, includeArguments()),
           resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, hasBulkOptionCreate)
         };
       }
@@ -1499,13 +1379,13 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
         mutations[camelCase(aliases.edit || (inputTypeName + 'EditBulk'))] = {
           type: outputTypes[inputTypeName] ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
           description: 'Update bulk ' + inputTypeName + ' and return number of rows modified or updated rows.',
-          args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
+          args: Object.assign({[inputTypeName]: {type: new GraphQLList(inputType)}}, includeArguments()),
           resolve: async (source, args, context, info) => {
-            const whereClause = { [key]: { [Models.Sequelize.Op.in]: args[inputTypeName].map((input) => input[key]) } };
+            const whereClause = {[key]: {[Models.Sequelize.Op.in]: args[inputTypeName].map((input) => input[key])}};
 
             await mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'update', null, hasBulkOptionEdit);
 
-            return resolver(models[inputTypeName], { [EXPECTED_OPTIONS_KEY]: dataloaderContext })(source, whereClause, context, info);
+            return resolver(models[inputTypeName], {[EXPECTED_OPTIONS_KEY]: dataloaderContext})(source, whereClause, context, info);
           }
         };
       }
@@ -1554,7 +1434,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
 
           mutations[camelCase(mutation)] = {
             type: outPutType,
-            args: Object.assign({ [inputTypeNameField]: { type: inPutType } }, includeArguments()),
+            args: Object.assign({[inputTypeNameField]: {type: inPutType}}, includeArguments()),
             resolve: (source, args, context, info) => {
               const where = key && args[inputTypeName] ? {
                 [key]: args[inputTypeName][key]
@@ -1593,10 +1473,10 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
   const mutationTypes = new GraphQLEnumType({
     name: 'mutationTypes',
     values: {
-      CREATED: { value: 'CREATED' },
-      BULK_CREATED: { value: 'BULK_CREATED' },
-      DELETED: { value: 'DELETED' },
-      UPDATED: { value: 'UPDATED' }
+      CREATED: {value: 'CREATED'},
+      BULK_CREATED: {value: 'BULK_CREATED'},
+      DELETED: {value: 'DELETED'},
+      UPDATED: {value: 'UPDATED'}
     }
   });
 
@@ -1618,17 +1498,17 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
           type: new GraphQLObjectType({
             name: subsName + 'Output',
             fields: {
-              mutation: { type: mutationTypes },
+              mutation: {type: mutationTypes},
               node: {
                 type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
               },
-              updatedFields: { type: new GraphQLList(GraphQLString) },
-              previousValues: { type: outputTypes[inputTypeName] }
+              updatedFields: {type: new GraphQLList(GraphQLString)},
+              previousValues: {type: outputTypes[inputTypeName]}
             }
           }),
           description: 'On creation/update/delete of ' + inputTypeName,
           args: {
-            mutation: { type: new GraphQLList(mutationTypes) }
+            mutation: {type: new GraphQLList(mutationTypes)}
           },
           subscribe: withFilter((rootValue, args, context, info) => {
 
