@@ -1,10 +1,12 @@
 const _ = require('lodash');
-const Sequelize = require('sequelize');
 const {resolver} = require('graphql-sequelize');
+const {EXPECTED_OPTIONS_KEY} = require('dataloader-sequelize');
 const {whereQueryVarsToValues} = require('../utils');
 const hooks = require('./hooks');
 
-module.exports = (options, EXPECTED_OPTIONS_KEY, dataloaderContext) => {
+module.exports = (options) => {
+
+  const {Sequelize, dataloaderContext} = options;
 
   return (model, isAssoc = false, field = null, assocModel = null) => {
     return async (source, args, context, info) => {

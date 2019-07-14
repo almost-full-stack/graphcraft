@@ -29,11 +29,10 @@ const {createContext, EXPECTED_OPTIONS_KEY, resetCache} = require('dataloader-se
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const cls = require('cls-hooked');
 const uuid = require('uuid/v4');
-const {whereQueryVarsToValues} = require('./libs/utils');
+const {whereQueryVarsToValues, sanitizeFieldName} = require('./libs/utils');
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 let dataloaderContext;
-
-let options = {
+const options = {
   exclude: [],
   includeArguments: {},
   remote: {},
@@ -55,7 +54,9 @@ let options = {
 };
 
 const hooks = require('./libs/resolvers/hooks.js');
-const {query} = require('./libs/resolvers')(options, EXPECTED_OPTIONS_KEY, dataloaderContext);
+const {query} = require('./libs/resolvers')(options);
+const generators = require('./libs/generators')(options);
+const {includeArguments, generateGraphQLField} = generators.types;
 
 /** @type {SeqGraphQL} */
 const defaultModelGraphqlOptions = {
@@ -99,16 +100,6 @@ const errorHandler = (error) => {
   }
 
   return error;
-};
-
-const getTypeByString = (type) => {
-  const lType = type.toLowerCase();
-
-  return lType === 'int' ? GraphQLInt
-    : lType === 'boolean' ? GraphQLBoolean
-      : lType === 'string' ? GraphQLString
-        : options.customTypes[type] ? options.customTypes[type]
-          : null;
 };
 
 /**
@@ -167,16 +158,6 @@ const remoteResolver = async (source, args, context, info, remoteQuery, remoteAr
 
 const getTypeName = (model, isInput, isUpdate, isAssoc) => {
   return isInput ? model.name + (isUpdate ? 'Edit' : 'Add') + 'Input' + (isAssoc ? 'Connection' : '') : model.name;
-};
-
-const includeArguments = () => {
-  const includeArguments = {};
-
-  for (const argument in options.includeArguments) {
-    includeArguments[argument] = generateGraphQLField(options.includeArguments[argument]);
-  }
-
-  return includeArguments;
 };
 
 const defaultMutationArgs = () => {
@@ -563,34 +544,6 @@ function fixIds(
     }
   });
 }
-
-const sanitizeFieldName = (type) => {
-
-  const isRequired = type.indexOf('!') > -1;
-  const isArray = type.indexOf('[') > -1;
-
-  type = type.replace('[', '');
-  type = type.replace(']', '');
-  type = type.replace('!', '');
-
-  return {
-    type,
-    isArray,
-    isRequired
-  };
-};
-
-const generateGraphQLField = (type) => {
-
-  const typeReference = sanitizeFieldName(type);
-  let field = getTypeByString(typeReference.type);
-
-  if (!field) field = GraphQLString;
-  if (typeReference.isArray)field = new GraphQLList(field);
-  if (typeReference.isRequired) field = GraphQLNonNull(field);
-
-  return {type: field};
-};
 
 const toGraphQLType = function (name, schema) {
 
@@ -1118,134 +1071,6 @@ const generateModelTypesFromRemote = (context) => {
 
 };
 
-/**
- * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
- *
- * It creates an object whose properties are `GraphQLObjectType` created
- * from Sequelize models.
- * @param {*} models The sequelize models used to create the root `GraphQLSchema`
- */
-const generateQueryRootType = (models, outputTypes, inputTypes) => {
-
-  const createQueriesFor = {};
-
-  for (const outputTypeName in outputTypes) {
-    if (models[outputTypeName]) {
-      createQueriesFor[outputTypeName] = outputTypes[outputTypeName];
-    }
-  }
-
-  return new GraphQLObjectType({
-    name: 'Root_Query',
-    fields: Object.keys(createQueriesFor).reduce((fields, modelTypeName) => {
-
-      const modelType = outputTypes[modelTypeName];
-      const queries = {
-        [camelCase(modelType.name + 'Default')]: {
-          type: GraphQLString,
-          description: 'An empty default Query. Can be overwritten for your needs (for example metadata).',
-          resolve: () => '1'
-        },
-      };
-
-      const paranoidType = models[modelType.name].options.paranoid ? {paranoid: {type: GraphQLBoolean}} : {};
-
-      const aliases = models[modelType.name].graphql.alias;
-
-      if (models[modelType.name].graphql.excludeQueries.indexOf('count') === -1) {
-        queries[camelCase(aliases.count || (modelType.name + 'Count'))] = {
-          type: GraphQLInt,
-          args: {
-            where: defaultListArgs().where
-          },
-          resolve: (source, {
-            where
-          }, context, info) => {
-            const args = argsToFindOptions.default({where});
-
-            if (args.where) args.where = whereQueryVarsToValues(args.where, info.variableValues);
-
-            return models[modelTypeName].count({
-              where: args.where
-            });
-          },
-          description: 'A count of the total number of objects in this connection, ignoring pagination.'
-        };
-      }
-
-      if (models[modelType.name].graphql.excludeQueries.indexOf('fetch') === -1) {
-        queries[camelCase(aliases.fetch || (modelType.name + 'Get'))] = {
-          type: new GraphQLList(modelType),
-          args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
-          resolve: query(models[modelType.name])
-        };
-      }
-
-      if (models[modelTypeName].graphql && models[modelTypeName].graphql.queries) {
-
-        for (const query in models[modelTypeName].graphql.queries) {
-
-          //let outPutType = (queries[camelCase(query)] && queries[camelCase(query)].type) || GraphQLInt;
-          const description = models[modelTypeName].graphql.queries[query].description || (queries[camelCase(query)] && queries[camelCase(query)].description) || null;
-          let outPutType = GraphQLInt;
-          let inPutType = GraphQLInt;
-          let typeName = models[modelTypeName].graphql.queries[query].output;
-          let inputTypeNameField = models[modelTypeName].graphql.queries[query].input;
-
-          if (typeName) {
-
-            const typeReference = sanitizeFieldName(typeName);
-            const field = getTypeByString(typeReference.type);
-
-            typeName = typeReference.type;
-
-            if (typeReference.isArray) {
-              outPutType = new GraphQLList(field || outputTypes[typeReference.type]);
-            } else {
-              outPutType = field || outputTypes[typeReference.type];
-            }
-
-          }
-
-          if (inputTypeNameField) {
-
-            const typeReference = sanitizeFieldName(inputTypeNameField);
-
-            inputTypeNameField = typeReference.type;
-
-            if (typeReference.isArray) {
-              inPutType = new GraphQLList(inputTypes[inputTypeNameField]);
-            } else {
-              inPutType = inputTypes[inputTypeNameField];
-            }
-
-            if (typeReference.isRequired) {
-              inPutType = GraphQLNonNull(inPutType);
-            }
-          }
-
-          const inputArg = models[modelTypeName].graphql.queries[query].input ? {[inputTypeNameField]: {type: inPutType}} : {};
-
-          queries[camelCase(query)] = {
-            type: outPutType,
-            description,
-            args: Object.assign(inputArg, defaultListArgs(), includeArguments(), paranoidType),
-            resolve: (source, args, context, info) => {
-              return options.authorizer(source, args, context, info).then((_) => {
-                return models[modelTypeName].graphql.queries[query].resolver(source, args, context, info);
-              });
-            }
-          };
-        }
-
-      }
-
-      return Object.assign(fields, queries);
-
-    }, {})
-  });
-};
-
 const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTypes) => {
 
   const createMutationFor = {};
@@ -1594,6 +1419,9 @@ const generateSchema = (models, types, context, Sequelize) => {
   Sequelize = models.Sequelize || Sequelize;
 
   if (options.dataloader) dataloaderContext = createContext(models.sequelize);
+
+  Object.assign(options, {dataloaderContext, Sequelize, models});
+
   if (Sequelize) {
     Sequelize.useCLS(sequelizeNamespace);
   } else {
@@ -1648,7 +1476,7 @@ const generateSchema = (models, types, context, Sequelize) => {
       //modelTypes.outputTypes = Object.assign({}, modelTypes.outputTypes, remoteSchema.types);
 
       return {
-        query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
+        query: generators.queries(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
         mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.inputUpdateTypes, modelTypes.outputTypes)
       };
 
@@ -1659,7 +1487,7 @@ const generateSchema = (models, types, context, Sequelize) => {
   const modelTypes = types || generateModelTypes(availableModels);
 
   return {
-    query: generateQueryRootType(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
+    query: generators.queries(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
     mutation: generateMutationRootType(availableModels, modelTypes.inputTypes, modelTypes.inputUpdateTypes, modelTypes.outputTypes),
     subscription: generateSubscriptionRootType(availableModels, modelTypes.inputTypes, modelTypes.inputUpdateTypes, modelTypes.outputTypes)
   };
@@ -1668,7 +1496,7 @@ const generateSchema = (models, types, context, Sequelize) => {
 };
 
 module.exports = (_options) => {
-  options = Object.assign(options, _options);
+  Object.assign(options, _options);
 
   return {
     generateGraphQLType,
