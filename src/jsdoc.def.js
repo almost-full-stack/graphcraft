@@ -19,7 +19,7 @@
  * @property {Object} alias - Rename default queries and mutations with alias. Example: { count:'myCountQuery', fetch: 'myQuery', create: 'myCreateMutation', destroy: 'myDeleteMutation, update: 'myUpdateMutation' }
  * @property {Array<string>} excludeQueries - Exclude default queries. Example: [ 'count', 'fetch' ]
  * @property {Array<string>} excludeMutations - Exclude default mutations. Example: [ 'create', 'update', 'destroy' ]
- * @property {Array<string>} excludeSubscriptions - Exclude default subscriptions. Example: [ 'default', 'create', 'update', 'destroy' ]
+ * @property {Array<string>} excludeSubscriptions - Exclude default subscriptions. Example: [ 'create', 'update', 'destroy' ]
  * @property {Object} types - Create custom types. Add Input postfix to convert to input type. Example: {myType: { id: '[int]' }, myTypeInput: { id: 'int' }}
  * @property {Object} mutations - Custom mutations to be created. input or output can refer to a custom input type or default graphql types. Example: {myMutation: { input: 'myTypeInput', output: '[myType]', resolver: customResolver}}
  * @property {Object} queries - Custom queries to be created. input or output can refer to a custom input type or default graphql types. {myQuery: { output: '[myType]', resolver: customResolver }}
