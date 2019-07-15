@@ -234,11 +234,7 @@ const execBefore = (model, source, args, context, info, type, where) => {
 
 const findOneRecord = (model, where) => {
   if (where) {
-    return model.findOne({
-      where
-    });
-  } else {
-    return Promise.resolve();
+    return model.findOne({ where });
   }
 
   return Promise.resolve();
@@ -247,14 +243,13 @@ const findOneRecord = (model, where) => {
 
 const queryResolver = (model, isAssoc = false, field = null, assocModel = null) => {
   return async (source, args, context, info) => {
-    if (args.where)
-      whereQueryVarsToValues(args.where, info.variableValues);
+    if (args.where) whereQueryVarsToValues(args.where, info.variableValues);
 
     var _model = !field && isAssoc && model.target ? model.target : model;
     const type = 'fetch';
 
-    if (!isAssoc) // authorization should not be executed for nested queries
-      await options.authorizer(source, args, context, info);
+    // authorization should not be executed for nested queries
+    if (!isAssoc) await options.authorizer(source, args, context, info);
 
     if (_model.graphql.overwrite.hasOwnProperty(type)) {
       return _model.graphql.overwrite[type](source, args, context, info);
@@ -339,11 +334,9 @@ const queryResolver = (model, isAssoc = false, field = null, assocModel = null) 
 }
 
 const mutationResolver = async (model, inputTypeName, mutationName, source, args, context, info, type, where, isBulk) => {
-  if (args.where)
-    whereQueryVarsToValues(args.where, info.variableValues);
 
-  if (where)
-    whereQueryVarsToValues(where, info.variableValues);
+  if (args.where) whereQueryVarsToValues(args.where, info.variableValues);
+  if (where) whereQueryVarsToValues(where, info.variableValues);
 
   await options.authorizer(source, args, context, info);
 
@@ -694,23 +687,13 @@ const sanitizeFieldName = (type) => {
 const generateGraphQLField = (type) => {
 
   const typeReference = sanitizeFieldName(type);
-
   let field = getTypeByString(typeReference.type);
 
-  if (!field)
-    field = GraphQLString;
+  if (!field) field = GraphQLString;
+  if (typeReference.isArray)field = new GraphQLList(field);
+  if (typeReference.isRequired) field = GraphQLNonNull(field);
 
-  if (typeReference.isArray) {
-    field = new GraphQLList(field);
-  }
-
-  if (typeReference.isRequired) {
-    field = GraphQLNonNull(field);
-  }
-
-  return {
-    type: field
-  };
+  return { type: field };
 };
 
 const toGraphQLType = function (name, schema) {
@@ -895,8 +878,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
   for (let associationName in associations) {
     const relation = associations[associationName]
     let res = buildAssoc(relation.target, relation, relation.associationType, associationName)
-    if (res)
-      return res;
+    if (res) return res;
   }
 
   //Discovers hidden relations that are implicit created
@@ -936,7 +918,8 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
 
       const reference = model.associations[assocModel.name];
 
-      buildAssoc(assocModel, reference, "BelongsTo", reference.name || reference.as, true);
+      
+      assocModel, reference, "BelongsTo", reference.name || reference.as, true);
     }
   }
 
@@ -1415,8 +1398,9 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
               ...args["where"],
               [key]: args[key]
             };
-            return mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'update', where)
-              .then(boolean => {
+
+            return mutationResolver(models[inputTypeName], inputTypeName, mutationName, source, args, context, info, 'update', where).
+              then((boolean) => {
                 // `boolean` equals the number of rows affected (0 or 1)
                 return resolver(models[inputTypeName], {
                   [EXPECTED_OPTIONS_KEY]: dataloaderContext
@@ -1447,6 +1431,7 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
 
       const hasBulkOptionCreate = getBulkOption(models[inputTypeName].graphql.bulk, 'create');
       const hasBulkOptionEdit = getBulkOption(models[inputTypeName].graphql.bulk, 'edit');
+      const hasBulkOptionDelete = getBulkOption(models[inputTypeName].graphql.bulk, 'delete');
 
       if (hasBulkOptionCreate) {
         mutations[camelCase(aliases.create || (inputTypeName + 'AddBulk'))] = {
@@ -1454,6 +1439,29 @@ const generateMutationRootType = (models, inputTypes, inputUpdateTypes, outputTy
           description: 'Create bulk ' + inputTypeName + ' and return number of rows or created rows.',
           args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
           resolve: (source, args, context, info) => mutationResolver(models[inputTypeName], inputTypeName, source, args, context, info, 'create', null, hasBulkOptionCreate)
+        };
+      }
+
+      if (hasBulkOptionDelete) {
+        const mutationName = camelCase(aliases.bulkDelete || (inputTypeName + 'DeleteBulk'));
+
+        mutations[mutationName] = {
+          type: GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+          description: 'Delete bulk ' + inputTypeName + ' and return number of rows deleted.',
+          args: Object.assign({
+            where: defaultListArgs().where,
+            [key]: {
+              type: new GraphQLList(new GraphQLNonNull(GraphQLInt))
+            },
+          }, includeArguments(), defaultMutationArgs()),
+          resolve: (source, args, context, info) => {
+            const where = {
+              ...args['where'],
+              [key]: args[key]
+            };
+
+            return mutationResolver(models[inputTypeName], key, mutationName, source, args, context, info, 'destroy', where, true);
+          }
         };
       }
 
