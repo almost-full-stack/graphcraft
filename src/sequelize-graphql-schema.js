@@ -1315,6 +1315,7 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
       const subscriptions = {};
 
       {
+        const hasBulkOptionCreate = getBulkOption(models[inputTypeName].graphql.bulk, 'create');
         const _filter = models[inputTypeName].graphql.subsFilter.default;
         const filter = _filter ? _filter : () => true;
         const subsName = camelCase(aliases.subscribe || (inputTypeName + 'Subs'));
@@ -1339,17 +1340,21 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
 
             const filterType = [];
 
-            if (!args.mutation || args.mutation.indexOf('CREATED') >= 0)
-              filterType.push(camelCase(inputTypeName + 'Add'));
+            if ((!args.mutation || args.mutation.indexOf("CREATED") >= 0)
+                && models[inputTypeName].graphql.excludeSubscriptions.indexOf('create') === -1)
+              filterType.push(camelCase(inputTypeName + 'Add'))
 
-            if (!args.mutation || args.mutation.indexOf('UPDATED') >= 0)
-              filterType.push(camelCase(inputTypeName + 'Edit'));
+            if ((!args.mutation || args.mutation.indexOf("UPDATED") >= 0)
+                && models[inputTypeName].graphql.excludeSubscriptions.indexOf('update') === -1)
+              filterType.push(camelCase(inputTypeName + 'Edit'))
 
-            if (!args.mutation || args.mutation.indexOf('DELETED') >= 0)
-              filterType.push(camelCase(inputTypeName + 'Delete'));
+            if ((!args.mutation || args.mutation.indexOf("DELETED") >= 0)
+                && models[inputTypeName].graphql.excludeSubscriptions.indexOf('destroy') === -1)
+              filterType.push(camelCase(inputTypeName + 'Delete'))
 
-            if (!args.mutation || args.mutation.indexOf('BULK_CREATED') >= 0)
-              filterType.push(camelCase(inputTypeName + 'AddBulk'));
+            if ((!args.mutation || args.mutation.indexOf("BULK_CREATED") >= 0)
+                && hasBulkOptionCreate)
+              filterType.push(camelCase(inputTypeName + 'AddBulk'))
 
             return pubsub.asyncIterator(filterType);
           }, filter),
