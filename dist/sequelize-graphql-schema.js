@@ -1770,7 +1770,7 @@ var generateQueryRootType = function generateQueryRootType(models, outputTypes, 
 
           var inputArg = models[modelTypeName].graphql.queries[query].input ? _defineProperty({}, inputTypeNameField, {
             type: inPutType
-          }) : {};
+          }) : defaultArgs(models[modelType.name]);
           queries[camelCase(query)] = {
             type: outPutType,
             description: description,
