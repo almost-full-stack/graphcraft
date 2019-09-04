@@ -1,6 +1,8 @@
 "use strict";
 
-function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; var ownKeys = Object.keys(source); if (typeof Object.getOwnPropertySymbols === 'function') { ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) { return Object.getOwnPropertyDescriptor(source, sym).enumerable; })); } ownKeys.forEach(function (key) { _defineProperty(target, key, source[key]); }); } return target; }
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(source, true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(source).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
@@ -2055,6 +2057,7 @@ var generateSubscriptionRootType = function generateSubscriptionRootType(models,
       var aliases = models[inputTypeName].graphql.alias;
       var subscriptions = {};
       {
+        var hasBulkOptionCreate = getBulkOption(models[inputTypeName].graphql.bulk, 'create');
         var _filter = models[inputTypeName].graphql.subsFilter["default"];
         var filter = _filter ? _filter : function () {
           return true;
@@ -2087,10 +2090,10 @@ var generateSubscriptionRootType = function generateSubscriptionRootType(models,
           },
           subscribe: withFilter(function (rootValue, args, context, info) {
             var filterType = [];
-            if (!args.mutation || args.mutation.indexOf('CREATED') >= 0) filterType.push(camelCase(inputTypeName + 'Add'));
-            if (!args.mutation || args.mutation.indexOf('UPDATED') >= 0) filterType.push(camelCase(inputTypeName + 'Edit'));
-            if (!args.mutation || args.mutation.indexOf('DELETED') >= 0) filterType.push(camelCase(inputTypeName + 'Delete'));
-            if (!args.mutation || args.mutation.indexOf('BULK_CREATED') >= 0) filterType.push(camelCase(inputTypeName + 'AddBulk'));
+            if ((!args.mutation || args.mutation.indexOf("CREATED") >= 0) && models[inputTypeName].graphql.excludeSubscriptions.indexOf('create') === -1) filterType.push(camelCase(inputTypeName + 'Add'));
+            if ((!args.mutation || args.mutation.indexOf("UPDATED") >= 0) && models[inputTypeName].graphql.excludeSubscriptions.indexOf('update') === -1) filterType.push(camelCase(inputTypeName + 'Edit'));
+            if ((!args.mutation || args.mutation.indexOf("DELETED") >= 0) && models[inputTypeName].graphql.excludeSubscriptions.indexOf('destroy') === -1) filterType.push(camelCase(inputTypeName + 'Delete'));
+            if ((!args.mutation || args.mutation.indexOf("BULK_CREATED") >= 0) && hasBulkOptionCreate) filterType.push(camelCase(inputTypeName + 'AddBulk'));
             return pubsub.asyncIterator(filterType);
           }, filter),
           resolve: subscriptionResolver(models[inputTypeName])
