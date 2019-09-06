@@ -12,14 +12,14 @@ const {
   resolver,
   attributeFields,
   defaultListArgs,
-  defaultArgs,
-  JSONType
+  defaultArgs
 } = require('graphql-sequelize');
 const camelCase = require('camelcase');
 const remoteSchema = require('./remoteSchema');
 const { GraphQLClient } = require('graphql-request');
 const _ = require('lodash');
 const { createContext, EXPECTED_OPTIONS_KEY, resetCache } = require('dataloader-sequelize');
+// eslint-disable-next-line no-unused-vars
 const DataLoader = require('dataloader');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const cls = require('cls-hooked');
