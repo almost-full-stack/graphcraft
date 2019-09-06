@@ -3,6 +3,7 @@ const _ = require('lodash');
 
 module.exports = async (options, context) => {
 
+  // eslint-disable-next-line no-unused-vars
   const defaultOptions = {
     endpoint: null,
     queries: [],
@@ -100,6 +101,7 @@ module.exports = async (options, context) => {
       }
     }`;
 
+  // eslint-disable-next-line no-unused-vars
   function getTypes(type, AllTypes, array) {
 
     array = array || [];

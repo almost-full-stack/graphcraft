@@ -83,8 +83,10 @@ const remoteResolver = async (source, args, context, info, remoteQuery, remoteAr
   const passedArgs = [];
 
   for (const arg in pickedArgs) {
-    queryArgs.push(`$${arg}:${pickedArgs[arg].type}`);
-    passedArgs.push(`${arg}:$${arg}`);
+    if (pickedArgs[arg]) {
+      queryArgs.push(`$${arg}:${pickedArgs[arg].type}`);
+      passedArgs.push(`${arg}:$${arg}`);
+    }
   }
 
   const fields = _.keys(type.getFields());
@@ -117,7 +119,9 @@ const includeArguments = () => {
   const includeArguments = {};
 
   for (const argument in options.includeArguments) {
-    includeArguments[argument] = generateGraphQLField(options.includeArguments[argument]);
+    if (options.includeArguments[argument]) {
+      includeArguments[argument] = generateGraphQLField(options.includeArguments[argument]);
+    }
   }
 
 return includeArguments;
