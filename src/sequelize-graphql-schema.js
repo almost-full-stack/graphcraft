@@ -548,7 +548,7 @@ const generateModelTypes = (models, remoteTypes) => {
 
   for (const modelName in models) {
     // Only our models, not Sequelize nor sequelize
-    if (models[modelName].hasOwnProperty('name') && modelName !== 'Sequelize') {
+    if (_.has(models[modelName], 'name') && modelName !== 'Sequelize') {
       const cache = {};
 
       inputTypes = Object.assign(inputTypes, generateCustomGraphQLTypes(models[modelName], null, true));
