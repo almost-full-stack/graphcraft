@@ -129,7 +129,7 @@ const includeArguments = () => {
 };
 
 const execBefore = (model, source, args, context, info, type, where) => {
-  if (model.graphql && model.graphql.hasOwnProperty('before') && model.graphql.before.hasOwnProperty(type)) {
+  if (model.graphql && _.has(model.graphql, 'before') && _.has(model.graphql.before, type)) {
     return model.graphql.before[type](source, args, context, info, where);
   }
 
@@ -152,7 +152,7 @@ const queryResolver = async (model, inputTypeName, source, args, context, info) 
 
   await options.authorizer(source, args, context, info);
 
-  if (model.graphql.overwrite.hasOwnProperty(type)) {
+  if (_.has(model.graphql.overwrite, type)) {
     return model.graphql.overwrite[type](source, args, context, info);
   }
 
@@ -190,7 +190,7 @@ const queryResolver = async (model, inputTypeName, source, args, context, info) 
     before
   })(source, args, context, info);
 
-  if (model.graphql.extend.hasOwnProperty(type)) {
+  if (_.has(model.graphql.extend, type)) {
     return model.graphql.extend[type](data, source, args, context, info);
   }
 
@@ -202,7 +202,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
   await options.authorizer(source, args, context, info);
 
-  if (model.graphql.overwrite.hasOwnProperty(type)) {
+  if (_.has(model.graphql.overwrite, type)) {
     return model.graphql.overwrite[type](source, args, context, info, where);
   }
 
@@ -255,7 +255,7 @@ const mutationResolver = async (model, inputTypeName, source, args, context, inf
 
     }
 
-    if (model.graphql.extend.hasOwnProperty(type)) {
+    if (_.has(model.graphql.extend, type)) {
       data = await model.graphql.extend[type](type === 'destroy' ? preData : data, source, args, context, info, where);
     }
 
@@ -317,7 +317,9 @@ const toGraphQLType = function (name, schema) {
   const fields = {};
 
   for (const field in schema) {
-    fields[field] = generateGraphQLField(schema[field]);
+    if (schema[field]) {
+      fields[field] = generateGraphQLField(schema[field]);
+    }
   }
 
   return new GraphQLObjectType({
@@ -335,13 +337,17 @@ const generateTypesFromObject = function (remoteData) {
   remoteData.forEach((item) => {
 
     for (const type in item.types) {
-      types[type] = toGraphQLType(type, item.types[type]);
+      if (item.types[type]) {
+        types[type] = toGraphQLType(type, item.types[type]);
+      }
     }
     item.queries.forEach((query) => {
       const args = {};
 
       for (const arg in query.args) {
-        args[arg] = generateGraphQLField(query.args[arg]);
+        if (query.args[arg]) {
+          args[arg] = generateGraphQLField(query.args[arg]);
+        }
       }
       query.args = args;
     });
@@ -353,6 +359,7 @@ const generateTypesFromObject = function (remoteData) {
 };
 
 function getBulkOption(options, key) {
+  // eslint-disable-next-line no-confusing-arrow
   const bulkOption = options.filter((option) => (Array.isArray(option) ? option[0] == key : option == key));
 
   return bulkOption.length ? (Array.isArray(bulkOption[0]) ? bulkOption[0][1] : true) : false;
@@ -371,6 +378,7 @@ const generateAssociationFields = (associations, types, isInput = false) => {
   const fields = {}
 
   for (const associationName in associations) {
+    if (associations[associationName]) {
     const relation = associations[associationName];
 
     if (!types[relation.target.name]) {
@@ -410,6 +418,8 @@ const generateAssociationFields = (associations, types, isInput = false) => {
       }
 
     }
+
+  }
   }
 
   return fields;
@@ -430,9 +440,11 @@ const generateGraphQLType = (model, types, isInput = false, cache) => {
 
   if (model.graphql.attributes.include) {
     for (const attribute in model.graphql.attributes.include) {
-      const type = types && types[model.graphql.attributes.include[attribute]] ? { type: types[model.graphql.attributes.include[attribute]] } : null;
+      if (model.graphql.attributes.include[attribute]) {
+        const type = types && types[model.graphql.attributes.include[attribute]] ? { type: types[model.graphql.attributes.include[attribute]] } : null;
 
-      includeAttributes[attribute] = type || generateGraphQLField(model.graphql.attributes.include[attribute]);
+        includeAttributes[attribute] = type || generateGraphQLField(model.graphql.attributes.include[attribute]);
+      }
     }
   }
 
@@ -468,7 +480,7 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
     }
 
     for (const field in model.graphql.types[type]) {
-
+      if (model.graphql.types[type][field]) {
       const fieldReference = sanitizeFieldName(model.graphql.types[type][field]);
 
       if (customTypes[fieldReference.type] !== undefined || model.graphql.types[fieldReference.type] != undefined) {
@@ -493,6 +505,8 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
 
     }
 
+    }
+
     if (isInput && !ignoreInputCheck) {
       if (type.toUpperCase().endsWith('INPUT')) {
         return new GraphQLInputObjectType({
@@ -512,9 +526,7 @@ const generateCustomGraphQLTypes = (model, types, isInput = false) => {
   if (model.graphql && model.graphql.types) {
 
     for (const type in model.graphql.types) {
-
       customTypes[type] = getCustomType(type);
-
     }
 
   }
