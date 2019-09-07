@@ -46,6 +46,8 @@ let options = {
   }
 };
 
+const { query } = require('./libs/resolvers')(options);
+
 const defaultModelGraphqlOptions = {
   attributes: {
     exclude: [], // list attributes which are to be ignored in Model Input
@@ -143,58 +145,6 @@ const findOneRecord = (model, where) => {
   }
 
   return Promise.resolve();
-
-};
-
-const queryResolver = async (model, inputTypeName, source, args, context, info) => {
-
-  const type = 'fetch';
-
-  await options.authorizer(source, args, context, info);
-
-  if (_.has(model.graphql.overwrite, type)) {
-    return model.graphql.overwrite[type](source, args, context, info);
-  }
-
-  await execBefore(model, source, args, context, info, type);
-
-  const before = (findOptions, args, context) => {
-
-    const orderArgs = args.order || '';
-    const orderBy = [];
-
-    if (orderArgs != '') {
-      const orderByClauses = orderArgs.split(',');
-
-      orderByClauses.forEach((clause) => {
-        if (clause.indexOf('reverse:') === 0) {
-          orderBy.push([clause.substring(8), 'DESC']);
-        } else {
-          orderBy.push([clause, 'ASC']);
-        }
-      });
-
-      findOptions.order = orderBy;
-
-    }
-
-    findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : model.options.paranoid;
-
-    return findOptions;
-  };
-
-  const scope = Array.isArray(model.graphql.scopes) ? { method: [model.graphql.scopes[0], _.get(args, model.graphql.scopes[1], model.graphql.scopes[2] || null)] } : model.graphql.scopes;
-
-  const data = await resolver(model.scope(scope), {
-    [EXPECTED_OPTIONS_KEY]: dataloaderContext,
-    before
-  })(source, args, context, info);
-
-  if (_.has(model.graphql.extend, type)) {
-    return model.graphql.extend[type](data, source, args, context, info);
-  }
-
-  return data;
 
 };
 
@@ -620,7 +570,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
           type: new GraphQLList(modelType),
           args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
           resolve: (source, args, context, info) => {
-            return queryResolver(models[modelType.name], modelType.name, source, args, context, info);
+            return query(models[modelType.name], modelType.name, source, args, context, info);
           }
         }
       }
