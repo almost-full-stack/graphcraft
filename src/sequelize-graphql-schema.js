@@ -1,20 +1,9 @@
 /* eslint-disable max-depth */
 const {
-  GraphQLObjectType,
-  GraphQLInputObjectType,
-  GraphQLList,
-  GraphQLNonNull,
-  GraphQLEnumType
+  GraphQLObjectType
 } = require('graphql');
-const {
-  resolver,
-  defaultListArgs,
-  defaultArgs
-} = require('graphql-sequelize');
 const remoteSchema = require('./remoteSchema');
-const { GraphQLClient } = require('graphql-request');
-const _ = require('lodash');
-const { createContext, EXPECTED_OPTIONS_KEY, resetCache } = require('dataloader-sequelize');
+const { createContext, resetCache } = require('dataloader-sequelize');
 // eslint-disable-next-line no-unused-vars
 const DataLoader = require('dataloader');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
@@ -40,8 +29,8 @@ let options = {
   }
 };
 
-const { queries, mutations, types } = require('./generators')(options);
-const { includeArguments, generateGraphQLField } = require('./utils');
+const { queries, mutations } = require('./libs')(options);
+const { generateGraphQLField } = require('./utils');
 
 const defaultModelGraphqlOptions = {
   attributes: {
@@ -69,55 +58,6 @@ const errorHandler = (error) => {
   }
 
   return error;
-};
-
-const remoteResolver = async (source, args, context, info, remoteQuery, remoteArguments, type) => {
-
-  const availableArgs = _.keys(remoteQuery.args);
-  const pickedArgs = _.pick(remoteArguments, availableArgs);
-  const queryArgs = [];
-  const passedArgs = [];
-
-  for (const arg in pickedArgs) {
-    if (pickedArgs[arg]) {
-      queryArgs.push(`$${arg}:${pickedArgs[arg].type}`);
-      passedArgs.push(`${arg}:$${arg}`);
-    }
-  }
-
-  const fields = _.keys(type.getFields());
-
-  const query = `query ${remoteQuery.name}(${queryArgs.join(', ')}){
-    ${remoteQuery.name}(${passedArgs.join(', ')}){
-      ${fields.join(', ')}
-    }
-  }`;
-
-  const variables = _.pick(args, availableArgs);
-  const key = remoteQuery.to || 'id';
-
-  if (_.indexOf(availableArgs, key) > -1 && !variables.where) {
-    variables[key] = source[remoteQuery.with];
-  } else if (_.indexOf(availableArgs, 'where') > -1) {
-    variables.where = variables.where || {};
-    variables.where[key] = source[remoteQuery.with];
-  }
-
-  const headers = _.pick(context.headers, remoteQuery.headers);
-  const client = new GraphQLClient(remoteQuery.endpoint, { headers });
-  const data = await client.request(query, variables);
-
-  return data[remoteQuery.name];
-
-};
-
-const execBefore = (model, source, args, context, info, type, where) => {
-  if (model.graphql && _.has(model.graphql, 'before') && _.has(model.graphql.before, type)) {
-    return model.graphql.before[type](source, args, context, info, where);
-  }
-
-  return Promise.resolve();
-
 };
 
 const toGraphQLType = function (name, schema) {
