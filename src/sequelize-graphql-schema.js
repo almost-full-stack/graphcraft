@@ -1,7 +1,4 @@
 /* eslint-disable max-depth */
-const {
-  GraphQLObjectType
-} = require('graphql');
 const remoteSchema = require('./remoteSchema');
 const { createContext, resetCache } = require('dataloader-sequelize');
 // eslint-disable-next-line no-unused-vars
@@ -29,8 +26,7 @@ let options = {
   }
 };
 
-const { queries, mutations } = require('./libs')(options);
-const { generateGraphQLField } = require('./utils');
+const { queries, mutations, types } = require('./libs')(options);
 
 const defaultModelGraphqlOptions = {
   attributes: {
@@ -58,52 +54,6 @@ const errorHandler = (error) => {
   }
 
   return error;
-};
-
-const toGraphQLType = function (name, schema) {
-
-  const fields = {};
-
-  for (const field in schema) {
-    if (schema[field]) {
-      fields[field] = generateGraphQLField(schema[field]);
-    }
-  }
-
-  return new GraphQLObjectType({
-    name,
-    fields: () => fields
-  });
-
-};
-
-const generateTypesFromObject = function (remoteData) {
-
-  const types = {};
-  let queries = [];
-
-  remoteData.forEach((item) => {
-
-    for (const type in item.types) {
-      if (item.types[type]) {
-        types[type] = toGraphQLType(type, item.types[type]);
-      }
-    }
-    item.queries.forEach((query) => {
-      const args = {};
-
-      for (const arg in query.args) {
-        if (query.args[arg]) {
-          args[arg] = generateGraphQLField(query.args[arg]);
-        }
-      }
-      query.args = args;
-    });
-    queries = queries.concat(item.queries);
-  });
-
-  return { types, queries };
-
 };
 
 const generateModelTypesFromRemote = (context) => {
@@ -184,7 +134,7 @@ const generateSchema = (models, types, context, Sequelize) => {
 
       }
 
-      const modelTypes = types || generateModelTypes(availableModels, remoteSchema.types);
+      const modelTypes = types || types.generateModelTypes(availableModels, remoteSchema.types);
 
       //modelTypes.outputTypes = Object.assign({}, modelTypes.outputTypes, remoteSchema.types);
 
@@ -197,7 +147,7 @@ const generateSchema = (models, types, context, Sequelize) => {
 
   }
 
-  const modelTypes = types || generateModelTypes(availableModels);
+  const modelTypes = types || types.generateModelTypes(availableModels);
 
   return {
     query: queries(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
@@ -211,8 +161,8 @@ module.exports = (_options) => {
   options = Object.assign(options, _options);
 
   return {
-    generateGraphQLType,
-    generateModelTypes,
+    generateGraphQLType: types.generateGraphQLType,
+    generateModelTypes: types.generateModelTypes,
     generateSchema,
     dataloaderContext,
     errorHandler,

@@ -3,7 +3,8 @@ const {
   GraphQLInt,
   GraphQLNonNull,
   GraphQLString,
-  GraphQLBoolean
+  GraphQLBoolean,
+  GraphQLObjectType
 } = require('graphql');
 
 const sanitizeFieldName = (type) => {
@@ -55,9 +56,27 @@ function getBulkOption(options, key) {
   return bulkOption.length ? (Array.isArray(bulkOption[0]) ? bulkOption[0][1] : true) : false;
 }
 
+const toGraphQLType = function (name, schema) {
+
+  const fields = {};
+
+  for (const field in schema) {
+    if (schema[field]) {
+      fields[field] = generateGraphQLField(schema[field]);
+    }
+  }
+
+  return new GraphQLObjectType({
+    name,
+    fields: () => fields
+  });
+
+};
+
 module.exports = {
   includeArguments,
   generateGraphQLField,
   sanitizeFieldName,
-  getBulkOption
+  getBulkOption,
+  toGraphQLType
 };

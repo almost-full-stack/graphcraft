@@ -8,7 +8,7 @@ const {
   GraphQLNonNull,
   GraphQLEnumType
 } = require('graphql');
-const { sanitizeFieldName, generateGraphQLField } = require('../utils');
+const { sanitizeFieldName, generateGraphQLField, toGraphQLType } = require('../utils');
 
 /**
 * Returns a new `GraphQLObjectType` created from a sequelize model.
@@ -146,7 +146,37 @@ const generateModelTypes = (models, remoteTypes) => {
   return { outputTypes, inputTypes };
 };
 
+const generateTypesFromObject = function (remoteData) {
+
+  const types = {};
+  let queries = [];
+
+  remoteData.forEach((item) => {
+
+    for (const type in item.types) {
+      if (item.types[type]) {
+        types[type] = toGraphQLType(type, item.types[type]);
+      }
+    }
+    item.queries.forEach((query) => {
+      const args = {};
+
+      for (const arg in query.args) {
+        if (query.args[arg]) {
+          args[arg] = generateGraphQLField(query.args[arg]);
+        }
+      }
+      query.args = args;
+    });
+    queries = queries.concat(item.queries);
+  });
+
+  return { types, queries };
+
+};
+
 module.exports = {
   generateGraphQLType,
-  generateModelTypes
+  generateModelTypes,
+  generateTypesFromObject
 };
