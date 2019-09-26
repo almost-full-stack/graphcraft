@@ -1,5 +1,4 @@
-const Sequelize = require('Sequelize');
-const { attributeFields, typeMapper, JSONType, DateType } = require('graphql-sequelize');
+const { attributeFields, JSONType, DateType } = require('graphql-sequelize');
 const {
   GraphQLObjectType,
   GraphQLInputObjectType,
@@ -42,15 +41,10 @@ const stringToTypeMap = {
  * '[int]' List
  * '[int]!' Non Null List
  * '[int!]' List of Non Null items
- * Sequelize.DataTypes
  * Sequelize.Model
  *
  **/
 function generateGraphQLField (fieldType) {
-
-  const isCustomType = (typeof fieldType === 'string' || fieldType instanceof String);
-
-  if (!isCustomType) return typeMapper.toGraphQL(new fieldType(), Sequelize);
 
   let field = stringToTypeMap[sanitizeField(fieldType).toLowerCase()] || stringToTypeMap['string'];
   const isArray = isFieldArray(fieldType);

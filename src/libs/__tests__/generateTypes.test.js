@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const {
   GraphQLInt,
   GraphQLBoolean,
@@ -7,7 +8,7 @@ const {
   GraphQLList,
   GraphQLNonNull
 } = require('graphql');
-const Sequelize = require('Sequelize');
+const { JSONType, DateType } = require('graphql-sequelize');
 const { generateModelTypes, generateGraphQLField } = require('../generateTypes');
 
 describe('Type Generators', () => {
@@ -19,6 +20,8 @@ describe('Type Generators', () => {
     expect(generateGraphQLField('boolean')).toEqual(GraphQLBoolean);
     expect(generateGraphQLField('float')).toEqual(GraphQLFloat);
     expect(generateGraphQLField('id')).toEqual(GraphQLID);
+    expect(generateGraphQLField('json')).toEqual(JSONType);
+    expect(generateGraphQLField('date')).toEqual(DateType);
     expect(generateGraphQLField('[string]')).toEqual(new GraphQLList(GraphQLString));
     expect(generateGraphQLField('string!')).toEqual(GraphQLNonNull(GraphQLString));
     expect(generateGraphQLField('[string]!')).toEqual(GraphQLNonNull(new GraphQLList(GraphQLString)));
@@ -42,9 +45,7 @@ describe('Type Generators', () => {
               nonNullField: 'string!',
               listField: '[string]',
               nonNullListField: '[string]!',
-              listNonNullField: '[string!]',
-              seqIntegerField: Sequelize.INTEGER,
-              seqStringField: Sequelize.STRING
+              listNonNullField: '[string!]'
             },
             'typeAInput': { fieldA: 'float', fieldB: 'json' },
             'typeB': { fieldA: 'string', fieldB: 'int' },
