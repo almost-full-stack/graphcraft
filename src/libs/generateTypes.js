@@ -44,7 +44,7 @@ const stringToTypeMap = {
  * Sequelize.Model
  *
  **/
-function generateGraphQLField (fieldType) {
+function generateGraphQLField(fieldType) {
 
   let field = stringToTypeMap[sanitizeField(fieldType).toLowerCase()] || stringToTypeMap['string'];
   const isArray = isFieldArray(fieldType);
@@ -67,8 +67,46 @@ function generateGraphQLField (fieldType) {
   return field;
 }
 
-function generateAssociationFields() {
-  return {};
+/**
+* Returns the association fields of an entity.
+*
+* It iterates over all the associations and produces an object compatible with GraphQL-js.
+* BelongsToMany and HasMany associations are represented as a `GraphQLList` whereas a BelongTo
+* is simply an instance of a type.
+* @param {*} associations A collection of sequelize associations
+* @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
+*/
+function generateAssociationFields(associations, types, isInput = false) {
+  const fields = {}
+
+  for (const associationName in associations) {
+    if (associations[associationName]) {
+      const relation = associations[associationName];
+
+      if (!types[relation.target.name]) {
+        return fields;
+      }
+
+      // BelongsToMany is represented as a list, just like HasMany
+      const type = relation.associationType === 'BelongsToMany' ||
+        relation.associationType === 'HasMany'
+        ? new GraphQLList(types[relation.target.name])
+        : types[relation.target.name];
+
+      fields[associationName] = { type };
+
+      /*if (!isInput && !relation.isRemote) {
+        // GraphQLInputObjectType do not accept fields with resolve
+        fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
+        fields[associationName].resolve = async (source, args, context, info) => {
+        };
+
+      }*/
+
+    }
+  }
+
+  return fields;
 }
 
 /**
@@ -79,7 +117,7 @@ function generateAssociationFields() {
 * @param {*} model The sequelize model used to create the `GraphQLObjectType`
 * @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
-function generateGraphQLTypeFromModel (model, existingTypes, isInput = false, cache) {
+function generateGraphQLTypeFromModel(model, existingTypes, isInput = false, cache) {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   const includeAttributes = {};
   const attributes = model.graphql.attributes;
@@ -104,7 +142,7 @@ function generateGraphQLTypeFromModel (model, existingTypes, isInput = false, ca
   });
 }
 
-function generateGraphQLTypeFromJson(typeJson, existingTypes, isInput = false, cache) {
+function generateGraphQLTypeFromJson(typeJson, existingTypes = {}, isInput = false, cache) {
 
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   const name = typeJson.name;
@@ -112,7 +150,7 @@ function generateGraphQLTypeFromJson(typeJson, existingTypes, isInput = false, c
   const fields = {};
 
   for (const fieldName in type) {
-    fields[fieldName] = generateGraphQLField(type[fieldName]);
+    fields[fieldName] = existingTypes[type[fieldName]] || generateGraphQLField(type[fieldName]);
   }
 
   const typeName = isInput ? name.toLowerCase().endsWith('input') ? name : `${name}Input` : name;
@@ -131,7 +169,7 @@ function generateGraphQLTypeFromJson(typeJson, existingTypes, isInput = false, c
 * from Sequelize models.
 * @param {*} models The sequelize models used to create the types
 */
-function generateModelTypes (models, customTypes = {}, remoteTypes = {}) {
+function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
 
   const outputTypes = remoteTypes || {};
   const inputTypes = {};

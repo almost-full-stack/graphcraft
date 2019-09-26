@@ -6,10 +6,13 @@ const {
   GraphQLString,
   GraphQLID,
   GraphQLList,
-  GraphQLNonNull
+  GraphQLNonNull,
+  GraphQLObjectType,
+  GraphQLInputObjectType
 } = require('graphql');
 const { JSONType, DateType } = require('graphql-sequelize');
-const { generateModelTypes, generateGraphQLField } = require('../generateTypes');
+const stringifier = require('stringifier')({ maxDepth: 10, indent: '  ' })
+const { generateModelTypes, generateGraphQLField, generateGraphQLTypeFromJson } = require('../generateTypes');
 
 describe('Type Generators', () => {
   it('Should generate graphQL Field Types.', () => {
@@ -28,7 +31,7 @@ describe('Type Generators', () => {
     expect(generateGraphQLField('[string!]')).toEqual(new GraphQLList(GraphQLNonNull(GraphQLString)));
   });
 
-  it('Should generate types from models and custom types.', () => {
+  it('Should generate types from custom types.', () => {
 
     const models = {
       test: {
@@ -49,6 +52,7 @@ describe('Type Generators', () => {
             },
             'typeAInput': { fieldA: 'float', fieldB: 'json' },
             'typeB': { fieldA: 'string', fieldB: 'int' },
+            'typeC': { fieldA: 'typeB' }
           },
           mutations: { testMutation: { input: 'typeB' } },
           queries: { testQuery: { input: 'typeAInput' } },
@@ -56,9 +60,56 @@ describe('Type Generators', () => {
       }
     };
 
-    const types = generateModelTypes(models);
+    const typeAInput = new GraphQLInputObjectType({
+      name: 'typeAInput',
+      fields: () => ({
+        fieldA: {
+          type: GraphQLFloat
+        },
+        fieldB: {
+          type: JSONType
+        }
+      })
+    });
 
-    // eslint-disable-next-line no-console
-    console.log(types);
+    const typeB = new GraphQLObjectType({
+      name: 'typeB',
+      fields: () => ({
+        fieldA: {
+          type: GraphQLString
+        },
+        fieldB: {
+          type: GraphQLInt
+        }
+      })
+    });
+
+    const typeC = new GraphQLObjectType({
+      name: 'typeC',
+      fields: () => ({
+        fieldA: {
+          type: typeB
+        }
+      })
+    });
+
+    const types = {
+      typeAInput: generateGraphQLTypeFromJson({
+        name: 'typeAInput',
+        type: { fieldA: 'float', fieldB: 'json' }
+      }, {}, true),
+      typeB: generateGraphQLTypeFromJson({
+        name: 'typeB',
+        type: { fieldA: 'string', fieldB: 'int' }
+      }),
+      typeC: generateGraphQLTypeFromJson({
+        name: 'typeC',
+        type: { fieldA: 'typeB' }
+      }, { typeB: this.typeB })
+    };
+
+    expect(stringifier(types.typeAInput)).toEqual(stringifier(typeAInput));
+    expect(stringifier(types.typeB)).toEqual(stringifier(typeB));
+    expect(stringifier(types.typeC)).toEqual(stringifier(typeC));
   });
 });
