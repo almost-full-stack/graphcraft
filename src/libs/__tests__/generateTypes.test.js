@@ -33,34 +33,7 @@ describe('Type Generators', () => {
     expect(generateGraphQLField('[string!]')).toEqual(new GraphQLList(GraphQLNonNull(GraphQLString)));
   });
 
-  it('Should generate types from custom types.', () => {
-
-    const models = {
-      test: {
-        name: 'TestModel',
-        graphql: {
-          attributes: { include: {} },
-          types: {
-            'typeA': {
-              stringField: 'string',
-              intField: 'int',
-              booleanField: 'boolean',
-              idField: 'id',
-              floatField: 'float',
-              nonNullField: 'string!',
-              listField: '[string]',
-              nonNullListField: '[string]!',
-              listNonNullField: '[string!]'
-            },
-            'typeAInput': { fieldA: 'float', fieldB: 'json' },
-            'typeB': { fieldA: 'string', fieldB: 'int' },
-            'typeC': { fieldA: 'typeB' }
-          },
-          mutations: { testMutation: { input: 'typeB' } },
-          queries: { testQuery: { input: 'typeAInput' } },
-        }
-      }
-    };
+  describe('Should generate types from custom types.', () => {
 
     const modelA = sequelize.define('modelA', {
       fieldA: Sequelize.STRING,
@@ -117,6 +90,15 @@ describe('Type Generators', () => {
       })
     });
 
+    const typeD = new GraphQLObjectType({
+      name: 'typeD',
+      fields: () => ({
+        fieldA: {
+          type: typeC
+        }
+      })
+    });
+
     const types = {
       modelA: generateGraphQLTypeFromModel(modelA),
       typeAInput: generateGraphQLTypeFromJson({
@@ -130,12 +112,32 @@ describe('Type Generators', () => {
       typeC: generateGraphQLTypeFromJson({
         name: 'typeC',
         type: { fieldA: 'typeB', fieldB: 'modelA' }
-      }, { typeB: this.typeB, modelA: 'modelA' })
+      }, { typeB: this.typeB, modelA: 'modelA' }),
+      typeD: generateGraphQLTypeFromJson({
+        name: 'typeD',
+        type: { fieldA: 'typeC' }
+      }, { typeB: this.typeB, typeC: this.typeC })
     };
 
-    expect(stringifier(types.modelA)).toEqual(stringifier(modelAType));
-    expect(stringifier(types.typeAInput)).toEqual(stringifier(typeAInput));
-    expect(stringifier(types.typeB)).toEqual(stringifier(typeB));
-    expect(stringifier(types.typeC)).toEqual(stringifier(typeC));
+    it('Should create type from a Model.', () => {
+      expect(stringifier(types.modelA)).toEqual(stringifier(modelAType));
+    });
+
+    it('Should create input type for a Custom Type.', () => {
+      expect(stringifier(types.typeAInput)).toEqual(stringifier(typeAInput));
+    });
+
+    it('Should create output type for a Custom Type.', () => {
+      expect(stringifier(types.typeB)).toEqual(stringifier(typeB));
+    });
+
+    it('Should create output type for a 1-level Nested Custom Type.', () => {
+      expect(stringifier(types.typeC)).toEqual(stringifier(typeC));
+    });
+
+    it('Should create output type for a Multi-level Nested Custom Type.', () => {
+      expect(stringifier(types.typeD)).toEqual(stringifier(typeD));
+    });
+
   });
 });
