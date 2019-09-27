@@ -12,7 +12,9 @@ const {
 } = require('graphql');
 const { JSONType, DateType } = require('graphql-sequelize');
 const stringifier = require('stringifier')({ maxDepth: 10, indent: '  ' })
-const { generateModelTypes, generateGraphQLField, generateGraphQLTypeFromJson } = require('../generateTypes');
+const { generateGraphQLField, generateGraphQLTypeFromJson, generateGraphQLTypeFromModel } = require('../generateTypes');
+const Sequelize = require('sequelize');
+const sequelize = new Sequelize({ dialect: 'sqlite' });
 
 describe('Type Generators', () => {
   it('Should generate graphQL Field Types.', () => {
@@ -60,6 +62,25 @@ describe('Type Generators', () => {
       }
     };
 
+    const modelA = sequelize.define('modelA', {
+      fieldA: Sequelize.STRING,
+      fieldB: Sequelize.INTEGER
+    });
+
+    modelA.graphql = { attributes: {} };
+
+    const modelAType = new GraphQLObjectType({
+      name: 'modelA',
+      fields: () => ({
+        fieldA: {
+          type: GraphQLString
+        },
+        fieldB: {
+          type: GraphQLInt
+        }
+      })
+    });
+
     const typeAInput = new GraphQLInputObjectType({
       name: 'typeAInput',
       fields: () => ({
@@ -89,11 +110,15 @@ describe('Type Generators', () => {
       fields: () => ({
         fieldA: {
           type: typeB
+        },
+        fieldB: {
+          type: modelAType
         }
       })
     });
 
     const types = {
+      modelA: generateGraphQLTypeFromModel(modelA),
       typeAInput: generateGraphQLTypeFromJson({
         name: 'typeAInput',
         type: { fieldA: 'float', fieldB: 'json' }
@@ -104,10 +129,11 @@ describe('Type Generators', () => {
       }),
       typeC: generateGraphQLTypeFromJson({
         name: 'typeC',
-        type: { fieldA: 'typeB' }
-      }, { typeB: this.typeB })
+        type: { fieldA: 'typeB', fieldB: 'modelA' }
+      }, { typeB: this.typeB, modelA: 'modelA' })
     };
 
+    expect(stringifier(types.modelA)).toEqual(stringifier(modelAType));
     expect(stringifier(types.typeAInput)).toEqual(stringifier(typeAInput));
     expect(stringifier(types.typeB)).toEqual(stringifier(typeB));
     expect(stringifier(types.typeC)).toEqual(stringifier(typeC));
