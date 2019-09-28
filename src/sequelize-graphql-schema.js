@@ -1372,7 +1372,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
             }
           }
 
-          const inputArg = models[modelTypeName].graphql.queries[query].input ? { [inputTypeNameField]: { type: inPutType } } : {};
+          const inputArg = models[modelTypeName].graphql.queries[query].input ? { [inputTypeNameField]: { type: inPutType } } : defaultArgs(models[modelType.name]);
 
           queries[camelCase(query)] = {
             type: outPutType,
