@@ -17,6 +17,7 @@ const {
   argsToFindOptions,
   relay
 } = require('graphql-sequelize');
+const resolverFactory = require('sequelize-graphql-schema/src/graphql-sequelize/resolverFactory');
 const { PubSub, withFilter } = require('graphql-subscriptions');
 const pubsub = new PubSub();
 const Sequelize = require('sequelize');
@@ -32,6 +33,12 @@ const cls = require('cls-hooked');
 const uuid = require('uuid/v4');
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 let dataloaderContext;
+
+const sgsArguments = {
+  join: {
+    type: GraphQLString
+  }
+}
 
 let options = {
   exclude: [],
@@ -223,11 +230,65 @@ const findOneRecord = (model, where) => {
 };
 
 const queryResolver = (model, isAssoc = false, field = null, assocModel = null) => {
-  return async (source, args, context, info) => {
-    if (args.where) whereQueryVarsToValues(args.where, info.variableValues);
+  const _model = !field && isAssoc && model.target ? model.target : model;
+  const type = 'fetch';
 
-    const _model = !field && isAssoc && model.target ? model.target : model;
-    const type = 'fetch';
+  const scope = Array.isArray(_model.graphql.scopes) ? {
+    method: [_model.graphql.scopes[0], _.get(args, _model.graphql.scopes[1], _model.graphql.scopes[2] || null)]
+  } : _model.graphql.scopes;
+
+  const before = (findOptions, args, context, info) => {
+
+    const orderArgs = args.order || '';
+    const orderBy = [];
+
+    if (orderArgs != '') {
+      const orderByClauses = orderArgs.split(',');
+
+      orderByClauses.forEach((clause) => {
+        if (clause.indexOf('reverse:') === 0) {
+          let colName = clause.substring(8);
+          orderBy.push([Sequelize.col(colName), "DESC"]);
+        } else {
+          orderBy.push([Sequelize.col(clause), "ASC"]);
+        }
+      });
+    }
+
+    if (args.orderEdges) {
+      const orderByClauses = args.orderEdges.split(',');
+
+      orderByClauses.forEach((clause) => {
+        const colName = '`' + model.through.model.name + '`.`' + (clause.indexOf('reverse:') === 0 ? clause.substring(8) : clause) + '`';
+
+        orderBy.push([Sequelize.col(colName), clause.indexOf('reverse:') === 0 ? 'DESC' : 'ASC']);
+      });
+    }
+
+    findOptions.order = orderBy;
+
+    if (args.whereEdges) {
+      if (!findOptions.where)
+        findOptions.where = {};
+
+      for (const key in args.whereEdges) {
+        if (_.has(args.whereEdges, key)) {
+          whereQueryVarsToValues(args.whereEdges, info.variableValues);
+
+          const colName = '`' + model.through.model.name + '`.`' + key + '`';
+
+          findOptions.where[colName] = Sequelize.where(Sequelize.col(colName), args.whereEdges[key]);
+        }
+      }
+    }
+
+    findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : _model.options.paranoid;
+
+    return findOptions;
+  };
+
+  var _queryResolver = async (source, args, context, info, callbackFn) => {
+    if (args.where) whereQueryVarsToValues(args.where, info.variableValues);
 
     // authorization should not be executed for nested queries
     if (!isAssoc) await options.authorizer(source, args, context, info);
@@ -238,71 +299,22 @@ const queryResolver = (model, isAssoc = false, field = null, assocModel = null) 
 
     await execBefore(_model, source, args, context, info, type);
 
-    const before = (findOptions, args, context, info) => {
-
-      const orderArgs = args.order || '';
-      const orderBy = [];
-
-      if (orderArgs != '') {
-        const orderByClauses = orderArgs.split(',');
-
-        orderByClauses.forEach((clause) => {
-          if (clause.indexOf('reverse:') === 0) {
-            orderBy.push([clause.substring(8), 'DESC']);
-          } else {
-            orderBy.push([clause, 'ASC']);
-          }
-        });
-      }
-
-      if (args.orderEdges) {
-        const orderByClauses = args.orderEdges.split(',');
-
-        orderByClauses.forEach((clause) => {
-          const colName = '`' + model.through.model.name + '`.`' + (clause.indexOf('reverse:') === 0 ? clause.substring(8) : clause) + '`';
-
-          orderBy.push([Sequelize.col(colName), clause.indexOf('reverse:') === 0 ? 'DESC' : 'ASC']);
-        });
-      }
-
-      findOptions.order = orderBy;
-
-      if (args.whereEdges) {
-        if (!findOptions.where)
-          findOptions.where = {};
-
-        for (const key in args.whereEdges) {
-          if (_.has(args.whereEdges, key)) {
-            whereQueryVarsToValues(args.whereEdges, info.variableValues);
-
-            const colName = '`' + model.through.model.name + '`.`' + key + '`';
-
-            findOptions.where[colName] = Sequelize.where(Sequelize.col(colName), args.whereEdges[key]);
-          }
-        }
-      }
-
-      findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : _model.options.paranoid;
-
-      return findOptions;
-    };
-
-    const scope = Array.isArray(_model.graphql.scopes) ? {
-      method: [_model.graphql.scopes[0], _.get(args, _model.graphql.scopes[1], _model.graphql.scopes[2] || null)]
-    } : _model.graphql.scopes;
-
-    let data;
+    var data;
 
     if (field) {
       const modelNode = source.node[_model.name];
 
       data = modelNode[field];
     } else {
-      data = await resolver(model instanceof Sequelize.Model ? model.scope(scope) : model, {
-        [EXPECTED_OPTIONS_KEY]: dataloaderContext,
-        before,
-        separate: isAssoc
-      })(source, args, context, info);
+      let reqFields = [];
+      if (info.fieldNodes[0])
+        info.fieldNodes[0].selectionSet.selections.map(selection => reqFields[selection.name.value] = true);
+      // avoid data resolver if we don't ask for data (for example when only count is needed)
+      if ((isAssoc != "HasMany" && isAssoc != "BelongsToMany") || reqFields["edges"]) {
+        data = await callbackFn(source, args, context, info);
+      } else {
+        data = {}
+      }
     }
 
     // little trick to pass args
@@ -319,6 +331,10 @@ const queryResolver = (model, isAssoc = false, field = null, assocModel = null) 
     return data;
 
   };
+
+  var rModel = model instanceof Sequelize.Model ? model.scope(scope) : model;
+
+  return resolverFactory(_queryResolver, rModel, { before });
 };
 
 const mutationResolver = async (model, inputTypeName, mutationName, source, args, context, info, type, where, isBulk) => {
@@ -451,10 +467,10 @@ const mutationResolver = async (model, inputTypeName, mutationName, source, args
       where,
       transaction
     } : _args[name], {
-        where,
-        validate,
-        transaction
-      });
+      where,
+      validate,
+      transaction
+    });
 
     if (opType !== 'create' && opType !== 'destroy') {
       return finalize(await _model.findOne({ where: updWhere, transaction }));
@@ -706,7 +722,7 @@ const generateGraphQLField = (type) => {
   let field = getTypeByString(typeReference.type);
 
   if (!field) field = GraphQLString;
-  if (typeReference.isArray)field = new GraphQLList(field);
+  if (typeReference.isArray) field = new GraphQLList(field);
   if (typeReference.isRequired) field = GraphQLNonNull(field);
 
   return { type: field };
@@ -839,7 +855,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
 
           // Pass Through model to resolve function
           _.each(edgeFields, (edgeField, field) => {
-            edgeField.resolve = queryResolver(aModel, true, field);
+            edgeField.resolve = queryResolver(aModel, associationType, field);
           });
         }
 
@@ -876,7 +892,7 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
           edgeFields
         });
 
-        connection.resolve = queryResolver(relation, true, null, assocModel);
+        connection.resolve = queryResolver(relation, associationType, null, assocModel);
 
         fields[associationName].type = connection.connectionType;
         fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), {
@@ -886,11 +902,11 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
         fields[associationName].resolve = connection.resolve;
       } else {
         // GraphQLInputObjectType do not accept fields with resolve
-        fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), types[assocModel.name].args);
-        fields[associationName].resolve = queryResolver(relation, true);
+        fields[associationName].args = Object.assign(sgsArguments, defaultArgs(relation), defaultListArgs(), types[assocModel.name].args);
+        fields[associationName].resolve = queryResolver(relation, associationType);
       }
     } else {
-      fields[associationName].args = Object.assign({}, relation.query.args, defaultListArgs());
+      fields[associationName].args = Object.assign(relation.query.args, defaultListArgs());
       fields[associationName].resolve = (source, args, context, info) => {
         return remoteResolver(source, args, context, info, relation.query, fields[associationName].args, types[assocModel.name]);
       };
@@ -919,10 +935,6 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
 
     if (attr && attr.references) {
       const modelName = attr.references.model;
-      const assocModel = model.sequelize.modelManager.getModel(modelName, {
-        attribute: 'tableName'
-      });
-
       // TODO: improve it or ask sequelize community to fix it
       // ISSUE: belongsToMany
       // when you have to create the association resolvers for
@@ -936,16 +948,32 @@ const generateAssociationFields = (model, associations, types, cache, isInput = 
       // tableC doesn't belongsTo tableB and tableA
       // so graphql-sequelize resolver is not able to understand how to
       // build the query.
+      // NOTE: !!IT DOESN'T WORK WITH DIFFERENT DATABASE CONNECTIONS!!!
+      // but this case should not happen in n:m
       // HACK-FIX(?):
-      if (!model.associations[assocModel.name]) {
-        model.belongsTo(assocModel, {
-          foreignKey: attr.field
+      {
+        const assocModel = model.sequelize.modelManager.getModel(modelName, {
+          attribute: 'tableName'
         });
+
+        if (assocModel && !model.associations[assocModel.name]) {
+          model.belongsTo(assocModel, {
+            foreignKey: attr.field
+          });
+        }
       }
 
-      const reference = model.associations[assocModel.name];
+      var reference;
 
-      buildAssoc(assocModel, reference, 'BelongsTo', reference.name || reference.as, true);
+      for (let k in model.associations) {
+        let assoc = model.associations[k];
+        if (assoc.target.tableName === modelName) {
+          reference = assoc;
+          break;
+        }
+      }
+
+      buildAssoc(reference.target, reference, 'BelongsTo', reference.name || reference.as, true);
     }
   }
 
@@ -1296,7 +1324,7 @@ const generateQueryRootType = (models, outputTypes, inputTypes) => {
       if (models[modelType.name].graphql.excludeQueries.indexOf('fetch') === -1) {
         queries[camelCase(aliases.fetch || (modelType.name + 'Get'))] = {
           type: new GraphQLList(modelType),
-          args: Object.assign(defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
+          args: Object.assign({}, sgsArguments, defaultArgs(models[modelType.name]), defaultListArgs(), includeArguments(), paranoidType),
           resolve: queryResolver(models[modelType.name])
         };
       }
@@ -1636,19 +1664,19 @@ const generateSubscriptionRootType = (models, inputTypes, inputUpdateTypes, outp
             const filterType = [];
 
             if ((!args.mutation || args.mutation.indexOf("CREATED") >= 0)
-                && models[inputTypeName].graphql.excludeSubscriptions.indexOf('create') === -1)
+              && models[inputTypeName].graphql.excludeSubscriptions.indexOf('create') === -1)
               filterType.push(camelCase(inputTypeName + 'Add'))
 
             if ((!args.mutation || args.mutation.indexOf("UPDATED") >= 0)
-                && models[inputTypeName].graphql.excludeSubscriptions.indexOf('update') === -1)
+              && models[inputTypeName].graphql.excludeSubscriptions.indexOf('update') === -1)
               filterType.push(camelCase(inputTypeName + 'Edit'))
 
             if ((!args.mutation || args.mutation.indexOf("DELETED") >= 0)
-                && models[inputTypeName].graphql.excludeSubscriptions.indexOf('destroy') === -1)
+              && models[inputTypeName].graphql.excludeSubscriptions.indexOf('destroy') === -1)
               filterType.push(camelCase(inputTypeName + 'Delete'))
 
             if ((!args.mutation || args.mutation.indexOf("BULK_CREATED") >= 0)
-                && hasBulkOptionCreate)
+              && hasBulkOptionCreate)
               filterType.push(camelCase(inputTypeName + 'AddBulk'))
 
             return pubsub.asyncIterator(filterType);
