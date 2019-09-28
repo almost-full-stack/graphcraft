@@ -44,9 +44,9 @@ const stringToTypeMap = {
  * Sequelize.Model
  *
  **/
-function generateGraphQLField(fieldType) {
+function generateGraphQLField(fieldType, types = {}) {
 
-  let field = stringToTypeMap[sanitizeField(fieldType).toLowerCase()] || stringToTypeMap['string'];
+  let field = types[fieldType] || stringToTypeMap[sanitizeField(fieldType).toLowerCase()] || stringToTypeMap['string'];
   const isArray = isFieldArray(fieldType);
   const isRequired = isFieldRequired(fieldType);
 
