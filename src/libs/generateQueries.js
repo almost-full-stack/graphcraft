@@ -10,7 +10,7 @@ const {
   defaultArgs
 } = require('graphql-sequelize');
 const camelCase = require('camelcase');
-const { generateGraphQLField } = require('../generateTypes');
+const { generateGraphQLField } = require('./generateTypes');
 const { includeArguments } = require('../utils');
 
 module.exports = (options) => {
@@ -32,7 +32,7 @@ module.exports = (options) => {
       const model = models[outputTypeName];
 
       // model must have atleast one query to implement.
-      if (model && (!model.excludeQueries.length || Object.keys(model.queries).length)) {
+      if (model && (!model.graphql.excludeQueries.length || Object.keys(model.queries).length)) {
         createQueriesFor[outputTypeName] = outputTypes[outputTypeName];
       }
     }

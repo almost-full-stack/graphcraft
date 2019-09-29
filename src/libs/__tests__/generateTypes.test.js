@@ -12,7 +12,7 @@ const {
 } = require('graphql');
 const { JSONType, DateType } = require('graphql-sequelize');
 const stringifier = require('stringifier')({ maxDepth: 10, indent: '  ' })
-const { generateGraphQLField, generateGraphQLTypeFromJson, generateGraphQLTypeFromModel } = require('../generateTypes');
+const { generateGraphQLField, generateGraphQLTypeFromJson, generateGraphQLTypeFromModel, generateModelTypes } = require('../generateTypes');
 const Sequelize = require('sequelize');
 const sequelize = new Sequelize({ dialect: 'sqlite' });
 
@@ -137,6 +137,38 @@ describe('Type Generators', () => {
 
     it('Should create output type for a Multi-level Nested Custom Type.', () => {
       expect(stringifier(types.typeD)).toEqual(stringifier(typeD));
+    });
+
+  });
+
+  describe('Should generate types with associations from Models.', () => {
+
+    const modelB = sequelize.define('modelB', {
+      fieldA: Sequelize.STRING,
+      fieldB: Sequelize.INTEGER
+    });
+
+    const modelC = sequelize.define('modelC', {
+      fieldA: Sequelize.STRING,
+      fieldB: Sequelize.INTEGER
+    });
+
+    const modelD = sequelize.define('modelD', {
+      fieldA: Sequelize.STRING,
+      fieldB: Sequelize.INTEGER
+    });
+
+    const modelE = sequelize.define('modelE', {});
+
+    modelB.hasMany(modelC);
+    modelC.belongsTo(modelB);
+    modelD.belongsToMany(modelB, { through: modelE });
+    modelB.belongsToMany(modelD, { through: modelE });
+
+    //const types = generateModelTypes({ modelB, modelC, modelD, modelE });
+
+    it('Should create hasMany association from Model B > C.', () => {
+      //expect(stringifier(types.modelA)).toEqual(stringifier(modelAType));
     });
 
   });

@@ -117,7 +117,7 @@ function generateAssociationFields(associations, types, isInput = false) {
 * @param {*} model The sequelize model used to create the `GraphQLObjectType`
 * @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
-function generateGraphQLTypeFromModel(model, existingTypes, isInput = false, cache) {
+function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false, cache) {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   const includeAttributes = {};
   const attributes = model.graphql.attributes;
@@ -132,13 +132,12 @@ function generateGraphQLTypeFromModel(model, existingTypes, isInput = false, cac
     }
   }
 
+  const modelAttributeFields = attributeFields(model, Object.assign({}, { allowNull: Boolean(isInput), cache }));
+  const associationFields = generateAssociationFields(model.associations, existingTypes, isInput);
+
   return new GraphQLClass({
     name: isInput ? `${model.name}Input` : model.name,
-    fields: () => Object.assign(
-      attributeFields(model, Object.assign({}, { allowNull: Boolean(isInput), cache })),
-      generateAssociationFields(model.associations, existingTypes, isInput),
-      includeAttributes
-    )
+    fields: () => Object.assign({}, modelAttributeFields, associationFields, includeAttributes)
   });
 }
 
@@ -218,5 +217,6 @@ module.exports = {
   generateModelTypes,
   generateGraphQLField,
   generateGraphQLTypeFromJson,
-  generateGraphQLTypeFromModel
+  generateGraphQLTypeFromModel,
+  generateAssociationFields
 };

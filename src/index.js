@@ -1,5 +1,5 @@
 const assert = require('assert');
-
+const _ = require('lodash');
 const cls = require('cls-hooked');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
@@ -26,7 +26,6 @@ const defaultOptions = {
     'ETIMEDOUT': { statusCode: 503 }
   }
 };
-
 // Model options model.graphql
 const defaultModelGraphqlOptions = {
   attributes: {
@@ -46,8 +45,9 @@ const defaultModelGraphqlOptions = {
   overwrite: {} // overwrite default queries/mutations behavior {fetch, create, destroy, update}
 };
 
-const { generateModelTypes } = require('./libs/generateTypes');
 const options = {};
+const { generateModelTypes } = require('./libs/generateTypes');
+const generateQueries = require('./libs/generateQueries')(options);
 
 const errorHandler = (error) => {
   for (const name in options.errorHandler) {
@@ -76,8 +76,10 @@ function generateSchema(models, context) {
 
     const model = models[modelName];
 
-    if (model instanceof options.Sequelize.Model && options.exclude.indexOf(modelName) === -1) {
-      model.graphql = Object.assign({}, model.graphql || defaultModelGraphqlOptions);
+    if ('name' in model && modelName !== 'Sequelize' && !options.exclude.includes(modelName)) {
+      model.graphql = model.graphql || defaultModelGraphqlOptions;
+      model.graphql.attributes = Object.assign({}, defaultModelGraphqlOptions.attributes, model.graphql.attributes);
+      model.graphql = Object.assign({}, defaultModelGraphqlOptions, model.graphql);
       modelsIncluded[modelName] = model;
     }
 
@@ -86,14 +88,13 @@ function generateSchema(models, context) {
   const modelTypes = generateModelTypes(modelsIncluded, options.types || {});
 
   return {
-    query: queries(availableModels, modelTypes.outputTypes, modelTypes.inputTypes),
-    mutation: mutations(availableModels, modelTypes.inputTypes, modelTypes.outputTypes)
+    query: generateQueries(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes)
   };
 
 }
 
 module.exports = (_options) => {
-  Object.assign(options, _options, defaultOptions);
+  Object.assign(options, defaultOptions, _options);
 
   return {
     generateSchema
