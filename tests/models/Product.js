@@ -28,7 +28,7 @@ module.exports = (sequelize, DataTypes) => {
     Product.graphql = {
         'attributes': {
             exclude: ['description'],
-            include: { modelPortfolioId: 'int', obj: 'myObj' },
+            include: { modelPortfolioId: 'int' },
         },
         'scopes': ['test', 'scopeId'],
         'bulk': ['create', 'edit'],
@@ -37,8 +37,8 @@ module.exports = (sequelize, DataTypes) => {
         'excludeMutations': [],
         'excludeQueries': [],
         'types': {
-          //'myEnum': ['Red', 'Green'],
-          //'myEnum2': [['Red', 0], ['Green', 1]],
+          'myEnum': ['Red', 'Green'],
+          'myEnum2': [['Red', 0], ['Green', 1]],
           //'myObjInput': { 'id': '[int]', 'name': 'string', 'mye': 'myEnum', 'mye2': 'myEnum2' },
           'secObj': { 'id': 'int', 'name': 'string', 'myThirdObj': 'thirdObj!' },
           'thirdObj': { 'id': 'int', 'name': 'string' }
@@ -47,12 +47,7 @@ module.exports = (sequelize, DataTypes) => {
          
         },
         'queries': {
-          
-          myQuery1: { output: 'Product',
-input: 'Product',
-resolver: () => {
- return 1;
-} }
+          myQuery1: { output: 'myEnum', input: 'secObj', resolver: () => { return 1; } }
         },
         // this will be executed after mutations/queries
         'before': {

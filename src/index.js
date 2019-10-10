@@ -48,6 +48,7 @@ const defaultModelGraphqlOptions = {
 const options = {};
 const { generateModelTypes } = require('./libs/generateTypes');
 const generateQueries = require('./libs/generateQueries')(options);
+const generateMutations = require('./libs/generateMutations')(options);
 
 const errorHandler = (error) => {
   for (const name in options.errorHandler) {
@@ -88,7 +89,8 @@ function generateSchema(models, context) {
   const modelTypes = generateModelTypes(modelsIncluded, options.types || {});
 
   return {
-    query: generateQueries(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes)
+    query: generateQueries(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes),
+    //mutations: generateMutations(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes)
   };
 
 }

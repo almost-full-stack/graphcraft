@@ -8,6 +8,7 @@ const {
   GraphQLString,
   GraphQLID,
   GraphQLList,
+  GraphQLEnumType,
   GraphQLNonNull
 } = require('graphql');
 const { isFieldArray, isFieldRequired, sanitizeField } = require('../utils');
@@ -44,9 +45,26 @@ const stringToTypeMap = {
  * Sequelize.Model
  *
  **/
-function generateGraphQLField(fieldType, types = {}) {
+function generateGraphQLField(fieldType, existingTypes = {}) {
 
-  let field = types[fieldType] || stringToTypeMap[sanitizeField(fieldType).toLowerCase()] || stringToTypeMap['string'];
+  // ENUM when array
+  if (Array.isArray(fieldType)) {
+
+    const values = {};
+
+    fieldType.forEach((value) => {
+      if (Array.isArray(value)) {
+        values[value[0]] = { value: value[1] };
+      } else {
+        values[value] = { value };
+      }
+    });
+
+    return values;
+  }
+
+  const sanitizedField = sanitizeField(fieldType);
+  let field = existingTypes[sanitizedField] || stringToTypeMap[sanitizedField.toLowerCase()] || stringToTypeMap['string'];
   const isArray = isFieldArray(fieldType);
   const isRequired = isFieldRequired(fieldType);
 
@@ -122,37 +140,52 @@ function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false
   const includeAttributes = {};
   const attributes = model.graphql.attributes;
 
+  // Include attributes which are to be included in GraphQL Type but doesn't exist in Models.
   if (attributes.include) {
     for (const attribute in attributes.include) {
-      if (attributes.include[attribute]) {
-        const type = existingTypes && existingTypes[attributes.include[attribute]] ? { type: existingTypes[attributes.include[attribute]] } : null;
-
-        includeAttributes[attribute] = type || generateGraphQLField(attributes.include[attribute]);
-      }
+      includeAttributes[attribute] = { type: generateGraphQLField(attributes.include[attribute], existingTypes) };
     }
   }
 
   const modelAttributeFields = attributeFields(model, Object.assign({}, { allowNull: Boolean(isInput), cache }));
   const associationFields = generateAssociationFields(model.associations, existingTypes, isInput);
+  const fields = Object.assign({}, modelAttributeFields, associationFields, includeAttributes);
 
   return new GraphQLClass({
     name: isInput ? `${model.name}Input` : model.name,
-    fields: () => Object.assign({}, modelAttributeFields, associationFields, includeAttributes)
+    fields: () => fields
   });
 }
 
-function generateGraphQLTypeFromJson(typeJson, existingTypes = {}, isInput = false, cache) {
+function generateGraphQLTypeFromJson(typeJson, existingTypes = {}, allCustomTypes = {}, isInput = false, cache) {
+
 
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   const name = typeJson.name;
   const type = typeJson.type;
+
+  const typeName = isInput ? name.toLowerCase().endsWith('input') ? name : `${name}Input` : name;
+
+  // If Array generate ENUM type and return.
+  if (Array.isArray(typeJson.type)) {
+    return new GraphQLEnumType({
+      name: typeName,
+      values: generateGraphQLField(type)
+    });
+  }
+
   const fields = {};
 
   for (const fieldName in type) {
-    fields[fieldName] = existingTypes[type[fieldName]] || generateGraphQLField(type[fieldName]);
-  }
+    const sanitizedTypeName = sanitizeField(type[fieldName]);
 
-  const typeName = isInput ? name.toLowerCase().endsWith('input') ? name : `${name}Input` : name;
+    // Recursively generate nested types
+    if (allCustomTypes[sanitizedTypeName] && !existingTypes[sanitizedTypeName]) {
+      existingTypes[sanitizedTypeName] = generateGraphQLTypeFromJson({ name: sanitizedTypeName, type: allCustomTypes[sanitizedTypeName] }, existingTypes, allCustomTypes, isInput, cache);
+    }
+
+    fields[fieldName] = generateGraphQLField(type[fieldName], existingTypes);
+  }
 
   return new GraphQLClass({
     name: typeName,
@@ -200,12 +233,13 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
       type: customTypes[typeName]
     };
 
-    if (inputCustomTypes.includes(typeName)) {
-      inputTypes[typeName] = generateGraphQLTypeFromJson(type, inputTypes, true, cache);
+    if (inputCustomTypes.includes(typeName) && !inputTypes[typeName]) {
+      inputTypes[typeName] = generateGraphQLTypeFromJson(type, inputTypes, customTypes, true, cache);
     }
 
-    if (!typeName.toLowerCase().endsWith('input')) {
-      outputTypes[typeName] = generateGraphQLTypeFromJson(type, outputTypes, false, cache);
+    //if (!typeName.toLowerCase().endsWith('input')) {
+    if (!outputTypes[typeName]) {
+      outputTypes[typeName] = generateGraphQLTypeFromJson(type, outputTypes, customTypes, false, cache);
     }
 
   }

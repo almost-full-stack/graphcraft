@@ -32,7 +32,7 @@ module.exports = (options) => {
       const model = models[outputTypeName];
 
       // model must have atleast one query to implement.
-      if (model && (!model.graphql.excludeQueries.length || Object.keys(model.queries).length)) {
+      if (model && (!model.graphql.excludeQueries.includes('fetch') || Object.keys(model.graphql.queries || {}).length)) {
         createQueriesFor[outputTypeName] = outputTypes[outputTypeName];
       }
     }
@@ -47,7 +47,7 @@ module.exports = (options) => {
         const paranoidType = model.graphql.paranoid && model.options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
         const aliases = model.graphql.alias;
 
-        if (!model.graphql.excludeQueries.incldues('query')) {
+        if (!model.graphql.excludeQueries.includes('fetch')) {
           queries[camelCase(aliases.fetch || modelType.name, { pascalCase: true })] = {
             type: new GraphQLList(modelType),
             args: Object.assign(defaultArgs(model), defaultListArgs(), includeArguments(), paranoidType),
@@ -60,10 +60,12 @@ module.exports = (options) => {
         for (const query in (model.graphql.queries || {})) {
 
           const currentQuery = model.graphql.queries[query];
-          const inputArg = currentQuery.input ? { [currentQuery.input]: { type: generateGraphQLField(currentQuery.input) } } : {};
 
-          queries[camelCase(query)] = {
-            type: currentQuery.output ? generateGraphQLField(currentQuery.output) : GraphQLInt,
+          console.log(inputTypes[currentQuery.input]);
+          const inputArg = currentQuery.input ? { [currentQuery.input]: { type: inputTypes[currentQuery.input] } } : {};
+
+          queries[camelCase(query, { pascalCase: true })] = {
+            type: currentQuery.output ? generateGraphQLField(currentQuery.output, outputTypes) : GraphQLInt,
             args: Object.assign(inputArg, defaultListArgs(), includeArguments(), paranoidType),
             resolve: (source, args, context, info) => {
               return 1;

@@ -25,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
       fetch: (data, source, args, context, info) => {
         data.key = 'Added by extension.';
 
-return Promise.resolve(data);
+        return Promise.resolve(data);
       }
     }
   };

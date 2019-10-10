@@ -9,6 +9,7 @@ const camelCase = require('camelcase');
 const { EXPECTED_OPTIONS_KEY } = require('dataloader-sequelize');
 const { resolver } = require('graphql-sequelize');
 const { includeArguments, sanitizeFieldName, getBulkOption } = require('../utils');
+const { generateGraphQLField } = require('./generateTypes');
 
 module.exports = (options) => {
 
@@ -16,46 +17,47 @@ module.exports = (options) => {
   const { dataloaderContext } = options;
   const Models = options.models;
 
-  return (models, inputTypes, outputTypes) => {
+  return (models, modelTypes, outputTypes) => {
 
     const createMutationFor = {};
 
-    for (const inputTypeName in inputTypes) {
-      const model = models[inputTypeName];
+    for (const modelTypeName in modelTypes) {
+      const model = models[modelTypeName];
 
-      if (model && (model.excludeMutations.length < 3 || Object.keys(model.mutations).length)) {
-        createMutationFor[inputTypeName] = inputTypes[inputTypeName];
+      // model must have atleast one mutation to implement.
+      if (model && (model.graphql.excludeMutations.length < 3 || Object.keys(model.graphql.mutations).length)) {
+        createMutationFor[modelTypeName] = modelTypes[modelTypeName];
       }
     }
 
     return new GraphQLObjectType({
       name: 'Root_Mutations',
-      fields: Object.keys(createMutationFor).reduce((allMutations, inputTypeName) => {
+      fields: Object.keys(createMutationFor).reduce((allMutations, modelTypeName) => {
 
         const mutations = {};
-        const inputType = inputTypes[inputTypeName];
-        const model = models[inputTypeName];
+        const modelType = modelTypes[modelTypeName];
+        const model = models[modelTypeName];
         const key = model.primaryKeyAttributes[0];
         const aliases = model.graphql.alias;
 
-        if (model.graphql.excludeMutations.indexOf('create') === -1) {
-          mutations[camelCase(aliases.create || (inputTypeName + 'Add'))] = {
-            type: outputTypes[inputTypeName], // what is returned by resolve, must be of type GraphQLObjectType
-            description: 'Create a ' + inputTypeName,
-            args: Object.assign({ [inputTypeName]: { type: inputType } }, includeArguments(options.includeArguments)),
-            resolve: (source, args, context, info) => mutation(model, inputTypeName, source, args, context, info, 'create')
+        if (model.graphql.excludeMutations.includes('create')) {
+          mutations[camelCase(aliases.create || (modelTypeName + 'Add'), { pascalCase: true })] = {
+            type: outputTypes[modelTypeName], // what is returned by resolve, must be of type GraphQLObjectType
+            description: 'Create a ' + modelTypeName,
+            args: Object.assign({ [modelTypeName]: { type: modelType } }, includeArguments(options.includeArguments)),
+            resolve: (source, args, context, info) => mutation(model, modelTypeName, source, args, context, info, 'create')
           };
         }
 
-        if (model.graphql.excludeMutations.indexOf('update') === -1) {
-          mutations[camelCase(aliases.update || (inputTypeName + 'Edit'))] = {
-            type: outputTypes[inputTypeName] || GraphQLInt,
-            description: 'Update a ' + inputTypeName,
-            args: Object.assign({ [inputTypeName]: { type: inputType } }, includeArguments(options.includeArguments)),
+        if (model.graphql.excludeMutations.includes('update')) {
+          mutations[camelCase(aliases.update || (modelTypeName + 'Edit'), { pascalCase: true })] = {
+            type: outputTypes[modelTypeName] || GraphQLInt,
+            description: 'Update a ' + modelTypeName,
+            args: Object.assign({ [modelTypeName]: { type: modelType } }, includeArguments(options.includeArguments)),
             resolve: (source, args, context, info) => {
-              const where = { [key]: args[inputTypeName][key] };
+              const where = { [key]: args[modelTypeName][key] };
 
-              return mutation(model, inputTypeName, source, args, context, info, 'update', where).
+              return mutation(model, modelTypeName, source, args, context, info, 'update', where).
                 then((boolean) => {
                   // `boolean` equals the number of rows affected (0 or 1)
                   return resolver(model, { [EXPECTED_OPTIONS_KEY]: dataloaderContext })(source, where, context, info);
@@ -65,99 +67,66 @@ module.exports = (options) => {
         }
 
         if (model.graphql.excludeMutations.indexOf('destroy') === -1) {
-          mutations[camelCase(aliases.destroy || (inputTypeName + 'Delete'))] = {
+          mutations[camelCase(aliases.destroy || (modelTypeName + 'Delete'), { pascalCase: true })] = {
             type: GraphQLInt,
-            description: 'Delete a ' + inputTypeName,
+            description: 'Delete a ' + modelTypeName,
             args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments()),
             resolve: (source, args, context, info) => {
               const where = { [key]: args[key] };
 
-              return mutation(model, inputTypeName, source, args, context, info, 'destroy', where);
+              return mutation(model, modelTypeName, source, args, context, info, 'destroy', where);
             }
           };
         }
 
-        const hasBulkOptionCreate = getBulkOption(inputType.graphql.bulk, 'create');
-        const hasBulkOptionEdit = getBulkOption(inputType.graphql.bulk, 'edit');
+        const hasBulkOptionCreate = false; //getBulkOption(modelType.graphql.bulk, 'create');
+        const hasBulkOptionEdit = false; //getBulkOption(modelType.graphql.bulk, 'edit');
 
         if (hasBulkOptionCreate) {
-          mutations[camelCase(aliases.create || (inputTypeName + 'AddBulk'))] = {
-            type: (typeof hasBulkOptionCreate === 'string') ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
-            description: 'Create bulk ' + inputTypeName + ' and return number of rows or created rows.',
-            args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
-            resolve: (source, args, context, info) => mutation(inputType, inputTypeName, source, args, context, info, 'create', null, hasBulkOptionCreate)
+          mutations[camelCase(aliases.create || (modelTypeName + 'AddBulk'), { pascalCase: true })] = {
+            type: (typeof hasBulkOptionCreate === 'string') ? new GraphQLList(outputTypes[modelTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+            description: 'Create bulk ' + modelTypeName + ' and return number of rows or created rows.',
+            args: Object.assign({ [modelTypeName]: { type: new GraphQLList(modelType) } }, includeArguments()),
+            resolve: (source, args, context, info) => mutation(modelType, modelTypeName, source, args, context, info, 'create', null, hasBulkOptionCreate)
           };
         }
 
         if (hasBulkOptionEdit) {
 
-          mutations[camelCase(aliases.edit || (inputTypeName + 'EditBulk'))] = {
-            type: outputTypes[inputTypeName] ? new GraphQLList(outputTypes[inputTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
-            description: 'Update bulk ' + inputTypeName + ' and return number of rows modified or updated rows.',
-            args: Object.assign({ [inputTypeName]: { type: new GraphQLList(inputType) } }, includeArguments()),
+          mutations[camelCase(aliases.edit || (modelTypeName + 'EditBulk'), { pascalCase: true })] = {
+            type: outputTypes[modelTypeName] ? new GraphQLList(outputTypes[modelTypeName]) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
+            description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
+            args: Object.assign({ [modelTypeName]: { type: new GraphQLList(modelType) } }, includeArguments()),
             resolve: async (source, args, context, info) => {
-              const whereClause = { [key]: { [Models.Sequelize.Op.in]: args[inputTypeName].map((input) => input[key]) } };
+              const whereClause = { [key]: { [Models.Sequelize.Op.in]: args[modelTypeName].map((input) => input[key]) } };
 
-              await mutation(inputType, inputTypeName, source, args, context, info, 'update', null, hasBulkOptionEdit);
+              await mutation(modelType, modelTypeName, source, args, context, info, 'update', null, hasBulkOptionEdit);
 
-              return resolver(inputType, { [EXPECTED_OPTIONS_KEY]: dataloaderContext })(source, whereClause, context, info);
+              return resolver(modelType, { [EXPECTED_OPTIONS_KEY]: dataloaderContext })(source, whereClause, context, info);
             }
           };
         }
 
-        if (inputType.graphql && inputType.graphql.mutations) {
+        if (modelType.graphql && modelType.graphql.mutations) {
 
-          for (const mutation in inputType.graphql.mutations) {
-            if (inputType.graphql.mutations[mutation]) {
-              let isArray = false;
+          for (const mutation in modelType.graphql.mutations) {
+            if (modelType.graphql.mutations[mutation]) {
+              const isArray = false;
               // eslint-disable-next-line no-unused-vars
-              let isRequired = false;
-              let outPutType = GraphQLInt;
-              let inPutType = GraphQLInt;
-              let typeName = inputType.graphql.mutations[mutation].output;
-              let inputTypeNameField = model.graphql.mutations[mutation].input;
+              const isRequired = false;
+              const outPutType = GraphQLInt;
+              const modelType = GraphQLInt;
+              const typeName = modelType.graphql.mutations[mutation].output;
+              const modelTypeNameField = model.graphql.mutations[mutation].input;
 
-              if (typeName) {
-
-                const typeReference = sanitizeFieldName(typeName);
-
-                typeName = typeReference.type;
-                isArray = typeReference.isArray;
-                isRequired = typeReference.isRequired;
-
-                if (isArray) {
-                  outPutType = new GraphQLList(outputTypes[typeName]);
-                } else {
-                  outPutType = outputTypes[typeName];
-                }
-
-              }
-
-              if (inputTypeNameField) {
-
-                const typeReference = sanitizeFieldName(inputTypeNameField);
-
-                inputTypeNameField = typeReference.type;
-
-                if (typeReference.isArray) {
-                  inPutType = new GraphQLList(inputTypes[inputTypeNameField]);
-                } else {
-                  inPutType = inputTypes[inputTypeNameField];
-                }
-
-                if (typeReference.isRequired) {
-                  inPutType = GraphQLNonNull(inPutType);
-                }
-              }
-
-              mutations[camelCase(mutation)] = {
+              mutations[camelCase(mutation, { pascalCase: true })] = {
                 type: outPutType,
-                args: Object.assign({ [inputTypeNameField]: { type: inPutType } }, includeArguments()),
+                args: Object.assign({ [modelTypeNameField]: { type: modelType } }, includeArguments()),
                 resolve: (source, args, context, info) => {
-                  const where = key && args[inputTypeName] ? { [key]: args[inputTypeName][key] } : {};
+                  const where = key && args[modelTypeName] ? { [key]: args[modelTypeName][key] } : {};
 
                   return options.authorizer(source, args, context, info).then((_) => {
-                    return inputType.graphql.mutations[mutation].resolver(source, args, context, info, where);
+                    return modelType.graphql.mutations[mutation].resolver(source, args, context, info, where);
                   }).then((data) => {
                     return options.logger(data, source, args, context, info).then(() => data);
                   });
