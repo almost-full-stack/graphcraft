@@ -1,5 +1,15 @@
 'use strict';
 
+function _await(value, then, direct) {
+  if (direct) {
+    return then ? then(value) : value;
+  }if (!value || !value.then) {
+    value = Promise.resolve(value);
+  }return then ? value.then(then) : value;
+}
+var _require = require('graphql-request'),
+    GraphQLClient = _require.GraphQLClient;
+
 function _async(f) {
   return function () {
     for (var args = [], i = 0; i < arguments.length; i++) {
@@ -10,14 +20,7 @@ function _async(f) {
       return Promise.reject(e);
     }
   };
-}function _await(value, then, direct) {
-  if (direct) {
-    return then ? then(value) : value;
-  }value = Promise.resolve(value);return then ? value.then(then) : value;
 }
-var _require = require('graphql-request'),
-    GraphQLClient = _require.GraphQLClient;
-
 var _ = require('lodash');
 
 module.exports = _async(function (options, context) {
