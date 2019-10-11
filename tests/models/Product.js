@@ -38,7 +38,7 @@ module.exports = (sequelize, DataTypes) => {
       'myEnum': ['Red', 'Green'],
       'myEnum2': [['Red', 0], ['Green', 1]],
       'myObjInput': { 'id': '[int]', 'name': 'string', 'mye': 'myEnum', 'mye2': 'myEnum2' },
-      'secObj': { 'id': 'int', 'name': 'string', 'myThirdObj': 'thirdObj!' },
+      'secObj': { 'id': 'int', 'name': 'string', 'myThirdObj': 'thirdObj!', json: 'json' },
       'thirdObj': { 'id': 'int', 'name': 'string' }
     },
     mutations: {

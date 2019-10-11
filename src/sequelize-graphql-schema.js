@@ -263,7 +263,7 @@ const generateGraphQLField = (type) => {
 
   type = typeReference.type.toLowerCase()
 
-  let field = type === 'int' ? GraphQLInt : type === 'boolean' ? GraphQLBoolean : GraphQLString
+  let field = type === 'int' ? GraphQLInt : type === 'boolean' ? GraphQLBoolean : type === 'json' ? JSONType : GraphQLString
 
   if (typeReference.isArray) {
     field = new GraphQLList(field)
