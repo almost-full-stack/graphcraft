@@ -1,7 +1,7 @@
-var { GraphQLSchema, introspectionQuery } = require('graphql');
-const express = require('express');
-const graphqlHTTP = require('express-graphql');
-const {generateSchema} = require('../src/sequelize-graphql-schema')({
+var { GraphQLSchema, introspectionQuery } = require('graphql')
+const express = require('express')
+const graphqlHTTP = require('express-graphql')
+const { generateSchema } = require('../dist/sequelize-graphql-schema')({
   exclude: [ ],
   /*remote: {
     import: {
@@ -17,39 +17,36 @@ const {generateSchema} = require('../src/sequelize-graphql-schema')({
       }
     },
     headers: [ 'authorization', 'accessToken' ]
-  },*/
+  }, */
   includeArguments: {
     scopeId: 'int',
     test: '[int]'
   }
-});
+})
 
-const app = express();
-const models = require('./models');
+const app = express()
+const models = require('./models')
 
 app.use('/', (req, res) => {
-  const schemaPromise = generateSchema(models, null, req, models.Sequelize);
+  const schemaPromise = generateSchema(models, null, req, models.Sequelize)
 
-  if(schemaPromise.then){
-
+  if (schemaPromise.then) {
     return schemaPromise.then(schema => {
       return graphqlHTTP({
         schema: new GraphQLSchema(schema),
         graphiql: true
-      })(req, res);
-    });
+      })(req, res)
+    })
 
-  }else{
-
+  } else{
     return graphqlHTTP({
       schema: new GraphQLSchema(schemaPromise),
       graphiql: true
-    })(req, res);
+    })(req, res)
 
   }
+})
 
-});
-
-app.listen(3000, function() {
-  console.log('RUNNING ON 3000');
-});
+app.listen(3000, function () {
+  console.log('RUNNING ON 3000')
+})

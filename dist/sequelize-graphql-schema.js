@@ -2,10 +2,8 @@
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-function _empty() {}
-function _invokeIgnored(body) {
-  var result = body();
-  if (result && result.then) {
+function _empty() {}function _invokeIgnored(body) {
+  var result = body();if (result && result.then) {
     return result.then(_empty);
   }
 }function _invoke(body, then) {
@@ -309,7 +307,7 @@ var generateGraphQLField = function generateGraphQLField(type) {
 
   type = typeReference.type.toLowerCase();
 
-  var field = type === 'int' ? GraphQLInt : type === 'boolean' ? GraphQLBoolean : GraphQLString;
+  var field = type === 'int' ? GraphQLInt : type === 'boolean' ? GraphQLBoolean : type === 'json' ? JSONType.default : GraphQLString;
 
   if (typeReference.isArray) {
     field = new GraphQLList(field);
@@ -549,7 +547,8 @@ var generateCustomGraphQLTypes = function generateCustomGraphQLTypes(model, type
 // This function is exported
 var generateModelTypes = function generateModelTypes(models, remoteTypes) {
   var outputTypes = remoteTypes || {};
-  var inputTypes = {};for (var modelName in models) {
+  var inputTypes = {};
+  for (var modelName in models) {
     // Only our models, not Sequelize nor sequelize
     if (models[modelName].hasOwnProperty('name') && modelName !== 'Sequelize') {
       var cache = {};
