@@ -64,6 +64,7 @@ function generateGraphQLField(fieldType, existingTypes = {}) {
   }
 
   const sanitizedField = sanitizeField(fieldType);
+
   let field = existingTypes[sanitizedField] || stringToTypeMap[sanitizedField.toLowerCase()] || stringToTypeMap['string'];
   const isArray = isFieldArray(fieldType);
   const isRequired = isFieldRequired(fieldType);
@@ -184,7 +185,8 @@ function generateGraphQLTypeFromJson(typeJson, existingTypes = {}, allCustomType
       existingTypes[sanitizedTypeName] = generateGraphQLTypeFromJson({ name: sanitizedTypeName, type: allCustomTypes[sanitizedTypeName] }, existingTypes, allCustomTypes, isInput, cache);
     }
 
-    fields[fieldName] = generateGraphQLField(type[fieldName], existingTypes);
+    fields[fieldName] = { type: generateGraphQLField(type[fieldName], existingTypes) };
+
   }
 
   return new GraphQLClass({
@@ -221,7 +223,7 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
     const allOperations = Object.assign({}, model.graphql.queries, model.graphql.mutations);
 
     for (const operation in allOperations) {
-      if (allOperations[operation].input) inputCustomTypes.push(allOperations[operation].input)
+      if (allOperations[operation].input) inputCustomTypes.push(sanitizeField(allOperations[operation].input))
     }
 
   });

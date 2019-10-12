@@ -11,7 +11,7 @@ const {
 } = require('graphql-sequelize');
 const camelCase = require('camelcase');
 const { generateGraphQLField } = require('./generateTypes');
-const { includeArguments } = require('../utils');
+const { includeArguments, sanitizeField } = require('../utils');
 
 module.exports = (options) => {
 
@@ -57,24 +57,23 @@ module.exports = (options) => {
           }
         }
 
+        // Setup Custom Queries
         for (const query in (model.graphql.queries || {})) {
 
           const currentQuery = model.graphql.queries[query];
+          const type = currentQuery.output ? generateGraphQLField(currentQuery.output, outputTypes) : GraphQLInt;
+          const args = Object.assign(
+            {}, defaultListArgs(), includeArguments(), paranoidType,
+            currentQuery.input ? { [sanitizeField(currentQuery.input)]: { type: generateGraphQLField(currentQuery.input, inputTypes) } } : {},
+          );
+          const resolve = async (source, args, context, info) => {
 
-          console.log(inputTypes[currentQuery.input]);
-          const inputArg = currentQuery.input ? { [currentQuery.input]: { type: inputTypes[currentQuery.input] } } : {};
+            await options.authorizer(source, args, context, info);
 
-          queries[camelCase(query, { pascalCase: true })] = {
-            type: currentQuery.output ? generateGraphQLField(currentQuery.output, outputTypes) : GraphQLInt,
-            args: Object.assign(inputArg, defaultListArgs(), includeArguments(), paranoidType),
-            resolve: (source, args, context, info) => {
-              return 1;
+            return currentQuery.resolver(source, args, context, info);
+          }
 
-              /*return options.authorizer(source, args, context, info).then((_) => {
-                return currentQuery.resolver(source, args, context, info);
-              });*/
-            }
-          };
+          queries[camelCase(query, { pascalCase: true })] = { type, args, resolve };
 
         }
 

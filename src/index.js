@@ -1,5 +1,4 @@
 const assert = require('assert');
-const _ = require('lodash');
 const cls = require('cls-hooked');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
@@ -48,9 +47,9 @@ const defaultModelGraphqlOptions = {
 const options = {};
 const { generateModelTypes } = require('./libs/generateTypes');
 const generateQueries = require('./libs/generateQueries')(options);
-const generateMutations = require('./libs/generateMutations')(options);
+//const generateMutations = require('./libs/generateMutations')(options);
 
-const errorHandler = (error) => {
+/*const errorHandler = (error) => {
   for (const name in options.errorHandler) {
     if (error.message.indexOf(name) > -1) {
       Object.assign(error, options.errorHandler[name]);
@@ -59,7 +58,7 @@ const errorHandler = (error) => {
   }
 
   return error;
-};
+};*/
 
 function generateSchema(models, context) {
 
