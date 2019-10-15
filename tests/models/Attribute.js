@@ -8,9 +8,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     },
     value: DataTypes.STRING
-  }, { });
+  }, {});
 
-  Attribute.associate = function (models) {
+  Attribute.associate = function(models) {
     Attribute.belongsTo(models.Product);
   };
 
@@ -25,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
       fetch: (data, source, args, context, info) => {
         data.key = 'Added by extension.';
 
-return Promise.resolve(data);
+        return Promise.resolve(data);
       }
     }
   };

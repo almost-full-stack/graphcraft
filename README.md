@@ -21,6 +21,20 @@ This package assumes you have `graphql` and `sequelize` already installed (both 
 | includeArguments | Object   | ```{ 'customArgument', 'int' }```  | These arguments will be included in all queries and mutations.                                                                  |
 | remote           | Object   | See Remote Options           | Import queries from external graphql schema.                                                                                    |
 
+
+```javascript
+const options = {
+  exclude: ["payments"],
+  authorizer: function authorizer(source, args, context, info) {
+    const { fieldName } = info; // resource name
+
+    return Promise.resolve();
+  }
+};
+
+const { generateSchema } = require("sequelize-graphql-schema")(options);
+```
+
 ## Model Options
 
 | option           | type   | example                                                                                                                 | description                                                                                                                                         |
@@ -41,7 +55,7 @@ This package assumes you have `graphql` and `sequelize` already installed (both 
 | extend           | Object | same as before with data coming from default passed to this function: ```create: (data, source, args, context, info)``` | To extend default functionality.                                                                                                                    |
 | import           | Array  | see remote options                                                                                                      | Associations with remote schema.                                                                                                                    |
 
-```js
+```javascript
 Product.graphql = {
     attributes: {
         exclude: ['description'],
@@ -65,6 +79,17 @@ Product.graphql = {
 | as     | String |         | alias for remote schema.        |
 | with   | String |         | foreign key from model.         |
 | to     | String |         | target key from remote model.   |
+
+```javascript
+Product.graphql = {
+  'import': [{
+    from: 'RemoteProduct',
+    as: 'Instrument',
+    with: 'portfolioId',
+    to: 'id'
+  }],
+}
+```
 
 ## Usage
 
