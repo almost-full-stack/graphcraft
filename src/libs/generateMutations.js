@@ -44,11 +44,7 @@ module.exports = (options) => {
             type: outputModelType,
             description: 'Create a ' + modelTypeName,
             args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments(options.includeArguments)),
-            resolve: (source, args, context, info) => mutation(source, args, context, info, {
-              modelTypeName,
-              type: 'create',
-              models
-            })
+            resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'create', models, modelTypeName })
           };
         }
 

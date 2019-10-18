@@ -59,8 +59,10 @@ module.exports = (options) => {
     })(source, args, context, info);
 
     if (_.has(model.graphql.extend, QUERY_TYPE)) {
-      return model.graphql.extend[QUERY_TYPE](data, source, args, context, info);
+      await model.graphql.extend[QUERY_TYPE](data, source, args, context, info);
     }
+
+    await options.logger(data, source, args, context, info);
 
     return data;
 

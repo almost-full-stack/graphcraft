@@ -1,20 +1,20 @@
 const _ = require('lodash');
-const uuid = require('uuid/v4');
 const hooks = require('./hooks');
 
-const findOneRecord = (model, where) => {
+function findOneRecord(model, where) {
   if (where) {
     return model.findOne({ where });
   }
 
   return Promise.resolve(null);
 
-};
+}
 
 module.exports = (options) => {
-  //model, source, args, context, info, options
-  return async (source, args, context, info, { type, where, isBulk, modelTypeName, models }) => {
 
+  return async (source, args, context, info, mutationOptios) => {
+
+    const { type, where, isBulk, modelTypeName, models } = mutationOptios;
     const model = models[modelTypeName];
 
     await options.authorizer(source, args, context, info);
@@ -24,9 +24,9 @@ module.exports = (options) => {
       return model.graphql.overwrite[type](source, args, context, info, where);
     }
 
-    const resolveMutation = async () => {
+    await hooks.before(model, source, args, context, info, type, where);
 
-      await hooks.before(model, source, args, context, info, type, where);
+    /*const resolveMutation = async () => {
 
       let data = null;
       const existingRecords = await findOneRecord(model, type === 'destroy' ? where : null);
@@ -73,30 +73,55 @@ module.exports = (options) => {
 
       }
 
-      if (_.has(model.graphql.extend, type)) {
-        data = await model.graphql.extend[type](type === 'destroy' ? existingRecords : data, source, args, context, info, where);
-      }
 
       if (operationType === 'bulkCreate' && isBulk === true) return data.length;
 
-      await options.logger(data, source, args, context, info);
 
       return data;
 
+    };*/
+
+    const bulkMutate = (transaction) => {
+      return Promise.resolve();
     };
 
-    if (options.transactionedMutations) {
+    const mutate = (transaction) => {
+
+      if (type === 'custom') {
+        return mutationOptios.resolver(source, args, context, info, { where });
+      }
+
+      if (isBulk) {
+        return bulkMutate(transaction);
+      }
+
+      const opArguments = { transaction, where };
+
+      return model[type](type === 'destroy' ? opArguments : args[modelTypeName], opArguments);
+    };
+
+    const resolve = async (transaction) => {
+
+      const data = await mutate(transaction);
+      const previousRecord = await findOneRecord(model, !isBulk && type === 'destroy' ? where : null);
+
+      if (_.has(model.graphql.extend, type)) {
+        await model.graphql.extend[type](previousRecord || data, source, args, context, info, where);
+      }
+
+      await options.logger(data, source, args, context, info);
+
+    };
+
+    if (options.transactionedMutations && type != 'custom') {
 
       return models.sequelize.transaction((transaction) => {
-        context.transaction = transaction;
-
-        return resolveMutation();
+        return resolve(transaction);
       });
 
     }
 
-    return resolveMutation();
-
+    return resolve();
 
   };
 
