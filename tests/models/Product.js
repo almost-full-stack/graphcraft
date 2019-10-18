@@ -33,6 +33,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         'scopes': ['test', 'scopeId'],
         'bulk': ['create', 'edit'],
+        'bulkColumn': false,
         'alias': { fetch: 'myProduct' },
         'import': [{ from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' }],
         'excludeMutations': [],

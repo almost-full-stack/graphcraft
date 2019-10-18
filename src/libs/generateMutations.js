@@ -82,19 +82,21 @@ module.exports = (options) => {
         };
 
         if (bulkOptions.create) {
+
           mutations[camelCase(aliases.create || (modelTypeName + 'CreateBulk'), { pascalCase })] = {
             type: (typeof hasBulkOptionCreate === 'string') ? new GraphQLList(outputModelType) : GraphQLInt,
             description: 'Create bulk ' + modelTypeName + ' and return number of rows or created rows.',
             args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments()),
             resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName })
           };
+
         }
 
         if (bulkOptions.update) {
 
           mutations[camelCase(aliases.edit || (modelTypeName + 'UpdateBulk'), { pascalCase })] = {
-            type: outputModelType ? new GraphQLList(outputModelType) : GraphQLInt, // what is returned by resolve, must be of type GraphQLObjectType
-            description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
+            type: outputModelType ? new GraphQLList(outputModelType) : GraphQLInt,
+            description: 'Delete bulk ' + modelTypeName,
             args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments()),
             resolve: (source, args, context, info) => {
               const where = { [key]: args[modelTypeName].map((input) => input[key]) };
@@ -102,6 +104,22 @@ module.exports = (options) => {
               return mutation(source, args, context, info, { type: 'update', isBulk: true, where, models, modelTypeName });
             }
           };
+
+        }
+
+        if (bulkOptions.destroy) {
+
+          mutations[camelCase(aliases.edit || (modelTypeName + 'DeleteBulk'), { pascalCase })] = {
+            type: GraphQLInt,
+            description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
+            args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(GraphQLInt)) } }, includeArguments()),
+            resolve: (source, args, context, info) => {
+              const where = { [key]: args[key] };
+
+              return mutation(source, args, context, info, { type: 'destroy', where, models, modelTypeName });
+            }
+          };
+
         }
 
         // Setup Custom Mutations

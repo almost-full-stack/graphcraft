@@ -35,6 +35,7 @@ const defaultModelGraphqlOptions = {
   scopes: null, // common scope to be applied on all find/update/destroy operations
   alias: {}, // rename default queries/mutations to specified custom name
   bulk: [], // enable bulk options ['create', 'destroy', 'edit']
+  bulkColumn: null, // bulk identifier column, when bulk creating this column will be auto filled with a uuid and later used to fetch added records 'columnName' or ['columnName', true] when using a foreign key as bulk column
   mutations: {}, // user defined custom mutations
   queries: {}, // user defined custom queries
   excludeMutations: [], // exclude one or more default mutations ['create', 'destroy', 'update']

@@ -1,4 +1,5 @@
 const _ = require('lodash');
+const uuid = require('uuid/v4');
 const hooks = require('./hooks');
 
 function findOneRecord(model, where) {
@@ -26,63 +27,54 @@ module.exports = (options) => {
 
     await hooks.before(model, source, args, context, info, type, where);
 
-    /*const resolveMutation = async () => {
+    const bulkMutate = async (transaction) => {
 
-      let data = null;
-      const existingRecords = await findOneRecord(model, type === 'destroy' ? where : null);
-      const operationType = (isBulk && type === 'create') ? 'bulkCreate' : type;
+      const { bulkColumn } = model.graphql;
+      const bulkIdentifier = uuid();
+      let findWhere = {};
 
-      if (isBulk && type === 'update') {
+      if (type === 'create') {
+
+        const records = (args[modelTypeName] || []).map((record) => {
+
+          if (bulkColumn) record[bulkColumn] = bulkIdentifier;
+
+          return record;
+        });
+
+        await model.bulkCreate(records, { transaction, validate: true });
+
+        if (!bulkColumn) return records.length;
+
+        findWhere = { [bulkColumn]: bulkIdentifier };
+
+      } else if (type === 'update') {
 
         const keys = model.primaryKeyAttributes;
         const updatePromises = [];
 
-        args[inputTypeName].forEach((input) => {
-          updatePromises.push(
-            model.update(input, {
-              where: keys.reduce((all, key) => {
-                all[key] = input[key];
+        args[modelTypeName].forEach((record) => {
 
-                return all;
-              }, {})
-            })
+          const where = keys.reduce((all, key) => {
+
+            findWhere[key] = findWhere[key] || [];
+            findWhere[key].push(record[key]);
+            all[key] = record[key];
+
+            return all;
+          }, {});
+
+          updatePromises.push(
+            model.update(record, { where, transaction })
           );
+
         });
 
-        data = await Promise.all(updatePromises);
-
-      } else {
-
-        if (typeof isBulk === 'string' && args[inputTypeName].length && !args[inputTypeName][0][isBulk]) {
-
-          const bulkAddId = uuid();
-
-          args[inputTypeName].forEach((input) => {
-            input[isBulk] = bulkAddId;
-          });
-
-        }
-
-        const validate = true;
-
-        data = await model[operationType](type === 'destroy' ? { where } : args[inputTypeName], { where, validate });
-
-        if (typeof isBulk === 'string') {
-          data = await model.findAll({ where: { [isBulk]: args[inputTypeName][0][isBulk] } });
-        }
+        await Promise.all(updatePromises);
 
       }
 
-
-      if (operationType === 'bulkCreate' && isBulk === true) return data.length;
-
-
-      return data;
-
-    };*/
-
-    const bulkMutate = (transaction) => {
-      return Promise.resolve();
+      return model.findAll({ where: findWhere, transaction });
     };
 
     const mutate = (transaction) => {
