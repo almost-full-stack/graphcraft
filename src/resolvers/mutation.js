@@ -107,9 +107,7 @@ module.exports = (options) => {
 
     if (options.transactionedMutations && type != 'custom') {
 
-      return models.sequelize.transaction((transaction) => {
-        return resolve(transaction);
-      });
+      return models.sequelize.transaction((transaction) => resolve);
 
     }
 
