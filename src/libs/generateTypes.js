@@ -148,7 +148,7 @@ function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false
     }
   }
 
-  const modelAttributeFields = attributeFields(model, Object.assign({}, { allowNull: Boolean(isInput), cache }));
+  const modelAttributeFields = attributeFields(model, Object.assign({}, { allowNull: Boolean(isInput), cache, commentToDescription: true }));
   const associationFields = generateAssociationFields(model.associations, existingTypes, isInput);
   const fields = Object.assign({}, modelAttributeFields, associationFields, includeAttributes);
 

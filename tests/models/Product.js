@@ -5,7 +5,8 @@ module.exports = (sequelize, DataTypes) => {
     const Product = sequelize.define('Product', {
         name: {
           type: DataTypes.STRING,
-          include: ['create', 'modify']
+          include: ['create', 'modify'],
+          comment: 'This is name'
         },
         accountId: DataTypes.INTEGER, // Cash account id
         clientId: DataTypes.INTEGER, // Client who created/opened the Product

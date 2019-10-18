@@ -7,15 +7,15 @@ const findOneRecord = (model, where) => {
     return model.findOne({ where });
   }
 
-  return Promise.resolve();
+  return Promise.resolve(null);
 
 };
 
 module.exports = (options) => {
+  //model, source, args, context, info, options
+  return async (source, args, context, info, { type, where, isBulk, modelTypeName, models }) => {
 
-  const { models } = options;
-
-  return async (model, inputTypeName, source, args, context, info, type, where, isBulk) => {
+    const model = models[modelTypeName];
 
     await options.authorizer(source, args, context, info);
 
