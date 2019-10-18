@@ -86,6 +86,16 @@ function generateGraphQLField(fieldType, existingTypes = {}) {
   return field;
 }
 
+function generateIncludeArguments (includeArguments, existingTypes = {}) {
+  const fields = {};
+
+  for (const argument in includeArguments) {
+    fields[argument] = { type: generateGraphQLField(includeArguments[argument], existingTypes) };
+  }
+
+  return fields;
+}
+
 /**
 * Returns the association fields of an entity.
 *
@@ -254,5 +264,6 @@ module.exports = {
   generateGraphQLField,
   generateGraphQLTypeFromJson,
   generateGraphQLTypeFromModel,
-  generateAssociationFields
+  generateAssociationFields,
+  generateIncludeArguments
 };

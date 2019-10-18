@@ -6,8 +6,8 @@ const {
   GraphQLNonNull
 } = require('graphql');
 const camelCase = require('camelcase');
-const { generateGraphQLField } = require('./generateTypes');
-const { includeArguments, sanitizeField } = require('../utils');
+const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes');
+const { sanitizeField } = require('../utils');
 const pascalCase = true;
 
 module.exports = (options) => {
@@ -16,6 +16,7 @@ module.exports = (options) => {
 
   return (models, outputTypes = {}, inputTypes = {}) => {
 
+    const includeArguments = generateIncludeArguments(options.includeArguments, outputTypes);
     const createMutationsFor = {};
 
     // outputTypes are generated for all non-excluded models
@@ -43,7 +44,7 @@ module.exports = (options) => {
           mutations[camelCase(aliases.create || (modelTypeName + 'Create'), { pascalCase })] = {
             type: outputModelType,
             description: 'Create a ' + modelTypeName,
-            args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments(options.includeArguments)),
+            args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
             resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'create', models, modelTypeName })
           };
         }
@@ -52,7 +53,7 @@ module.exports = (options) => {
           mutations[camelCase(aliases.update || (modelTypeName + 'Update'), { pascalCase })] = {
             type: outputModelType || GraphQLInt,
             description: 'Update a ' + modelTypeName,
-            args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments(options.includeArguments)),
+            args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
             resolve: (source, args, context, info) => {
               const where = { [key]: args[modelTypeName][key] }; // enhance to support composite keys
 
@@ -66,7 +67,7 @@ module.exports = (options) => {
             type: GraphQLInt,
             description: 'Delete a ' + modelTypeName,
             // enhance this to support composite keys
-            args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments()),
+            args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments),
             resolve: (source, args, context, info) => {
               const where = { [key]: args[key] };
 
@@ -86,7 +87,7 @@ module.exports = (options) => {
           mutations[camelCase(aliases.create || (modelTypeName + 'CreateBulk'), { pascalCase })] = {
             type: (typeof hasBulkOptionCreate === 'string') ? new GraphQLList(outputModelType) : GraphQLInt,
             description: 'Create bulk ' + modelTypeName + ' and return number of rows or created rows.',
-            args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments()),
+            args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
             resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName })
           };
 
@@ -97,7 +98,7 @@ module.exports = (options) => {
           mutations[camelCase(aliases.edit || (modelTypeName + 'UpdateBulk'), { pascalCase })] = {
             type: outputModelType ? new GraphQLList(outputModelType) : GraphQLInt,
             description: 'Delete bulk ' + modelTypeName,
-            args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments()),
+            args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
             resolve: (source, args, context, info) => {
               const where = { [key]: args[modelTypeName].map((input) => input[key]) };
 
@@ -112,7 +113,7 @@ module.exports = (options) => {
           mutations[camelCase(aliases.edit || (modelTypeName + 'DeleteBulk'), { pascalCase })] = {
             type: GraphQLInt,
             description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
-            args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(GraphQLInt)) } }, includeArguments()),
+            args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(GraphQLInt)) } }, includeArguments),
             resolve: (source, args, context, info) => {
               const where = { [key]: args[key] };
 
@@ -128,7 +129,7 @@ module.exports = (options) => {
           const currentMutation = model.graphql.mutations[mutation];
           const type = currentMutation.output ? generateGraphQLField(currentMutation.output, outputTypes) : GraphQLInt;
           const args = Object.assign(
-            {}, includeArguments(),
+            {}, includeArguments,
             currentMutation.input ? { [sanitizeField(currentMutation.input)]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
           );
 

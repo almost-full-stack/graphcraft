@@ -10,8 +10,8 @@ const {
   defaultArgs
 } = require('graphql-sequelize');
 const camelCase = require('camelcase');
-const { generateGraphQLField } = require('./generateTypes');
-const { includeArguments, sanitizeField } = require('../utils');
+const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes');
+const { sanitizeField } = require('../utils');
 
 module.exports = (options) => {
 
@@ -26,6 +26,8 @@ module.exports = (options) => {
   */
   return (models, outputTypes = {}, inputTypes = {}) => {
 
+    const includeArguments = generateIncludeArguments(options.includeArguments, outputTypes);
+    const defaultListArguments = defaultListArgs();
     const createQueriesFor = {};
 
     for (const outputTypeName in outputTypes) {
@@ -50,7 +52,7 @@ module.exports = (options) => {
         if (!model.graphql.excludeQueries.includes('fetch')) {
           queries[camelCase(aliases.fetch || modelType.name, { pascalCase: true })] = {
             type: new GraphQLList(modelType),
-            args: Object.assign(defaultArgs(model), defaultListArgs(), includeArguments(), paranoidType),
+            args: Object.assign(defaultArgs(model), defaultListArguments, includeArguments, paranoidType),
             resolve: (source, args, context, info) => {
               return query(model, modelType.name, source, args, context, info);
             }
@@ -63,7 +65,7 @@ module.exports = (options) => {
           const currentQuery = model.graphql.queries[query];
           const type = currentQuery.output ? generateGraphQLField(currentQuery.output, outputTypes) : GraphQLInt;
           const args = Object.assign(
-            {}, defaultListArgs(), includeArguments(), paranoidType,
+            {}, defaultListArguments, includeArguments, paranoidType,
             currentQuery.input ? { [sanitizeField(currentQuery.input)]: { type: generateGraphQLField(currentQuery.input, inputTypes) } } : {},
           );
           const resolve = async (source, args, context, info) => {
