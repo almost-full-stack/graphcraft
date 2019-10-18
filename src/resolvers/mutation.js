@@ -103,6 +103,8 @@ module.exports = (options) => {
 
       await options.logger(data, source, args, context, info);
 
+      return data;
+
     };
 
     if (options.transactionedMutations && type != 'custom') {
