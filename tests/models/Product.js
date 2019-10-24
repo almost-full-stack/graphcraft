@@ -22,7 +22,7 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     Product.associate = function(models) {
-      //Product.hasMany(models.Attribute);
+      Product.hasMany(models.Attribute);
     };
 
     // extensions to replace or extend existing graphql implementations (available options would be create, destroy, update, query)

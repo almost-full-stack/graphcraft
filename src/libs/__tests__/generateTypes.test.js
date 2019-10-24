@@ -12,12 +12,13 @@ const {
 } = require('graphql');
 const { JSONType, DateType } = require('graphql-sequelize');
 const stringifier = require('stringifier')({ maxDepth: 10, indent: '  ' })
-const { generateGraphQLField, generateGraphQLTypeFromJson, generateGraphQLTypeFromModel } = require('../generateTypes');
+const { generateGraphQLField, generateGraphQLTypeFromJson, generateGraphQLTypeFromModel, generateModelTypes } = require('../generateTypes');
 const Sequelize = require('sequelize');
 const sequelize = new Sequelize({ dialect: 'sqlite' });
 
 describe('Type Generators', () => {
-  it('Should generate graphQL Field Types.', () => {
+
+  it('[generateGraphQLField] Should generate graphQL Field Types.', () => {
     expect(generateGraphQLField('string')).toEqual(GraphQLString);
     expect(generateGraphQLField('String')).toEqual(GraphQLString);
     expect(generateGraphQLField('int')).toEqual(GraphQLInt);
@@ -33,7 +34,7 @@ describe('Type Generators', () => {
     expect(generateGraphQLField('[string!]')).toEqual(new GraphQLList(GraphQLNonNull(GraphQLString)));
   });
 
-  describe('Should generate types from custom types.', () => {
+  describe('[generateGraphQLTypeFromJson, generateGraphQLTypeFromModel] Should generate types from models and custom types.', () => {
 
     const modelA = sequelize.define('modelA', {
       fieldA: Sequelize.STRING,
@@ -104,7 +105,7 @@ describe('Type Generators', () => {
       typeAInput: generateGraphQLTypeFromJson({
         name: 'typeAInput',
         type: { fieldA: 'float', fieldB: 'json' }
-      }, {}, true),
+      }, {}, {}, true),
       typeB: generateGraphQLTypeFromJson({
         name: 'typeB',
         type: { fieldA: 'string', fieldB: 'int' }
@@ -141,7 +142,7 @@ describe('Type Generators', () => {
 
   });
 
-  describe('Should generate types with associations from Models.', () => {
+  describe('[generateAssociationFields, generateGraphQLTypeFromModel] Should generate types with associations from Models.', () => {
 
     const modelB = sequelize.define('modelB', {
       fieldA: Sequelize.STRING,
@@ -165,10 +166,45 @@ describe('Type Generators', () => {
     modelD.belongsToMany(modelB, { through: modelE });
     modelB.belongsToMany(modelD, { through: modelE });
 
-    //const types = generateModelTypes({ modelB, modelC, modelD, modelE });
+    let modelBType = {};
+
+    const modelCType = new GraphQLObjectType({
+      name: 'modelC',
+      fields: () => ({
+        fieldA: {
+          type: GraphQLString
+        },
+        fieldB: {
+          type: GraphQLInt
+        },
+        modelB: modelBType
+      })
+    });
+
+    modelBType = new GraphQLObjectType({
+      name: 'modelB',
+      fields: () => ({
+        fieldA: {
+          type: GraphQLString
+        },
+        fieldB: {
+          type: GraphQLInt
+        },
+        modelC: new GraphQLList(modelCType)
+      })
+    });
+
+    const { outputTypes } = generateModelTypes({ modelB, modelC, modelD, modelE });
+
+    //console.log(stringifier(modelCType._fields().modelB));
+    console.log(stringifier(outputTypes.modelB._fields()));
 
     it('Should create hasMany association from Model B > C.', () => {
-      //expect(stringifier(types.modelA)).toEqual(stringifier(modelAType));
+      expect(outputTypes.modelB._fields().modelC).toEqual(modelBType._fields().modelC);
+    });
+
+    it('Should create belongsTo association from Model C > B.', () => {
+      expect(stringifier(outputTypes.modelC._fields().modelB)).toEqual(stringifier(modelB));
     });
 
   });

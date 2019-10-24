@@ -103,24 +103,24 @@ function generateIncludeArguments (includeArguments, existingTypes = {}) {
 * BelongsToMany and HasMany associations are represented as a `GraphQLList` whereas a BelongTo
 * is simply an instance of a type.
 * @param {*} associations A collection of sequelize associations
-* @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
+* @param {*} existingTypes Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
-function generateAssociationFields(associations, types, isInput = false) {
+function generateAssociationFields(associations, existingTypes = {}, isInput = false) {
   const fields = {}
 
   for (const associationName in associations) {
     if (associations[associationName]) {
       const relation = associations[associationName];
 
-      if (!types[relation.target.name]) {
+      if (!existingTypes[relation.target.name]) {
         return fields;
       }
 
       // BelongsToMany is represented as a list, just like HasMany
       const type = relation.associationType === 'BelongsToMany' ||
         relation.associationType === 'HasMany'
-        ? new GraphQLList(types[relation.target.name])
-        : types[relation.target.name];
+        ? new GraphQLList(existingTypes[relation.target.name])
+        : existingTypes[relation.target.name];
 
       fields[associationName] = { type };
 
@@ -149,7 +149,7 @@ function generateAssociationFields(associations, types, isInput = false) {
 function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false, cache) {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   const includeAttributes = {};
-  const attributes = model.graphql.attributes;
+  const attributes = model.graphql.attributes || {};
 
   // Include attributes which are to be included in GraphQL Type but doesn't exist in Models.
   if (attributes.include) {
@@ -224,6 +224,7 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
     const model = models[modelName];
     const cache = {};
 
+    model.graphql = model.graphql || {};
     outputTypes[modelName] = generateGraphQLTypeFromModel(model, outputTypes, false, cache);
     inputTypes[modelName] = generateGraphQLTypeFromModel(model, inputTypes, true, cache);
 
