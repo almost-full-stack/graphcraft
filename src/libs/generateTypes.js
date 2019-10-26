@@ -250,7 +250,6 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
       inputTypes[typeName] = generateGraphQLTypeFromJson(type, inputTypes, customTypes, true, cache);
     }
 
-    //if (!typeName.toLowerCase().endsWith('input')) {
     if (!outputTypes[typeName]) {
       outputTypes[typeName] = generateGraphQLTypeFromJson(type, outputTypes, customTypes, false, cache);
     }
