@@ -47,8 +47,8 @@ const defaultModelGraphqlOptions = {
 
 const options = {};
 const { generateModelTypes } = require('./libs/generateTypes');
-const generateQueries = require('./libs/generateQueries')(options);
-const generateMutations = require('./libs/generateMutations')(options);
+const GenerateQueries = require('./libs/generateQueries');
+const GenerateMutations = require('./libs/generateMutations');
 
 /*const errorHandler = (error) => {
   for (const name in options.errorHandler) {
@@ -71,6 +71,8 @@ function generateSchema(models, context) {
 
   options.Sequelize.useCLS(sequelizeNamespace);
 
+  const generateQueries = GenerateQueries(options);
+  const generateMutations = GenerateMutations(options);
   const modelsIncluded = {};
 
   for (const modelName in models) {

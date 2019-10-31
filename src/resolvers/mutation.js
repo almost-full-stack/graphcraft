@@ -13,9 +13,11 @@ function findOneRecord(model, where) {
 
 module.exports = (options) => {
 
-  return async (source, args, context, info, mutationOptios) => {
+  const { sequelize } = options;
 
-    const { type, where, isBulk, modelTypeName, models } = mutationOptios;
+  return async (source, args, context, info, mutationOptions) => {
+
+    const { type, where, isBulk, modelTypeName, models } = mutationOptions;
     const model = models[modelTypeName];
 
     await options.authorizer(source, args, context, info);
@@ -80,7 +82,7 @@ module.exports = (options) => {
     const mutate = (transaction) => {
 
       if (type === 'custom') {
-        return mutationOptios.resolver(source, args, context, info, { where });
+        return mutationOptions.resolver(source, args, context, info, { where });
       }
 
       if (isBulk) {
@@ -109,7 +111,7 @@ module.exports = (options) => {
 
     if (options.transactionedMutations && type != 'custom') {
 
-      return models.sequelize.transaction((transaction) => resolve(transaction));
+      return sequelize.transaction((transaction) => resolve(transaction));
 
     }
 
