@@ -196,9 +196,6 @@ describe('Type Generators', () => {
 
     const { outputTypes } = generateModelTypes({ modelB, modelC, modelD, modelE });
 
-    //console.log(stringifier(modelCType._fields().modelB));
-    console.log(stringifier(outputTypes.modelB._fields()));
-
     it('Should create hasMany association from Model B > C.', () => {
       expect(outputTypes.modelB._fields().modelC).toEqual(modelBType._fields().modelC);
     });
