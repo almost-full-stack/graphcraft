@@ -2,6 +2,7 @@ const assert = require('assert');
 const cls = require('cls-hooked');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
+const { createContext, resetCache } = require('dataloader-sequelize')
 
 // library options
 const defaultOptions = {
@@ -46,9 +47,10 @@ const defaultModelGraphqlOptions = {
 };
 
 const options = {};
-const { generateModelTypes } = require('./libs/generateTypes');
 const GenerateQueries = require('./libs/generateQueries');
 const GenerateMutations = require('./libs/generateMutations');
+const GenerateTypes = require('./libs/generateTypes');
+let dataloaderContext;
 
 /*const errorHandler = (error) => {
   for (const name in options.errorHandler) {
@@ -71,6 +73,12 @@ function generateSchema(models, context) {
 
   options.Sequelize.useCLS(sequelizeNamespace);
 
+  if (options.dataloader) {
+    dataloaderContext = createContext(models.sequelize);
+    options.dataloaderContext = dataloaderContext;
+  }
+
+  const { generateModelTypes } = GenerateTypes(options);
   const generateQueries = GenerateQueries(options);
   const generateMutations = GenerateMutations(options);
   const modelsIncluded = {};
@@ -101,6 +109,8 @@ module.exports = (_options) => {
   Object.assign(options, defaultOptions, _options);
 
   return {
-    generateSchema
+    generateSchema,
+    resetCache,
+    dataloaderContext
   };
 };

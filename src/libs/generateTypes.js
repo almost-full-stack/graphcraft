@@ -11,6 +11,10 @@ const {
   GraphQLEnumType,
   GraphQLNonNull
 } = require('graphql');
+const {
+  defaultListArgs,
+  defaultArgs
+} = require('graphql-sequelize');
 const { isFieldArray, isFieldRequired, sanitizeField } = require('../utils');
 const stringToTypeMap = {
   int: GraphQLInt,
@@ -21,6 +25,8 @@ const stringToTypeMap = {
   json: JSONType,
   date: DateType
 };
+const queryResolver = require('../resolvers/query');
+const options = {};
 
 /**
  * Returns a new `GraphQLType` generated from a custom type.
@@ -106,7 +112,7 @@ function generateIncludeArguments (includeArguments, existingTypes = {}) {
 * @param {*} existingTypes Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
 function generateAssociationFields(associations, existingTypes = {}, isInput = false) {
-  const fields = {}
+  const fields = {};
 
   for (const associationName in associations) {
     if (associations[associationName]) {
@@ -124,13 +130,14 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
 
       fields[associationName] = { type };
 
-      /*if (!isInput && !relation.isRemote) {
+      if (!isInput && !relation.isRemote) {
         // GraphQLInputObjectType do not accept fields with resolve
-        fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), includeArguments());
-        fields[associationName].resolve = async (source, args, context, info) => {
-        };
+        fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs());
+        fields[associationName].resolve = (source, args, context, info) => {
+          return queryResolver(options)(relation, relation.target.name, source, args, context, info, true);
+        }
 
-      }*/
+      }
 
     }
   }
@@ -257,11 +264,16 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
   return { outputTypes, inputTypes };
 }
 
-module.exports = {
-  generateModelTypes,
-  generateGraphQLField,
-  generateGraphQLTypeFromJson,
-  generateGraphQLTypeFromModel,
-  generateAssociationFields,
-  generateIncludeArguments
+module.exports = (_options) => {
+
+  Object.assign(options, _options);
+
+  return {
+    generateModelTypes,
+    generateGraphQLField,
+    generateGraphQLTypeFromJson,
+    generateGraphQLTypeFromModel,
+    generateAssociationFields,
+    generateIncludeArguments
+  };
 };

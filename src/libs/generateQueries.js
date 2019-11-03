@@ -10,12 +10,12 @@ const {
   defaultArgs
 } = require('graphql-sequelize');
 const camelCase = require('camelcase');
-const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes');
 const { sanitizeField } = require('../utils');
 
 module.exports = (options) => {
 
   const { query } = require('../resolvers')(options);
+  const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
 
   /**
   * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.

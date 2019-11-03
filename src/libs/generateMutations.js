@@ -6,13 +6,13 @@ const {
   GraphQLNonNull
 } = require('graphql');
 const camelCase = require('camelcase');
-const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes');
 const { sanitizeField } = require('../utils');
 const pascalCase = true;
 
 module.exports = (options) => {
 
   const { mutation } = require('../resolvers')(options);
+  const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
 
   return (models, outputTypes = {}, inputTypes = {}) => {
 
