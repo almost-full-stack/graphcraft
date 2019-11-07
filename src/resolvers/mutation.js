@@ -99,8 +99,8 @@ module.exports = (options) => {
       const data = await mutate(transaction);
       const previousRecord = await findOneRecord(model, !isBulk && type === 'destroy' ? where : null);
 
-      if (_.has(model.graphql.extend, type)) {
-        await model.graphql.extend[type](previousRecord || data, source, args, context, info, where);
+      if (_.has(model.graphql.extend, type) || _.has(model.graphql.after, type)) {
+        await (model.graphql.extend || model.graphql.after)[type](previousRecord || data, source, args, context, info, where);
       }
 
       await options.logger(data, source, args, context, info);

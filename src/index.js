@@ -6,6 +6,22 @@ const { createContext, resetCache } = require('dataloader-sequelize')
 
 // library options
 const defaultOptions = {
+
+  /**
+   * naming convention for mutations/queries and types.
+   * {name} = Model Name or type name
+   * {type} = Get | Create | Update | Delete
+   * {bulk} = Bulk for bulk operations only
+   * */
+
+  naming: {
+    pascalCase: true, // applied everywhere
+    queries: '{name}{type}', // applied to auto generated queries
+    mutations: '{name}{type}{bulk}', // applied to auto generated mutations
+    input: '{name}', // applied to all input types
+    rootQueries: 'RootQueries',
+    rootMutations: 'RootMutations'
+  },
   exclude: [], // exclude these models from graphql
   includeArguments: {}, // include these arguments to all queries/mutations
   remote: {},

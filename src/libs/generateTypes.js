@@ -165,7 +165,16 @@ function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false
     }
   }
 
-  const modelAttributeFields = attributeFields(model, Object.assign({}, { allowNull: Boolean(isInput), cache, commentToDescription: true }));
+  const renameFieldMap = Object.keys(model.attributes).reduce((attributes, attributeName) => {
+
+    const attribute = model.attributes[attributeName];
+
+    if (attribute.rename) attributes[attribute.fieldName] = attribute.rename;
+
+    return attributes;
+  }, {});
+
+  const modelAttributeFields = attributeFields(model, Object.assign({}, { allowNull: Boolean(isInput), cache, commentToDescription: true, map: renameFieldMap }));
 
   return new GraphQLClass({
     name: isInput ? `${model.name}Input` : model.name,

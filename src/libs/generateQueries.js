@@ -40,7 +40,7 @@ module.exports = (options) => {
     }
 
     return new GraphQLObjectType({
-      name: 'Root_Query',
+      name: options.naming.rootQueries,
       fields: Object.keys(createQueriesFor).reduce((allQueries, modelTypeName) => {
 
         const queries = {};

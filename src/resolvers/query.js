@@ -7,6 +7,27 @@ const ASC = 'ASC';
 const DESC = 'DESC';
 const QUERY_TYPE = 'fetch';
 
+const getOrderBy = (orderArgs = '') => {
+
+  const orderBy = [];
+
+  if (orderArgs != '') {
+
+    const orderByClauses = orderArgs.split(',');
+
+    orderByClauses.forEach((clause) => {
+      if (clause.indexOf(REVERSE_CLAUSE_STRING) === 0) {
+        orderBy.push([clause.substring(REVERSE_CLAUSE_STRING.length), DESC]);
+      } else {
+        orderBy.push([clause, ASC]);
+      }
+    });
+
+  }
+
+  return orderBy;
+}
+
 module.exports = (options) => {
 
   const { dataloaderContext } = options;
@@ -29,23 +50,7 @@ module.exports = (options) => {
     // sequelize-graphql before hook to parse orderby clause to make sure it supports multiple orderby
     const before = (findOptions, args, context) => {
 
-      const orderArgs = args.order || '';
-      const orderBy = [];
-
-      if (orderArgs != '') {
-        const orderByClauses = orderArgs.split(',');
-
-        orderByClauses.forEach((clause) => {
-          if (clause.indexOf(REVERSE_CLAUSE_STRING) === 0) {
-            orderBy.push([clause.substring(REVERSE_CLAUSE_STRING.length), DESC]);
-          } else {
-            orderBy.push([clause, ASC]);
-          }
-        });
-
-        findOptions.order = orderBy;
-
-      }
+      findOptions.order = getOrderBy(args.order || '');
 
       // if paranoid option from sequelize is set, this switch can be used to fetch archived, non-archived or all items.
       findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : model.options.paranoid;
@@ -61,8 +66,8 @@ module.exports = (options) => {
       before
     })(source, args, context, info);
 
-    if (_.has(graphql.extend, QUERY_TYPE)) {
-      await graphql.extend[QUERY_TYPE](data, source, args, context, info);
+    if (_.has(graphql.extend, QUERY_TYPE) || _.has(graphql.after, QUERY_TYPE)) {
+      await (graphql.extend || graphql.after)[QUERY_TYPE](data, source, args, context, info);
     }
 
     // Logger only runs for base query.

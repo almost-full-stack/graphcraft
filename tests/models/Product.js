@@ -32,7 +32,7 @@ module.exports = (sequelize, DataTypes) => {
             include: { modelPortfolioId: 'int' },
         },
         'scopes': ['test', 'scopeId'],
-        'bulk': ['create', 'edit'],
+        'bulk': ['create', 'edit', 'destroy'],
         'bulkColumn': false,
         'alias': {  },
         'import': [{ from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' }],
