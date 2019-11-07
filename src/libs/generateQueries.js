@@ -10,12 +10,13 @@ const {
   defaultArgs
 } = require('graphql-sequelize');
 const camelCase = require('camelcase');
-const { sanitizeField } = require('../utils');
+const { sanitizeField, generateName } = require('../utils');
 
 module.exports = (options) => {
 
   const { query } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
+  const pascalCase = options.naming.pascalCase;
 
   /**
   * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
@@ -50,7 +51,7 @@ module.exports = (options) => {
         const aliases = model.graphql.alias;
 
         if (!model.graphql.excludeQueries.includes('fetch')) {
-          queries[camelCase(aliases.fetch || modelType.name, { pascalCase: true })] = {
+          queries[generateName(aliases.fetch || options.naming.queries, { type: 'get', name: modelTypeName }, { pascalCase })] = {
             type: new GraphQLList(modelType),
             args: Object.assign(defaultArgs(model), defaultListArguments, includeArguments, paranoidType),
             resolve: (source, args, context, info) => {
@@ -75,7 +76,7 @@ module.exports = (options) => {
             return currentQuery.resolver(source, args, context, info);
           }
 
-          queries[camelCase(query, { pascalCase: true })] = { type, args, resolve };
+          queries[generateName(query, {}, { pascalCase })] = { type, args, resolve };
 
         }
 

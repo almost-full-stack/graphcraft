@@ -16,7 +16,7 @@ const defaultOptions = {
 
   naming: {
     pascalCase: true, // applied everywhere
-    queries: '{name}{type}', // applied to auto generated queries
+    queries: '{name}', // applied to auto generated queries
     mutations: '{name}{type}{bulk}', // applied to auto generated mutations
     input: '{name}', // applied to all input types
     rootQueries: 'RootQueries',

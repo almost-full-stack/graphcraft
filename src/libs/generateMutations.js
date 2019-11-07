@@ -5,7 +5,6 @@ const {
   GraphQLInt,
   GraphQLNonNull
 } = require('graphql');
-const camelCase = require('camelcase');
 const { sanitizeField, generateName } = require('../utils');
 
 module.exports = (options) => {
@@ -133,7 +132,7 @@ module.exports = (options) => {
             currentMutation.input ? { [sanitizeField(currentMutation.input)]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
           );
 
-          mutations[camelCase(mutation, { pascalCase })] = {
+          mutations[generateName(mutation, {}, { pascalCase })] = {
             type,
             args,
             resolve: (source, args, context, info) => {
