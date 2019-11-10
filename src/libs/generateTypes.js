@@ -128,7 +128,10 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
         ? new GraphQLList(existingTypes[relation.target.name])
         : existingTypes[relation.target.name];
 
-      fields[associationName] = { type };
+      // Remove belongs to associations for input types to avoide foreign key constraint errors.
+      if (!(isInput && relation.associationType === 'BelongsTo')) {
+        fields[associationName] = { type };
+      }
 
       if (!isInput && !relation.isRemote) {
         // GraphQLInputObjectType do not accept fields with resolve
