@@ -53,6 +53,7 @@ const defaultModelGraphqlOptions = {
   alias: {}, // rename default queries/mutations to specified custom name
   bulk: { // OR bulk: ['create', 'destroy', ....]
     enabled: [], // enable bulk options ['create', 'destroy', 'update']
+    // Use bulkColumn when using bulk option for 'create' when using returning true and to increase efficiency.
     bulkColumn: false, // bulk identifier column, when bulk creating this column will be auto filled with a uuid and later used to fetch added records 'columnName' or ['columnName', true] when using a foreign key as bulk column
     returning: true // This will return all created/updated items, doesn't use sequelize returning option.
   },
