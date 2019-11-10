@@ -53,11 +53,7 @@ module.exports = (options) => {
             type: outputModelType || GraphQLInt,
             description: 'Update a ' + modelTypeName,
             args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
-            resolve: (source, args, context, info) => {
-              const where = { [key]: args[modelTypeName][key] }; // enhance to support composite keys
-
-              return mutation(source, args, context, info, { type: 'update', where, models, modelTypeName });
-            }
+            resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'update', models, modelTypeName })
           };
         }
 
@@ -67,11 +63,7 @@ module.exports = (options) => {
             description: 'Delete a ' + modelTypeName,
             // enhance this to support composite keys
             args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments),
-            resolve: (source, args, context, info) => {
-              const where = { [key]: args[key] };
-
-              return mutation(source, args, context, info, { type: 'destroy', where, models, modelTypeName });
-            }
+            resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'destroy', models, modelTypeName })
           };
         }
 
@@ -101,11 +93,7 @@ module.exports = (options) => {
             type: bulk.returning ? new GraphQLList(outputModelType) : GraphQLInt,
             description: 'Delete bulk ' + modelTypeName,
             args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
-            resolve: (source, args, context, info) => {
-              const where = { [key]: args[modelTypeName].map((input) => input[key]) };
-
-              return mutation(source, args, context, info, { type: 'update', isBulk: true, where, models, modelTypeName });
-            }
+            resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'update', isBulk: true, models, modelTypeName })
           };
 
         }
@@ -116,11 +104,7 @@ module.exports = (options) => {
             type: GraphQLInt,
             description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
             args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(GraphQLInt)) } }, includeArguments),
-            resolve: (source, args, context, info) => {
-              const where = { [key]: args[key] };
-
-              return mutation(source, args, context, info, { type: 'destroy', where, models, modelTypeName });
-            }
+            resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'destroy', isBulk: true, models, modelTypeName })
           };
 
         }
