@@ -16,6 +16,8 @@ module.exports = (sequelize, DataTypes) => {
 
   // extensions to replace or extend existing graphql implementations (available options would be create, destroy, update, query)
   Attribute.graphql = {
+    bulkColumn: 'ProductId',
+    bulk: ['create'],
     before: {
       fetch: (source, args, context, info) => {
         return Promise.resolve(source);

@@ -75,16 +75,19 @@ module.exports = (options) => {
           };
         }
 
+        const bulk = model.graphql.bulk;
+        const bulkEnabled = Array.isArray(bulk) ? bulk : bulk.enabled;
+
         const bulkOptions = {
-          create: model.graphql.bulk.includes('create'),
-          update: model.graphql.bulk.includes('update'),
-          destroy: model.graphql.bulk.includes('destroy')
+          create: bulkEnabled.includes('create'),
+          update: bulkEnabled.includes('update'),
+          destroy: bulkEnabled.includes('destroy')
         };
 
         if (bulkOptions.create) {
 
           mutations[generateName(aliases.createBulk || options.naming.mutations, { type: 'create', name: modelTypeName, bulk: 'bulk' }, { pascalCase })] = {
-            type: (typeof hasBulkOptionCreate === 'string') ? new GraphQLList(outputModelType) : GraphQLInt,
+            type: (typeof bulk.bulkColumn === 'string' || bulk.returning) ? new GraphQLList(outputModelType) : GraphQLInt,
             description: 'Create bulk ' + modelTypeName + ' and return number of rows or created rows.',
             args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
             resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName })
@@ -95,7 +98,7 @@ module.exports = (options) => {
         if (bulkOptions.update) {
 
           mutations[generateName(aliases.updateBulk || options.naming.mutations, { type: 'update', name: modelTypeName, bulk: 'bulk' }, { pascalCase })] = {
-            type: outputModelType ? new GraphQLList(outputModelType) : GraphQLInt,
+            type: bulk.returning ? new GraphQLList(outputModelType) : GraphQLInt,
             description: 'Delete bulk ' + modelTypeName,
             args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
             resolve: (source, args, context, info) => {

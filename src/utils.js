@@ -12,8 +12,15 @@ function isFieldRequired (name) {
   return name.indexOf('!') > -1;
 }
 
-const sanitizeField = (name) => {
-  return name.replace('[', '').replace(']', '').replace('!', '');
+const sanitizeField = (name = '') => {
+
+  if (name === '' || !name) throw Error('Invalid field name provided.');
+
+  name = name.replace('[', '').replace(']', '').replace('!', '');
+
+  if (name === '') throw Error('Invalid field name provided.');
+
+  return name;
 };
 
 const tokenizeTemplate = (template, all) => {
@@ -33,7 +40,7 @@ const tokenizeTemplate = (template, all) => {
 
 const generateName = (nameTemplate = '', map = {}, options = {}) => {
 
-  if (nameTemplate === '') throw Error('Invalid name template.');
+  if (nameTemplate === '' || nameTemplate === null) throw Error('Invalid name template.');
 
   const names = [];
 

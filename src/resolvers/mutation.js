@@ -31,7 +31,7 @@ module.exports = (options) => {
 
     const bulkMutate = async (transaction) => {
 
-      const { bulkColumn } = model.graphql;
+      const { bulkColumn } = Array.isArray(model.graphql.bulk) ? {} : model.graphql.bulk;
       const bulkIdentifier = uuid();
       let findWhere = {};
 

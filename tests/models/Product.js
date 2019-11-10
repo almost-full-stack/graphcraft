@@ -32,8 +32,11 @@ module.exports = (sequelize, DataTypes) => {
             include: { modelPortfolioId: 'int' },
         },
         'scopes': ['test', 'scopeId'],
-        'bulk': ['create', 'edit', 'destroy'],
-        'bulkColumn': false,
+        'bulk': {
+          enabled: ['create', 'update', 'destroy'],
+          bulkColumn: false,
+          returning: true
+        },
         'alias': {  },
         'import': [{ from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' }],
         'excludeMutations': [],
