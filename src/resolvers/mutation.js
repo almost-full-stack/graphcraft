@@ -11,13 +11,50 @@ function findOneRecord(model, where) {
 
 }
 
-async function createMutation (source, args, context, info, mutationOptions) {
+function keysWhichAreModelAssociations (input, associations) {
+  const keys = Object.keys(input);
 
+
+  return keys.reduce((all, key) => {
+    if (associations[key] && input[key] && input[key].length) {
+      all.push({ key, target: associations[key].target, fields: [associations[key].foreignKey] }); // Using an array to support multiple keys in future.
+    }
+
+    return all;
+  }, []);
+}
+
+function recursiveMutateAssociations(graphqlParams, mutationOptions, options) {
+
+  const { modelTypeName, models } = mutationOptions;
+  const model = models[modelTypeName];
+  const { input, createdRecord, operation } = options;
+  const availableAssociations = keysWhichAreModelAssociations(input, model.associations);
+
+  return Promise.all(availableAssociations.map((association) => {
+
+    return Promise.all(input[association.key].map((record) => {
+      const recordToCreate = { ...record };
+      const newArgs = {};
+
+      recordToCreate[association.fields[0]] = createdRecord.id;
+      newArgs[association.target.name] = recordToCreate;
+
+
+      return operation({ ...graphqlParams, args: newArgs }, { ...mutationOptions, modelTypeName: association.target.name });
+    }));
+
+  }));
+}
+
+async function createMutation (graphqlParams, mutationOptions) {
+
+  const { args } = graphqlParams;
   const { isBulk, modelTypeName, models, transaction } = mutationOptions;
   const model = models[modelTypeName];
   const { bulkColumn, returning } = Array.isArray(model.graphql.bulk) ? {} : model.graphql.bulk;
   const bulkIdentifier = uuid();
-  let records = args[modelTypeName];
+  let input = args[modelTypeName];
 
   if (isBulk) {
 
@@ -25,7 +62,7 @@ async function createMutation (source, args, context, info, mutationOptions) {
 
     // When using bulkColumn, we need to populate it with a unique identifier to use it in where for findAll
     if (bulkColumn) {
-      records = (args[modelTypeName] || []).map((record) => {
+      input = (args[modelTypeName] || []).map((record) => {
 
         record[bulkColumn] = bulkIdentifier;
 
@@ -36,7 +73,7 @@ async function createMutation (source, args, context, info, mutationOptions) {
     if (!individually) {
 
       // create records in bulk and return created objects using findall on bulkColumn
-      await model.bulkCreate(records, { transaction, validate: true });
+      await model.bulkCreate(input, { transaction, validate: true });
 
       if (returning && bulkColumn) {
         return model.findAll({ where: { [bulkColumn]: bulkIdentifier }, transaction });
@@ -46,7 +83,7 @@ async function createMutation (source, args, context, info, mutationOptions) {
 
       // create records individually and return created objects if returning is set to true
       const createdRecords = await Promise.all(
-        records.map((record) => model.create(record, { transaction }))
+        input.map((record) => model.create(record, { transaction }))
       );
 
       if (returning) {
@@ -56,15 +93,19 @@ async function createMutation (source, args, context, info, mutationOptions) {
     }
 
     // return length when bulk option is without returning.
-    return records.length;
+    return input.length;
 
   }
 
-  return model.create(records, { transaction });
+  const createdRecord = await model.create(input, { transaction });
+
+  await recursiveMutateAssociations(graphqlParams, mutationOptions, { input, createdRecord, operation: createMutation });
+
+  return createdRecord;
 
 }
 
-async function updateMutation (source, args, context, info, mutationOptions) {
+async function updateMutation ({ source, args, context, info }, mutationOptions) {
 
   const { isBulk, where, modelTypeName, models, transaction } = mutationOptions;
   const model = models[modelTypeName];
@@ -108,7 +149,7 @@ async function updateMutation (source, args, context, info, mutationOptions) {
 
 }
 
-function destroyMutation(source, args, context, info, mutationOptions) {
+function destroyMutation({ source, args, context, info }, mutationOptions) {
   const { isBulk, where, key, modelTypeName, models, transaction } = mutationOptions;
   const model = models[modelTypeName];
 
@@ -146,13 +187,14 @@ module.exports = (options) => {
       let data;
 
       const preparedOptions = { ...mutationOptions, where, transaction, key };
+      const graphqlParams = { source, args, context, info };
 
       if (type === 'create') {
-        data = await createMutation(source, args, context, info, preparedOptions);
+        data = await createMutation(graphqlParams, preparedOptions);
       } else if (type === 'update') {
-        data = await updateMutation(source, args, context, info, preparedOptions);
+        data = await updateMutation(graphqlParams, preparedOptions);
       } else if (type === 'destroy') {
-        data = await destroyMutation(source, args, context, info, preparedOptions);
+        data = await destroyMutation(graphqlParams, preparedOptions);
       } else {
         throw Error('Invalid mutation.');
       }

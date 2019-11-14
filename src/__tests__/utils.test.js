@@ -1,5 +1,5 @@
 /* eslint-disable no-undef */
-const { generateName, sanitizeField, isFieldRequired, isFieldArray } = require('../utils');
+const { generateName, sanitizeField, isFieldRequired, isFieldArray, getAssociations } = require('../utils');
 
 describe('Utility functions', () => {
 
