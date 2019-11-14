@@ -2,7 +2,7 @@ const assert = require('assert');
 const cls = require('cls-hooked');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
-const { createContext, resetCache } = require('dataloader-sequelize')
+const { createContext, resetCache } = require('dataloader-sequelize');
 
 // library options
 const defaultOptions = {
@@ -22,13 +22,30 @@ const defaultOptions = {
     rootQueries: 'RootQueries',
     rootMutations: 'RootMutations'
   },
-  exclude: [], // exclude these models from graphql
-  includeArguments: {}, // include these arguments to all queries/mutations
+  // nested objects can be passed and will be mutated automatically. hasMany and belongsToMany relations supported.
+  nestedMutations: true,
+
+  /**
+   * update modes when sending nested association objects
+   * UPDATE_ONLY > update incoming records
+   * UPDATE_ADD > update existing records and add new ones
+   * MIXED > update existing records, add new ones and delete non-existent records
+   * NONE > ignore nested update
+   */
+
+  nestedUpdateMode: 'UPDATE_ONLY',
+  // these models will be excluded from graphql schema
+  exclude: [],
+  // include these arguments to all queries/mutations
+  includeArguments: {},
   remote: {},
+  // enabled/disable dataloader for nested queries
   dataloader: false,
+  // mutations are run inside transactions. Transactions are accessible in extend hook.
   transactionedMutations: true,
   privateMode: false,
-  types: {}, // custom graphql types
+  // custom graphql types
+  types: {},
   // executes after all queries/mutations
   logger() {
     return Promise.resolve();
@@ -47,8 +64,9 @@ const defaultModelGraphqlOptions = {
   attributes: {
     exclude: [], // list attributes which are to be ignored in Model Input
     include: {}, // attributes in key:type format which are to be included in Model Input
-    import: []
+    import: [] // must be used in combination with remote option
   },
+  // scope usage is highy recommended.
   scopes: null, // common scope to be applied on all find/update/destroy operations
   alias: {}, // rename default queries/mutations to specified custom name
   bulk: { // OR bulk: ['create', 'destroy', ....]
@@ -130,7 +148,9 @@ module.exports = (_options) => {
 
   return {
     generateSchema,
+    // reset dataloader cache, recommended to be used at the end of each request when working with aws lambda
     resetCache,
+    // use this to prime custom queries
     dataloaderContext
   };
 };
