@@ -69,7 +69,8 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
           recordsForDestroy.push(record[keys[0]]);
         }
 
-        const recordForDelete = updateMode === 'MIXED' && Object.keys(record).length === 1 && record.includes(keys[0]);
+        const inputKeys = Object.keys(record);
+        const recordForDelete = updateMode === 'MIXED' && inputKeys.length === 1 && inputKeys.includes(keys[0]);
 
         if (recordForDelete) {
           recordsForDestroy.push(record[keys[0]])
