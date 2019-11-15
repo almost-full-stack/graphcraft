@@ -23,7 +23,7 @@ const defaultOptions = {
     rootMutations: 'RootMutations'
   },
   // nested objects can be passed and will be mutated automatically. hasMany and belongsToMany relations supported.
-  nestedMutations: true,
+  nestedMutations: true, // doesn't work with bulk mutations
 
   /**
    * update modes when sending nested association objects
