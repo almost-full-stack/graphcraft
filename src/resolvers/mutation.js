@@ -40,7 +40,7 @@ function recursiveCreateAssociations(graphqlParams, mutationOptions, options) {
       recordToCreate[association.fields[0]] = parentRecord.id; // TODO: fix this
       newArgs[association.target.name] = recordToCreate;
 
-      return operation({ ...graphqlParams, args: newArgs }, { ...mutationOptions, modelTypeName: association.target.name, skipReturningBulk: true });
+      return operation({ ...graphqlParams, args: newArgs }, { ...mutationOptions, modelTypeName: association.target.name, skipReturning: true });
     }));
 
   }));
@@ -76,7 +76,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
     if (recordsToUpdate.length) {
       operationsPromises.push(
-        updateMutation({ ...graphqlParams, args: newUpdateArgs }, { ...mutationOptions, modelTypeName: association.target.name, isBulk: true, skipReturningBulk: true })
+        updateMutation({ ...graphqlParams, args: newUpdateArgs }, { ...mutationOptions, modelTypeName: association.target.name, isBulk: true, skipReturning: true })
       );
     }
 
@@ -87,7 +87,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
         const newCreateArgs = { [association.target.name]: { ...record, [association.fields[0]]: parentRecord.id } }; // TODO: fix id
 
         operationsPromises.push(
-          createMutation({ ...graphqlParams, args: newCreateArgs }, { ...mutationOptions, modelTypeName: association.target.name, skipReturningBulk: true })
+          createMutation({ ...graphqlParams, args: newCreateArgs }, { ...mutationOptions, modelTypeName: association.target.name, skipReturning: true })
         );
       });
 
@@ -106,7 +106,7 @@ async function createMutation (graphqlParams, mutationOptions) {
    */
 
   const { args } = graphqlParams;
-  const { isBulk, modelTypeName, models, transaction, skipReturningBulk } = mutationOptions;
+  const { isBulk, modelTypeName, models, transaction, skipReturning } = mutationOptions;
   const model = models[modelTypeName];
   const { bulkColumn, returning } = Array.isArray(model.graphql.bulk) ? {} : model.graphql.bulk;
   const bulkIdentifier = uuid();
@@ -126,7 +126,7 @@ async function createMutation (graphqlParams, mutationOptions) {
       });
     }
 
-    if (!individually || skipReturningBulk) {
+    if (!individually || skipReturning) {
 
       // create records in bulk and return created objects using findall on bulkColumn
       await model.bulkCreate(input, { transaction, validate: true });
@@ -164,7 +164,7 @@ async function createMutation (graphqlParams, mutationOptions) {
 async function updateMutation (graphqlParams, mutationOptions) {
 
   const { args } = graphqlParams;
-  const { isBulk, where, modelTypeName, models, transaction, skipReturningBulk, nestedUpdateMode } = mutationOptions;
+  const { isBulk, where, modelTypeName, models, transaction, skipReturning, nestedUpdateMode } = mutationOptions;
   const model = models[modelTypeName];
   const { returning } = Array.isArray(model.graphql.bulk) ? {} : model.graphql.bulk;
   const input = args[modelTypeName];
@@ -195,7 +195,7 @@ async function updateMutation (graphqlParams, mutationOptions) {
 
     await Promise.all(updatePromises);
 
-    if (!returning || skipReturningBulk) {
+    if (!returning || skipReturning) {
       return input.length;
     }
 
@@ -203,13 +203,16 @@ async function updateMutation (graphqlParams, mutationOptions) {
   }
 
   await model.update(input, { where, transaction });
-  const record = await model.findOne({ where, transaction });
 
   if (nestedUpdateMode.toUpperCase() !== 'NONE') {
-    await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: record });
+    await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: input });
   }
 
-  return record;
+  if (skipReturning) {
+    return;
+  }
+
+return model.findOne({ where, transaction });
 
 }
 
