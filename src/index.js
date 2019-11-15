@@ -22,14 +22,15 @@ const defaultOptions = {
     rootQueries: 'RootQueries',
     rootMutations: 'RootMutations'
   },
-  // nested objects can be passed and will be mutated automatically. hasMany and belongsToMany relations supported.
-  nestedMutations: true, // doesn't work with bulk mutations
+  // nested objects can be passed and will be mutated automatically. Only hasMany relation supported.
+  nestedMutations: true, // doesn't work with add bulk mutation
 
   /**
    * update modes when sending nested association objects
    * UPDATE_ONLY > update incoming records
-   * UPDATE_ADD > update existing records and add new ones
-   * MIXED > update existing records, add new ones and delete non-existent records
+   * UPDATE_ADD > update existing records and add new ones i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated and record[1] will be added
+   * UPDATE_ADD_DELETE > update existing records, add new ones and delete non-existent records i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated, record[1] will be added, anything else will be deleted
+   * MIXED > i.e [{id: 1, name: 'test'}, {id:2}, {name: 'test2'}], record[0] will be updated, record[1] will be deleted and record[2] will be added
    * NONE > ignore nested update
    */
 

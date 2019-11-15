@@ -48,7 +48,7 @@ function recursiveCreateAssociations(graphqlParams, mutationOptions, options) {
 
 function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
-  const { modelTypeName, models, nestedUpdateMode } = mutationOptions;
+  const { modelTypeName, models, nestedUpdateMode, Sequelize } = mutationOptions;
   const model = models[modelTypeName];
   const { input, parentRecord } = options;
   const availableAssociations = keysWhichAreModelAssociations(input, model.associations);
@@ -59,12 +59,25 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
     const recordsToAdd = [];
     const recordsToUpdate = [];
     const keys = model.primaryKeyAttributes;
+    const recordsForDestroy = [];
 
     input[association.key].forEach((record) => {
 
       if (record[keys[0]]) {
-        recordsToUpdate.push(record);
-      } else if (updateMode === 'UPDATE_ADD' || updateMode === 'MIXED') {
+
+        if (updateMode === 'UPDATE_ADD_DELETE') {
+          recordsForDestroy.push(record[keys[0]]);
+        }
+
+        const recordForDelete = updateMode === 'MIXED' && Object.keys(record).length === 1 && record.includes(keys[0]);
+
+        if (recordForDelete) {
+          recordsForDestroy.push(record[keys[0]])
+        } else {
+          recordsToUpdate.push(record);
+        }
+
+      } else if (updateMode === 'UPDATE_ADD' || updateMode === 'MIXED' || updateMode === 'UPDATE_ADD_DELETE') {
         recordsToAdd.push(record);
       }
 
@@ -75,9 +88,11 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
     const operationsPromises = [];
 
     if (recordsToUpdate.length) {
+
       operationsPromises.push(
         updateMutation({ ...graphqlParams, args: newUpdateArgs }, { ...mutationOptions, modelTypeName: association.target.name, isBulk: true, skipReturning: true })
       );
+
     }
 
     if (recordsToAdd.length) {
@@ -90,6 +105,21 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
           createMutation({ ...graphqlParams, args: newCreateArgs }, { ...mutationOptions, modelTypeName: association.target.name, skipReturning: true })
         );
       });
+
+    }
+
+    if (recordsForDestroy.length) {
+
+      const where = {
+        [keys[0]]: {
+          [updateMode === 'UPDATE_ADD_DELETE' ? Sequelize.Op.notIn : Sequelize.Op.in]: recordsForDestroy
+        },
+        [association.fields[0]]: parentRecord.id
+      };
+
+      operationsPromises.push(
+        destroyMutation({ ...graphqlParams }, { ...mutationOptions, modelTypeName: association.target.name, isBulk: true, key: keys[0], where })
+      );
 
     }
 
@@ -216,7 +246,8 @@ return model.findOne({ where, transaction });
 
 }
 
-function destroyMutation({ source, args, context, info }, mutationOptions) {
+function destroyMutation(graphqlParams, mutationOptions) {
+
   const { isBulk, where, key, modelTypeName, models, transaction } = mutationOptions;
   const model = models[modelTypeName];
 
@@ -231,7 +262,7 @@ function destroyMutation({ source, args, context, info }, mutationOptions) {
 
 module.exports = (options) => {
 
-  const { sequelize, nestedUpdateMode } = options;
+  const { sequelize, Sequelize, nestedUpdateMode } = options;
 
   return async (source, args, context, info, mutationOptions) => {
 
@@ -253,7 +284,7 @@ module.exports = (options) => {
 
       let data;
 
-      const preparedOptions = { ...mutationOptions, where, transaction, key, nestedUpdateMode };
+      const preparedOptions = { ...mutationOptions, where, transaction, key, nestedUpdateMode, Sequelize };
       const graphqlParams = { source, args, context, info };
 
       if (type === 'create') {
