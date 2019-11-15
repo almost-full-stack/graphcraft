@@ -28,7 +28,7 @@ function recursiveCreateAssociations(graphqlParams, mutationOptions, options) {
 
   const { modelTypeName, models } = mutationOptions;
   const model = models[modelTypeName];
-  const { input, createdRecord, operation } = options;
+  const { input, parentRecord, operation } = options;
   const availableAssociations = keysWhichAreModelAssociations(input, model.associations);
 
   return Promise.all(availableAssociations.map((association) => {
@@ -37,7 +37,7 @@ function recursiveCreateAssociations(graphqlParams, mutationOptions, options) {
       const recordToCreate = { ...record };
       const newArgs = {};
 
-      recordToCreate[association.fields[0]] = createdRecord.id;
+      recordToCreate[association.fields[0]] = parentRecord.id; // TODO: fix this
       newArgs[association.target.name] = recordToCreate;
 
       return operation({ ...graphqlParams, args: newArgs }, { ...mutationOptions, modelTypeName: association.target.name, skipReturningBulk: true });
@@ -50,19 +50,50 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
   const { modelTypeName, models, nestedUpdateMode } = mutationOptions;
   const model = models[modelTypeName];
-  const { input } = options;
+  const { input, parentRecord } = options;
   const availableAssociations = keysWhichAreModelAssociations(input, model.associations);
   const updateMode = nestedUpdateMode.toUpperCase();
 
   return Promise.all(availableAssociations.map((association) => {
 
-    if (updateMode === 'UPDATE_ONLY') {
-      const newArgs = { [association.target.name]: input[association.key] };
+    const recordsToAdd = [];
+    const recordsToUpdate = [];
+    const keys = model.primaryKeyAttributes;
 
-      return updateMutation({ ...graphqlParams, args: newArgs }, { ...mutationOptions, modelTypeName: association.target.name, isBulk: true, skipReturningBulk: true });
-    } else if (updateMode === 'UPDATE_ADD') {
+    input[association.key].forEach((record) => {
+
+      if (record[keys[0]]) {
+        recordsToUpdate.push(record);
+      } else if (updateMode === 'UPDATE_ADD' || updateMode === 'MIXED') {
+        recordsToAdd.push(record);
+      }
+
+    });
+
+    const newUpdateArgs = { [association.target.name]: recordsToUpdate };
+
+    const operationsPromises = [];
+
+    if (recordsToUpdate.length) {
+      operationsPromises.push(
+        updateMutation({ ...graphqlParams, args: newUpdateArgs }, { ...mutationOptions, modelTypeName: association.target.name, isBulk: true, skipReturningBulk: true })
+      );
+    }
+
+    if (recordsToAdd.length) {
+
+      recordsToAdd.forEach((record) => {
+
+        const newCreateArgs = { [association.target.name]: { ...record, [association.fields[0]]: parentRecord.id } }; // TODO: fix id
+
+        operationsPromises.push(
+          createMutation({ ...graphqlParams, args: newCreateArgs }, { ...mutationOptions, modelTypeName: association.target.name, skipReturningBulk: true })
+        );
+      });
 
     }
+
+    return Promise.all(operationsPromises);
 
   }));
 
@@ -124,7 +155,7 @@ async function createMutation (graphqlParams, mutationOptions) {
 
   const createdRecord = await model.create(input, { transaction });
 
-  await recursiveCreateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, createdRecord, operation: createMutation });
+  await recursiveCreateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: createdRecord, operation: createMutation });
 
   return createdRecord;
 
@@ -154,8 +185,10 @@ async function updateMutation (graphqlParams, mutationOptions) {
         return all;
       }, {});
 
+      const newArgs = { [modelTypeName]: record };
+
       updatePromises.push(
-        model.update(record, { where, transaction })
+        updateMutation({ ...graphqlParams, args: newArgs }, { ...mutationOptions, where, isBulk: false })
       );
 
     });
@@ -170,12 +203,13 @@ async function updateMutation (graphqlParams, mutationOptions) {
   }
 
   await model.update(input, { where, transaction });
+  const record = await model.findOne({ where, transaction });
 
   if (nestedUpdateMode.toUpperCase() !== 'NONE') {
-    await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input });
+    await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: record });
   }
 
-  return model.findOne({ where, transaction });
+  return record;
 
 }
 
