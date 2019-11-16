@@ -1,5 +1,5 @@
 const _ = require('lodash');
-const { resolver } = require('graphql-sequelize');
+const { resolver, argsToFindOptions } = require('graphql-sequelize');
 const { EXPECTED_OPTIONS_KEY } = require('dataloader-sequelize');
 const hooks = require('./hooks');
 const REVERSE_CLAUSE_STRING = 'reverse:';
@@ -34,7 +34,8 @@ module.exports = (options) => {
 
   return async (model, inputTypeName, source, args, context, info, isAssociation = false) => {
 
-    const graphql = isAssociation ? model.target.graphql : model.graphql;
+    const realModel = isAssociation ? model.target : model;
+    const graphql = realModel.graphql;
 
     // No need to call authorizer again on associations
     if (!isAssociation) await options.authorizer(source, args, context, info);
@@ -50,10 +51,14 @@ module.exports = (options) => {
     // sequelize-graphql before hook to parse orderby clause to make sure it supports multiple orderby
     const before = (findOptions, args, context) => {
 
-      args.whereEdges = { id: 1 };
+      if (args.throughWhere) {
 
-      if (isAssociation) {
-        findOptions.through = { attributes: ['value', 'id'] };
+        const throughFindOptions = argsToFindOptions.default({ where: args.throughWhere }, Object.keys(model.through.model.rawAttributes));
+
+        findOptions.through = {
+          where: throughFindOptions.where,
+          attributes: Object.keys(model.through.model.rawAttributes)
+        };
       }
 
       findOptions.order = getOrderBy(args.order || '');

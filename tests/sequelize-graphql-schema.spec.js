@@ -3,7 +3,7 @@ const express = require('express');
 const graphqlHTTP = require('express-graphql');
 const { generateSchema } = require('../src/index')({
   exclude: [],
-  dataloader: true,
+  dataloader: false,
   nestedUpdateMode: 'MIXED',
   nestedMutations: true
 });

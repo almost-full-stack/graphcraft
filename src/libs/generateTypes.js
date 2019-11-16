@@ -137,8 +137,10 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
 
       if (!isInput && !relation.isRemote) {
 
+        const throughArguments = relation.associationType === 'BelongsToMany' ? { throughWhere: defaultListArgs().where } : {};
+
         // GraphQLInputObjectType do not accept fields with resolve
-        fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs());
+        fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), throughArguments);
         fields[associationName].resolve = (source, args, context, info) => {
           return queryResolver(options)(relation, relation.target.name, source, args, context, info, true);
         }
