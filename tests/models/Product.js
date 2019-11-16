@@ -5,76 +5,41 @@ module.exports = (sequelize, DataTypes) => {
     const Product = sequelize.define('Product', {
         name: {
           type: DataTypes.STRING,
-          include: ['create', 'modify'],
-          comment: 'This is name'
+          allowNull: false
         },
-        accountId: DataTypes.INTEGER, // Cash account id
-        clientId: DataTypes.INTEGER, // Client who created/opened the Product
-        scopeId: DataTypes.INTEGER, // Tennant managing account of client, required since one Client can have links with multiple tennants.
-        portfolioId: DataTypes.INTEGER,
+        price: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 0
+        },
+        barcode: {
+          type: DataTypes.STRING,
+          unique: true
+        },
+        isActive: {
+          type: DataTypes.BOOLEAN,
+          defaultValue: true,
+          allowNull: false
+        },
+        scopeId: DataTypes.INTEGER
     }, {
       paranoid: false,
       scopes: {
-        test(value) {
+        scope(value) {
           return { where: { scopeId: value } };
         }
       }
     });
 
     Product.associate = function(models) {
-      Product.hasMany(models.Attribute);
+      Product.belongsToMany(models.Attribute, {through: models.ProductAttribute, foreignKey: 'productId', direction: ['product']});
+      Product.hasMany(models.Image);
     };
 
-    // extensions to replace or extend existing graphql implementations (available options would be create, destroy, update, query)
     Product.graphql = {
-        'attributes': {
-            exclude: ['description'],
-            include: { modelPortfolioId: 'int' },
-        },
-        'scopes': ['test', 'scopeId'],
-        'bulk': {
-          enabled: ['create', 'update', 'destroy'],
-          bulkColumn: false,
-          returning: true
-        },
-        'alias': {  },
-        'import': [{ from: 'RemoteProduct', as: 'Instrument', with: 'portfolioId', to: 'id' }],
-        'excludeMutations': [],
-        'excludeQueries': [],
-        'types': {
-          'myEnum': ['Red', 'Green'],
-          'myEnum2': [['Red', 0], ['Green', 1]],
-          'myObjInput': { 'id': '[int]', 'name': 'string', 'mye': 'myEnum', 'mye2': 'myEnum2' },
-          'secObj': { 'id': 'int', 'name': 'string', 'myThirdObj': 'thirdObj!' },
-          'thirdObj': { 'id': 'int', 'name': 'string' }
-        },
-        'mutations': {
-         
-        },
-        'queries': {
-          myQuery1: { output: 'myEnum', input: 'secObj!', resolver: () => { return 1; } }
-        },
-        // this will be executed after mutations/queries
-        'before': {
-          create: (source, args, context, info) => {
-            return Promise.resolve();
-          }
-        },
-        'overwrite': {
-
-        },
-        'extend': {
-            create: (data, source, args, context, info) => {
-                if (data.name == 'fail') {
-                  throw Error('rollback transaction');
-                }
-
-                return Product.update({ name: 'New Updated Product' }, { where: { id: 3 } }).then(() => data);
-            },
-            fetch: (data, source, args, context, info) => {
-              return data;
-            }
-        }
+      associationDirection: {
+        Attribute: 'Product'
+      }
     };
 
     return Product;

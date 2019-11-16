@@ -12,7 +12,7 @@
     "jest-coverage": "npm run jest -- --coverage",
     "lint": "eslint src --cache",
     "test": "npm run test-db-reset && npm run jest",
-    "test-db-reset": "rm -rf tests/database.db && sequelize db:migrate"
+    "test-db-reset": "rm -rf tests/database.db && node tests/reset-db.js"
   },
   "repository": {
     "type": "git",

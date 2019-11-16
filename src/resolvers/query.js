@@ -50,6 +50,12 @@ module.exports = (options) => {
     // sequelize-graphql before hook to parse orderby clause to make sure it supports multiple orderby
     const before = (findOptions, args, context) => {
 
+      args.whereEdges = { id: 1 };
+
+      if (isAssociation) {
+        findOptions.through = { attributes: ['value', 'id'] };
+      }
+
       findOptions.order = getOrderBy(args.order || '');
 
       // if paranoid option from sequelize is set, this switch can be used to fetch archived, non-archived or all items.
@@ -63,7 +69,8 @@ module.exports = (options) => {
 
     const data = await resolver((isAssociation ? model : model.scope(scope)), {
       [EXPECTED_OPTIONS_KEY]: dataloaderContext,
-      before
+      before,
+      separate: isAssociation
     })(source, args, context, info);
 
     if (_.has(graphql.extend, QUERY_TYPE) || _.has(graphql.after, QUERY_TYPE)) {

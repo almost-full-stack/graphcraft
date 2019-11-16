@@ -113,9 +113,11 @@ function generateIncludeArguments (includeArguments, existingTypes = {}) {
 */
 function generateAssociationFields(associations, existingTypes = {}, isInput = false) {
   const fields = {};
+  const { nestedMutations } = options;
 
   for (const associationName in associations) {
     if (associations[associationName]) {
+
       const relation = associations[associationName];
 
       if (!existingTypes[relation.target.name]) {
@@ -129,11 +131,12 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
         : existingTypes[relation.target.name];
 
       // Remove belongs to associations for input types to avoide foreign key constraint errors.
-      if (!(isInput && relation.associationType === 'BelongsTo')) {
+      if (!(isInput && relation.associationType === 'BelongsTo') && !(isInput && !nestedMutations)) {
         fields[associationName] = { type };
       }
 
       if (!isInput && !relation.isRemote) {
+
         // GraphQLInputObjectType do not accept fields with resolve
         fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs());
         fields[associationName].resolve = (source, args, context, info) => {

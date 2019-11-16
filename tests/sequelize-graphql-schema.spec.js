@@ -5,25 +5,7 @@ const { generateSchema } = require('../src/index')({
   exclude: [],
   dataloader: true,
   nestedUpdateMode: 'MIXED',
-  /*remote: {
-    import: {
-      'Instrument': {
-        endpoint: 'http://localhost:3000/graphiql',
-        queries: { 'productGet': { as: 'RemoteProduct' } },
-        headers: ['authorization', 'accesstoken']
-      },
-      'Shop': {
-        endpoint: 'http://localhost:3000/graphiql',
-        queries: { 'productGet': { as: 'RemoteShop' } },
-        headers: ['authorization', 'accesstoken']
-      }
-    },
-    headers: [ 'authorization', 'accessToken' ]
-  },*/
-  includeArguments: {
-    scopeId: 'int',
-    test: '[int]'
-  }
+  nestedMutations: true
 });
 
 const app = express();
