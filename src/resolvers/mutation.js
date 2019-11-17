@@ -12,12 +12,12 @@ function findOneRecord(model, where) {
 }
 
 function keysWhichAreModelAssociations (input, associations) {
-  const keys = Object.keys(input);
 
+  const keys = Object.keys(input);
 
   return keys.reduce((all, key) => {
     if (associations[key] && input[key] && input[key].length) {
-      all.push({ key, target: associations[key].target, fields: [associations[key].foreignKey] }); // Using an array to support multiple keys in future.
+      all.push({ key, target: associations[key].target, fields: [associations[key].foreignKey], through: associations[key].through.model }); // Using an array to support multiple keys in future.
     }
 
     return all;
@@ -33,14 +33,38 @@ function recursiveCreateAssociations(graphqlParams, mutationOptions, options) {
 
   return Promise.all(availableAssociations.map((association) => {
 
-    return Promise.all(input[association.key].map((record) => {
-      const recordToCreate = { ...record };
-      const newArgs = {};
+    return Promise.all(input[association.key].map(async (record) => {
 
-      recordToCreate[association.fields[0]] = parentRecord.id; // TODO: fix this
-      newArgs[association.target.name] = recordToCreate;
+      const recordToCreate = { ...record, [association.fields[0]]: parentRecord.id };
+      let newArgs = { [association.target.name]: recordToCreate };
+      let newModelTypeName = association.target.name;
 
-      return operation({ ...graphqlParams, args: newArgs }, { ...mutationOptions, modelTypeName: association.target.name, skipReturning: true });
+      // association is belongsToMany, we have two cases: 1. Create assocciation record and through record. 2. Association record already exist and only create through record
+      if (association.through) {
+
+        const reverseAssociations = association.target.associations;
+        const reverseAssociationKeys = Object.keys(reverseAssociations).filter((key) => reverseAssociations[key].target.name === model.name);
+        const reverseAssociationForeignKey = reverseAssociations[reverseAssociationKeys[0]].foreignKey;
+        const throughRecord = { ...record[association.through.name], [association.fields[0]]: parentRecord.id };
+
+        // id is not present, we need to create association record as well as through record.
+        if (!record.id) {
+          const assocciationArgs = { [association.target.name]: { ...record } };
+          const associationRecord = await operation({ ...graphqlParams, args: assocciationArgs }, { ...mutationOptions, modelTypeName: association.target.name, skipReturning: true });
+
+          throughRecord[reverseAssociationForeignKey] = associationRecord.id;
+        } else {
+          throughRecord[reverseAssociationForeignKey] = record.id;
+        }
+
+        newModelTypeName = association.through.name;
+        newArgs = { [association.through.name]: throughRecord };
+
+      }
+
+      // for hasMany simply create association records, if belongsToMany create association through record
+      return operation({ ...graphqlParams, args: newArgs }, { ...mutationOptions, modelTypeName: newModelTypeName, skipReturning: true });
+
     }));
 
   }));

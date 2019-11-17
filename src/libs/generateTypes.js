@@ -135,6 +135,11 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
         fields[associationName] = { type };
       }
 
+      // Add through table, this doesn't need resolver since this is already included when quering n:m relations.
+      if (relation.associationType === 'BelongsToMany' ) {
+        fields[relation.through.model.name] = { type: existingTypes[relation.through.model.name] };
+      }
+
       if (!isInput && !relation.isRemote) {
 
         const throughArguments = relation.associationType === 'BelongsToMany' ? { throughWhere: defaultListArgs().where } : {};
@@ -173,9 +178,11 @@ function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false
     }
   }
 
-  const renameFieldMap = Object.keys(model.attributes).reduce((attributes, attributeName) => {
+  const modelAttributes = model.rawAttributes;
 
-    const attribute = model.attributes[attributeName];
+  const renameFieldMap = Object.keys(modelAttributes).reduce((attributes, attributeName) => {
+
+    const attribute = modelAttributes[attributeName];
 
     if (attribute.rename) attributes[attribute.fieldName] = attribute.rename;
 
