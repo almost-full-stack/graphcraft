@@ -41,7 +41,7 @@ const defaultOptions = {
    * IGNORE > ignore nested update
    */
 
-  nestedUpdateMode: 'UPDATE_ADD_DELETE',
+  nestedUpdateMode: 'MIXED',
   // these models will be excluded from graphql schema
   exclude: [],
   // include these arguments to all queries/mutations
