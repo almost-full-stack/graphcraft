@@ -1,6 +1,6 @@
 {
   "name": "sequelize-graphql-schema",
-  "version": "1.0.0-beta.3",
+  "version": "1.0.0-beta.4",
   "description": "A helper library that lets you focus on business logic by automatically generating GraphQLSchema and manages graphQL from Sequelize model.",
   "main": "lib/index.js",
   "scripts": {

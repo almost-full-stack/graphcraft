@@ -151,7 +151,11 @@ function generateSchema(models, context) {
 }
 
 module.exports = (_options) => {
-  Object.assign(options, defaultOptions, _options);
+  const newOptions = { ..._options };
+
+  newOptions.naming = Object.assign(defaultOptions.naming, newOptions.naming);
+  newOptions.exposeOnly = Object.assign(defaultOptions.exposeOnly, newOptions.exposeOnly);
+  Object.assign(options, defaultOptions, newOptions);
 
   return {
     generateSchema,
