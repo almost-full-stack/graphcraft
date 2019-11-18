@@ -22,19 +22,26 @@ const defaultOptions = {
     rootQueries: 'RootQueries',
     rootMutations: 'RootMutations'
   },
+
   // nested objects can be passed and will be mutated automatically. Only hasMany relation supported.
   nestedMutations: true, // doesn't work with add bulk mutation
+
+  // applied globaly on both auto-generated and custom queries/mutations
+  exposeOnly: {
+    queries: [],
+    mutations: []
+  },
 
   /**
    * update modes when sending nested association objects
    * UPDATE_ONLY > update incoming records
    * UPDATE_ADD > update existing records and add new ones i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated and record[1] will be added
-   * UPDATE_ADD_DELETE > update existing records, add new ones and delete non-existent records i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated, record[1] will be added, anything else will be deleted
+   * UPDATE_ADD_DELETE > not recommended: update existing records, add new ones and delete non-existent records i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated, record[1] will be added, anything else will be deleted
    * MIXED > i.e [{id: 1, name: 'test'}, {id:2}, {name: 'test2'}], record[0] will be updated, record[1] will be deleted and record[2] will be added
-   * NONE > ignore nested update
+   * IGNORE > ignore nested update
    */
 
-  nestedUpdateMode: 'UPDATE_ONLY',
+  nestedUpdateMode: 'UPDATE_ADD_DELETE',
   // these models will be excluded from graphql schema
   exclude: [],
   // include these arguments to all queries/mutations
@@ -44,7 +51,6 @@ const defaultOptions = {
   dataloader: false,
   // mutations are run inside transactions. Transactions are accessible in extend hook.
   transactionedMutations: true,
-  privateMode: false,
   // custom graphql types
   types: {},
   // executes after all queries/mutations

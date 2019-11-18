@@ -17,7 +17,7 @@ function keysWhichAreModelAssociations (input, associations) {
 
   return keys.reduce((all, key) => {
     if (associations[key] && input[key] && input[key].length) {
-      all.push({ key, target: associations[key].target, fields: [associations[key].foreignKey], through: associations[key].through.model }); // Using an array to support multiple keys in future.
+      all.push({ key, target: associations[key].target, fields: [associations[key].foreignKey], through: associations[key].through ? associations[key].through.model : null }); // Using an array to support multiple keys in future.
     }
 
     return all;
@@ -82,7 +82,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
     const recordsToAdd = [];
     const recordsToUpdate = [];
-    const recordsForDestroy = [];
+    const recordsToDestroy = [];
     const keys = model.primaryKeyAttributes;
     // following are to be used for belongsToMany association
     const reverseAssociations = association.through ? association.target.associations : {};
@@ -98,14 +98,26 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
         if (association.through) {
 
-          // check if association through input exists, if so it will be skipped.
-          // TODO: fix record
-          if (!record[association.through.name]) {
-            recordsForDestroy.push(record[keys[0]]);
+          // check if association through input exists, if so it will be added as a new one as well as it will be deleted
+          if (record[association.through.name] || (recordForDelete && !record[association.through.name])) {
+            recordsToDestroy.push(
+              {
+                [association.fields[0]]: input.id,
+                [reverseAssociationForeignKey]: record[keys[0]]
+              }
+            );
+          }
+
+          if (record[association.through.name]) {
+            recordsToAdd.push({
+              ...record[association.through.name],
+              [association.fields[0]]: input.id,
+              [reverseAssociationForeignKey]: record[keys[0]]
+            });
           }
 
         } else if (recordForDelete) {
-          recordsForDestroy.push(record[keys[0]]);
+          recordsToDestroy.push(record[keys[0]]);
         } else {
           recordsToUpdate.push(record);
         }
@@ -120,6 +132,23 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
     const operationsPromises = [];
 
+    if (recordsToDestroy.length) {
+
+      const where = association.through ? {
+        [Sequelize.Op.or]: recordsToDestroy
+      } : {
+        [keys[0]]: {
+          [updateMode === 'UPDATE_ADD_DELETE' ? Sequelize.Op.notIn : Sequelize.Op.in]: recordsToDestroy
+        },
+        [association.fields[0]]: parentRecord.id
+      };
+
+      operationsPromises.push(
+        destroyMutation({ ...graphqlParams }, { ...mutationOptions, modelTypeName: association.through ? association.through.name : association.target.name, isBulk: true, key: keys[0], where, skipBulkChecks: true })
+      );
+
+    }
+
     if (recordsToUpdate.length) {
 
       operationsPromises.push(
@@ -130,29 +159,26 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
     if (recordsToAdd.length) {
 
-      recordsToAdd.forEach((record) => {
+      if (association.through) {
 
-        const newCreateArgs = { [association.target.name]: { ...record, [association.fields[0]]: parentRecord.id } }; // TODO: fix id
+        const newCreateArgs = { [association.through.name]: recordsToAdd };
 
         operationsPromises.push(
-          createMutation({ ...graphqlParams, args: newCreateArgs }, { ...mutationOptions, modelTypeName: association.target.name, skipReturning: true })
+          createMutation({ ...graphqlParams, args: newCreateArgs }, { ...mutationOptions, modelTypeName: association.through ? association.through.name : association.target.name, skipReturning: true, isBulk: true })
         );
-      });
 
-    }
+      } else {
+        recordsToAdd.forEach((record) => {
 
-    if (recordsForDestroy.length) {
+          const newCreateArgs = {
+            [association.target.name]: { ...record, [association.fields[0]]: parentRecord.id }
+          }; // TODO: fix id
 
-      const where = {
-        [keys[0]]: {
-          [updateMode === 'UPDATE_ADD_DELETE' ? Sequelize.Op.notIn : Sequelize.Op.in]: recordsForDestroy
-        },
-        [association.fields[0]]: parentRecord.id
-      };
-
-      operationsPromises.push(
-        destroyMutation({ ...graphqlParams }, { ...mutationOptions, modelTypeName: association.target.name, isBulk: true, key: keys[0], where })
-      );
+          operationsPromises.push(
+            createMutation({ ...graphqlParams, args: newCreateArgs }, { ...mutationOptions, modelTypeName: association.through ? association.through.name : association.target.name, skipReturning: true })
+          );
+        });
+      }
 
     }
 
@@ -165,7 +191,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 async function createMutation (graphqlParams, mutationOptions) {
 
   /**
-   * skipReturningBulk: will be passed when creating associations, in that case we can just skip returning options
+   * skipReturning: will be passed when creating associations, in that case we can just skip returning options
    */
 
   const { args } = graphqlParams;
@@ -267,7 +293,7 @@ async function updateMutation (graphqlParams, mutationOptions) {
 
   await model.update(input, { where, transaction });
 
-  if (nestedUpdateMode.toUpperCase() !== 'NONE') {
+  if (nestedUpdateMode.toUpperCase() !== 'IGNORE') {
     await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: input });
   }
 
@@ -281,11 +307,11 @@ return model.findOne({ where, transaction });
 
 function destroyMutation(graphqlParams, mutationOptions) {
 
-  const { isBulk, where, key, modelTypeName, models, transaction } = mutationOptions;
+  const { isBulk, where, key, modelTypeName, models, transaction, skipBulkChecks } = mutationOptions;
   const model = models[modelTypeName];
 
   // Unlikely to happen but still an extra check to not allow array of ids when destroying with non-bulk option.
-  if (Array.isArray(where[key]) && !isBulk) {
+  if (Array.isArray(where[key]) && !isBulk && !skipBulkChecks) {
     throw Error('Invalid operation input.');
   }
 

@@ -9,7 +9,6 @@ const {
   defaultListArgs,
   defaultArgs
 } = require('graphql-sequelize');
-const camelCase = require('camelcase');
 const { sanitizeField, generateName } = require('../utils');
 
 module.exports = (options) => {
