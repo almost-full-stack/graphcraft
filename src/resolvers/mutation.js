@@ -82,22 +82,30 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
     const recordsToAdd = [];
     const recordsToUpdate = [];
-    const keys = model.primaryKeyAttributes;
     const recordsForDestroy = [];
+    const keys = model.primaryKeyAttributes;
+    // following are to be used for belongsToMany association
+    const reverseAssociations = association.through ? association.target.associations : {};
+    const reverseAssociationKeys = Object.keys(reverseAssociations).filter((key) => reverseAssociations[key].target.name === model.name);
+    const reverseAssociationForeignKey = reverseAssociationKeys.length ? reverseAssociations[reverseAssociationKeys[0]].foreignKey : null;
 
     input[association.key].forEach((record) => {
 
       if (record[keys[0]]) {
 
-        if (updateMode === 'UPDATE_ADD_DELETE') {
-          recordsForDestroy.push(record[keys[0]]);
-        }
-
         const inputKeys = Object.keys(record);
-        const recordForDelete = updateMode === 'MIXED' && inputKeys.length === 1 && inputKeys.includes(keys[0]);
+        const recordForDelete = (updateMode === 'MIXED' || updateMode === 'UPDATE_ADD_DELETE') && inputKeys.length === 1 && inputKeys.includes(keys[0]);
 
-        if (recordForDelete) {
-          recordsForDestroy.push(record[keys[0]])
+        if (association.through) {
+
+          // check if association through input exists, if so it will be skipped.
+          // TODO: fix record
+          if (!record[association.through.name]) {
+            recordsForDestroy.push(record[keys[0]]);
+          }
+
+        } else if (recordForDelete) {
+          recordsForDestroy.push(record[keys[0]]);
         } else {
           recordsToUpdate.push(record);
         }
