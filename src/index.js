@@ -175,6 +175,7 @@ module.exports = (_options) => {
   newOptions.naming = Object.assign({}, defaultOptions.naming, newOptions.naming);
   newOptions.naming.type = Object.assign({}, defaultOptions.naming.type, newOptions.naming.type)
   newOptions.exposeOnly = Object.assign({}, defaultOptions.exposeOnly, newOptions.exposeOnly);
+  newOptions.limits = Object.assign({}, defaultOptions.limits, newOptions.limits);
   Object.assign(options, defaultOptions, newOptions);
 
   return {
