@@ -23,7 +23,7 @@ const defaultOptions = {
     rootMutations: 'RootMutations'
   },
 
-  // nested objects can be passed and will be mutated automatically. Only hasMany relation supported.
+  // nested objects can be passed and will be mutated automatically. Only hasMany and belongsTo relation supported.
   nestedMutations: true, // doesn't work with add bulk mutation
 
   // applied globaly on both auto-generated and custom queries/mutations
@@ -53,6 +53,10 @@ const defaultOptions = {
   transactionedMutations: true,
   // custom graphql types
   types: {},
+  // custom queries
+  queries: {},
+  // custom mutations
+  mutations: {},
   // executes after all queries/mutations
   logger() {
     return Promise.resolve();
@@ -82,6 +86,7 @@ const defaultModelGraphqlOptions = {
     bulkColumn: false, // bulk identifier column, when bulk creating this column will be auto filled with a uuid and later used to fetch added records 'columnName' or ['columnName', true] when using a foreign key as bulk column
     returning: true // This will return all created/updated items, doesn't use sequelize returning option.
   },
+  types: {}, // user defined custom types
   mutations: {}, // user defined custom mutations
   queries: {}, // user defined custom queries
   excludeMutations: [], // exclude one or more default mutations ['create', 'destroy', 'update']
@@ -97,7 +102,7 @@ const GenerateMutations = require('./libs/generateMutations');
 const GenerateTypes = require('./libs/generateTypes');
 let dataloaderContext;
 
-/*const errorHandler = (error) => {
+const errorHandler = (error) => {
   for (const name in options.errorHandler) {
     if (error.message.indexOf(name) > -1) {
       Object.assign(error, options.errorHandler[name]);
@@ -106,7 +111,7 @@ let dataloaderContext;
   }
 
   return error;
-};*/
+};
 
 function generateSchema(models, context) {
 
@@ -162,6 +167,7 @@ module.exports = (_options) => {
     // reset dataloader cache, recommended to be used at the end of each request when working with aws lambda
     resetCache,
     // use this to prime custom queries
-    dataloaderContext
+    dataloaderContext,
+    errorHandler
   };
 };

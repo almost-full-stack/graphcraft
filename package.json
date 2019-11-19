@@ -4,6 +4,7 @@
   "description": "A helper library that lets you focus on business logic by automatically generating GraphQLSchema and manages graphQL from Sequelize model.",
   "main": "lib/index.js",
   "scripts": {
+    "publish-beta": "npm run lint && npm run build && npm publish --tag beta",
     "build": "rm -rf lib/* && babel src --out-dir lib",
     "check": "npm run lint && npm run test",
     "clean": "rm -f lib/*",
