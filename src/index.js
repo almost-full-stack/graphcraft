@@ -20,7 +20,15 @@ const defaultOptions = {
     mutations: '{name}{type}{bulk}', // applied to auto generated mutations
     input: '{name}', // applied to all input types
     rootQueries: 'RootQueries',
-    rootMutations: 'RootMutations'
+    rootMutations: 'RootMutations',
+    // {type} and {bulk} will be replaced with one of the following
+    type: {
+      create: 'Create',
+      update: 'Update',
+      delete: 'Delete',
+      get: 'Get',
+      bulk: 'Bulk'
+    }
   },
 
   // nested objects can be passed and will be mutated automatically. Only hasMany and belongsTo relation supported.
@@ -158,8 +166,9 @@ function generateSchema(models, context) {
 module.exports = (_options) => {
   const newOptions = { ..._options };
 
-  newOptions.naming = Object.assign(defaultOptions.naming, newOptions.naming);
-  newOptions.exposeOnly = Object.assign(defaultOptions.exposeOnly, newOptions.exposeOnly);
+  newOptions.naming = Object.assign({}, defaultOptions.naming, newOptions.naming);
+  newOptions.naming.type = Object.assign({}, defaultOptions.naming.type, newOptions.naming.type)
+  newOptions.exposeOnly = Object.assign({}, defaultOptions.exposeOnly, newOptions.exposeOnly);
   Object.assign(options, defaultOptions, newOptions);
 
   return {

@@ -15,7 +15,8 @@ module.exports = (options) => {
 
   const { query } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
-  const pascalCase = options.naming.pascalCase;
+  const naming = options.naming;
+  const pascalCase = naming.pascalCase;
 
   /**
   * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
@@ -50,7 +51,7 @@ module.exports = (options) => {
         const aliases = model.graphql.alias;
 
         if (!model.graphql.excludeQueries.includes('fetch')) {
-          queries[generateName(aliases.fetch || options.naming.queries, { type: 'get', name: modelTypeName }, { pascalCase })] = {
+          queries[generateName(aliases.fetch || options.naming.queries, { type: naming.get, name: modelTypeName }, { pascalCase })] = {
             type: new GraphQLList(modelType),
             args: Object.assign(defaultArgs(model), defaultListArguments, includeArguments, paranoidType),
             resolve: (source, args, context, info) => {
