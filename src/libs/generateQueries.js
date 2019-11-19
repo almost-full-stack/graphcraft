@@ -9,13 +9,13 @@ const {
   defaultListArgs,
   defaultArgs
 } = require('graphql-sequelize');
-const { sanitizeField, generateName } = require('../utils');
+const { sanitizeField, generateName, isAvailable } = require('../utils');
 
 module.exports = (options) => {
 
   const { query } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
-  const naming = options.naming;
+  const { naming, exposeOnly } = options;
   const pascalCase = naming.pascalCase;
 
   /**
@@ -32,11 +32,19 @@ module.exports = (options) => {
     const createQueriesFor = {};
 
     for (const outputTypeName in outputTypes) {
+
       const model = models[outputTypeName];
+      const customQueryNames = Object.keys(model.graphql.queries || {});
+      const modelQueryName = generateName(model.graphql.alias.fetch || options.naming.queries, { type: naming.type.get, name: outputTypeName }, { pascalCase });
+      const toBeGenerated = [].concat(customQueryNames).concat(
+        model.graphql.excludeQueries.includes('fetch') ? [] : modelQueryName
+      );
 
       // model must have atleast one query to implement.
-      if (model && (!model.graphql.excludeQueries.includes('fetch') || Object.keys(model.graphql.queries || {}).length)) {
-        createQueriesFor[outputTypeName] = outputTypes[outputTypeName];
+      if (model && (!model.graphql.excludeQueries.includes('fetch') || customQueryNames.length)) {
+        if (isAvailable(exposeOnly.queries, toBeGenerated)) {
+          createQueriesFor[outputTypeName] = outputTypes[outputTypeName];
+        }
       }
     }
 
@@ -49,8 +57,9 @@ module.exports = (options) => {
         const model = models[modelType.name];
         const paranoidType = model.graphql.paranoid && model.options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
         const aliases = model.graphql.alias;
+        const modelQueryName = generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase })
 
-        if (!model.graphql.excludeQueries.includes('fetch')) {
+        if (!model.graphql.excludeQueries.includes('fetch') && isAvailable(exposeOnly.queries, [modelQueryName])) {
           queries[generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase })] = {
             type: new GraphQLList(modelType),
             args: Object.assign(defaultArgs(model), defaultListArguments, includeArguments, paranoidType),

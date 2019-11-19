@@ -40,7 +40,7 @@ const defaultOptions = {
   // nested objects can be passed and will be mutated automatically. Only hasMany and belongsTo relation supported.
   nestedMutations: true, // doesn't work with add bulk mutation
 
-  // applied globaly on both auto-generated and custom queries/mutations
+  // applied globaly on both auto-generated and custom queries/mutations.
   exposeOnly: {
     queries: [],
     mutations: []

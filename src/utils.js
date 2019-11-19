@@ -57,9 +57,26 @@ const generateName = (nameTemplate = '', map = {}, options = {}) => {
 
 };
 
+function isAvailable(exposed, toBeGenerated) {
+
+  const toGenerate = [].concat(toBeGenerated);
+
+  if (!exposed.length) return true;
+
+  for (let index = 0; index < toGenerate.length; index++) {
+    if (exposed.includes(toGenerate[index])) {
+      return true;
+    }
+  }
+
+  return false;
+
+}
+
 module.exports = {
   isFieldArray,
   isFieldRequired,
   sanitizeField,
-  generateName
+  generateName,
+  isAvailable
 };

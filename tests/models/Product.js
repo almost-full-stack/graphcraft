@@ -39,6 +39,9 @@ module.exports = (sequelize, DataTypes) => {
     Product.graphql = {
       associationDirection: {
         Attribute: 'Product'
+      },
+      queries: {
+        ProductQuery: { output: 'Product', resolver: () => Promise.resolve({}) }
       }
     };
 

@@ -13,6 +13,12 @@ module.exports = (sequelize, DataTypes) => {
     Attribute.belongsToMany(models.Product, {through: models.ProductAttribute, foreignKey: 'attributeId'});
   };
 
+  Attribute.graphql = {
+    mutations: {
+      AttributeMutation: {resolver: () => 1}
+    }
+  };
+
   return Attribute;
 
 };

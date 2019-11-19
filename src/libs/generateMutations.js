@@ -5,27 +5,66 @@ const {
   GraphQLInt,
   GraphQLNonNull
 } = require('graphql');
-const { sanitizeField, generateName } = require('../utils');
+const { sanitizeField, generateName, isAvailable } = require('../utils');
 
 module.exports = (options) => {
 
   const { mutation } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
-  const naming = options.naming;
+  const { naming, exposeOnly } = options;
   const pascalCase = naming.pascalCase;
 
   return (models, outputTypes = {}, inputTypes = {}) => {
 
     const includeArguments = generateIncludeArguments(options.includeArguments, outputTypes);
     const createMutationsFor = {};
+    const modelMutationNames = {};
+    const modelBulkOptions = {};
 
     // outputTypes are generated for all non-excluded models
     for (const outputTypeName in outputTypes) {
+
       const model = models[outputTypeName];
+      const aliases = model.graphql.alias;
+      const bulk = model.graphql.bulk;
+      const bulkEnabled = Array.isArray(bulk) ? bulk : bulk.enabled;
+      const bulkOptions = {
+        create: bulkEnabled.includes('create') && !model.graphql.excludeMutations.includes('create'),
+        update: bulkEnabled.includes('update') && !model.graphql.excludeMutations.includes('update'),
+        destroy: bulkEnabled.includes('destroy') && !model.graphql.excludeMutations.includes('destroy')
+      };
+      const modelMutationName = {
+        create: generateName(aliases.create || options.naming.mutations, { type: naming.type.create, name: outputTypeName }, { pascalCase }),
+        update: generateName(aliases.update || options.naming.mutations, { type: naming.type.update, name: outputTypeName }, { pascalCase }),
+        delete: generateName(aliases.destroy || options.naming.mutations, { type: naming.type.delete, name: outputTypeName }, { pascalCase }),
+        createBulk: generateName(aliases.createBulk || options.naming.mutations, { type: naming.type.create, name: outputTypeName, bulk: naming.type.bulk }, { pascalCase }),
+        updateBulk: generateName(aliases.updateBulk || options.naming.mutations, { type: naming.type.update, name: outputTypeName, bulk: naming.type.bulk }, { pascalCase }),
+        deleteBulk: generateName(aliases.destroyBulk || options.naming.mutations, { type: naming.type.delete, name: outputTypeName, bulk: naming.type.bulk }, { pascalCase })
+      };
+
+      modelBulkOptions[outputTypeName] = bulkOptions;
+      modelMutationNames[outputTypeName] = modelMutationName;
+
+      const customMutationNames = Object.keys(model.graphql.mutations || {});
+      const toBeGenerated = [].concat(customMutationNames).concat(
+        model.graphql.excludeMutations.includes('create') ? [] : modelMutationName.create
+      ).concat(
+        bulkOptions.create ? [] : modelMutationName.createBulk
+      ).concat(
+        model.graphql.excludeMutations.includes('update') ? [] : modelMutationName.update
+      ).concat(
+        bulkOptions.update ? [] : modelMutationName.updateBulk
+      ).concat(
+        model.graphql.excludeMutations.includes('destroy') ? [] : modelMutationName.delete
+      ).concat(
+        bulkOptions.destroy ? [] : modelMutationName.deleteBulk
+      );
 
       // model must have atleast one mutation to implement.
       if (model && (model.graphql.excludeMutations.length < 3 || Object.keys(model.graphql.mutations).length)) {
-        createMutationsFor[outputTypeName] = outputTypes[outputTypeName];
+        if (isAvailable(exposeOnly.mutations, toBeGenerated)) {
+          createMutationsFor[outputTypeName] = outputTypes[outputTypeName];
+        }
       }
     }
 
@@ -38,10 +77,9 @@ module.exports = (options) => {
         const outputModelType = outputTypes[modelTypeName];
         const model = models[modelTypeName];
         const key = model.primaryKeyAttributes[0];
-        const aliases = model.graphql.alias;
 
-        if (!model.graphql.excludeMutations.includes('create')) {
-          mutations[generateName(aliases.create || options.naming.mutations, { type: naming.type.create, name: modelTypeName }, { pascalCase })] = {
+        if (!model.graphql.excludeMutations.includes('create') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].create)) {
+          mutations[modelMutationNames[modelTypeName].create] = {
             type: outputModelType,
             description: 'Create a ' + modelTypeName,
             args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
@@ -49,8 +87,8 @@ module.exports = (options) => {
           };
         }
 
-        if (!model.graphql.excludeMutations.includes('update')) {
-          mutations[generateName(aliases.update || options.naming.mutations, { type: naming.type.update, name: modelTypeName }, { pascalCase })] = {
+        if (!model.graphql.excludeMutations.includes('update') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].update)) {
+          mutations[modelMutationNames[modelTypeName].update] = {
             type: outputModelType || GraphQLInt,
             description: 'Update a ' + modelTypeName,
             args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
@@ -58,8 +96,8 @@ module.exports = (options) => {
           };
         }
 
-        if (!model.graphql.excludeMutations.includes('destroy')) {
-          mutations[generateName(aliases.destroy || options.naming.mutations, { type: naming.type.delete, name: modelTypeName }, { pascalCase })] = {
+        if (!model.graphql.excludeMutations.includes('destroy') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].delete)) {
+          mutations[modelMutationNames[modelTypeName].delete] = {
             type: GraphQLInt,
             description: 'Delete a ' + modelTypeName,
             // enhance this to support composite keys
@@ -69,17 +107,11 @@ module.exports = (options) => {
         }
 
         const bulk = model.graphql.bulk;
-        const bulkEnabled = Array.isArray(bulk) ? bulk : bulk.enabled;
+        const bulkOptions = modelBulkOptions[modelTypeName];
 
-        const bulkOptions = {
-          create: bulkEnabled.includes('create'),
-          update: bulkEnabled.includes('update'),
-          destroy: bulkEnabled.includes('destroy')
-        };
+        if (bulkOptions.create && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].createBulk)) {
 
-        if (bulkOptions.create) {
-
-          mutations[generateName(aliases.createBulk || options.naming.mutations, { type: naming.type.create, name: modelTypeName, bulk: naming.bulk }, { pascalCase })] = {
+          mutations[modelMutationNames[modelTypeName].createBulk] = {
             type: (typeof bulk.bulkColumn === 'string' || bulk.returning) ? new GraphQLList(outputModelType) : GraphQLInt,
             description: 'Create bulk ' + modelTypeName + ' and return number of rows or created rows.',
             args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
@@ -88,9 +120,9 @@ module.exports = (options) => {
 
         }
 
-        if (bulkOptions.update) {
+        if (bulkOptions.update && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].updateBulk)) {
 
-          mutations[generateName(aliases.updateBulk || options.naming.mutations, { type: naming.type.update, name: modelTypeName, bulk: naming.bulk }, { pascalCase })] = {
+          mutations[modelMutationNames[modelTypeName].updateBulk] = {
             type: bulk.returning ? new GraphQLList(outputModelType) : GraphQLInt,
             description: 'Delete bulk ' + modelTypeName,
             args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
@@ -99,9 +131,9 @@ module.exports = (options) => {
 
         }
 
-        if (bulkOptions.destroy) {
+        if (bulkOptions.destroy && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].deleteBulk)) {
 
-          mutations[generateName(aliases.destroyBulk || options.naming.mutations, { type: naming.type.delete, name: modelTypeName, bulk: naming.bulk }, { pascalCase })] = {
+          mutations[modelMutationNames[modelTypeName].deleteBulk] = {
             type: GraphQLInt,
             description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
             args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(GraphQLInt)) } }, includeArguments),
@@ -113,23 +145,28 @@ module.exports = (options) => {
         // Setup Custom Mutations
         for (const mutation in (model.graphql.mutations || {})) {
 
-          const currentMutation = model.graphql.mutations[mutation];
-          const type = currentMutation.output ? generateGraphQLField(currentMutation.output, outputTypes) : GraphQLInt;
-          const args = Object.assign(
-            {}, includeArguments,
-            currentMutation.input ? { [sanitizeField(currentMutation.input)]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
-          );
+          if (isAvailable(exposeOnly.mutations, mutation)) {
 
-          mutations[generateName(mutation, {}, { pascalCase })] = {
-            type,
-            args,
-            resolve: (source, args, context, info) => {
-              const where = key && args[modelTypeName] ? { [key]: args[modelTypeName][key] } : {};
+            const currentMutation = model.graphql.mutations[mutation];
+            const type = currentMutation.output ? generateGraphQLField(currentMutation.output, outputTypes) : GraphQLInt;
+            const args = Object.assign(
+              {}, includeArguments,
+              currentMutation.input ? { [sanitizeField(currentMutation.input)]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
+            );
 
-              return mutation(source, args, context, info, { type: 'custom', where, models, modelTypeName, resolver: model.graphql.mutations[mutation].resolver });
+            mutations[generateName(mutation, {}, { pascalCase })] = {
+              type,
+              args,
+              resolve: (source, args, context, info) => {
+                const where = key && args[modelTypeName] ? { [key]: args[modelTypeName][key] } : {};
 
-            }
-          };
+                return mutation(source, args, context, info, { type: 'custom', where, models, modelTypeName, resolver: model.graphql.mutations[mutation].resolver });
+
+              }
+            };
+
+          }
+
         }
 
         return Object.assign(allMutations, mutations);
