@@ -30,12 +30,15 @@ const getOrderBy = (orderArgs = '') => {
 
 module.exports = (options) => {
 
-  const { dataloaderContext } = options;
+  const { dataloaderContext, limits } = options;
 
   return async (model, inputTypeName, source, args, context, info, isAssociation = false) => {
 
     const realModel = isAssociation ? model.target : model;
     const graphql = realModel.graphql;
+
+    args.limit = args.limit || limits.default;
+    args.limit = args.limit > limits.max ? limits.max : args.limit;
 
     // No need to call authorizer again on associations
     if (!isAssociation) await options.authorizer(source, args, context, info);
