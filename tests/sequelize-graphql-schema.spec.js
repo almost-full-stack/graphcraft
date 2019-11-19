@@ -4,13 +4,7 @@ const graphqlHTTP = require('express-graphql');
 const { generateSchema } = require('../src/index')({
   exclude: [],
   dataloader: false,
-  nestedMutations: true,
-  naming: {
-    type: {
-      create: 'Add',
-      get: 'Get'
-    }
-  }
+  nestedMutations: true
 });
 
 const app = express();

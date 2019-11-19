@@ -26,16 +26,18 @@ function keysWhichAreModelAssociations (input, associations) {
 
 function recursiveCreateAssociations(graphqlParams, mutationOptions, options) {
 
+  const { input, parentRecord, operation, parentModel } = options;
   const { modelTypeName, models } = mutationOptions;
   const model = models[modelTypeName];
-  const { input, parentRecord, operation } = options;
+  const keys = model.primaryKeyAttributes;
+  const parentKeys = parentModel.primaryKeyAttributes;
   const availableAssociations = keysWhichAreModelAssociations(input, model.associations);
 
   return Promise.all(availableAssociations.map((association) => {
 
     return Promise.all(input[association.key].map(async (record) => {
 
-      const recordToCreate = { ...record, [association.fields[0]]: parentRecord.id };
+      const recordToCreate = { ...record, [association.fields[0]]: parentRecord[parentKeys[0]] };
       let newArgs = { [association.target.name]: recordToCreate };
       let newModelTypeName = association.target.name;
 
@@ -45,16 +47,16 @@ function recursiveCreateAssociations(graphqlParams, mutationOptions, options) {
         const reverseAssociations = association.target.associations;
         const reverseAssociationKeys = Object.keys(reverseAssociations).filter((key) => reverseAssociations[key].target.name === model.name);
         const reverseAssociationForeignKey = reverseAssociations[reverseAssociationKeys[0]].foreignKey;
-        const throughRecord = { ...record[association.through.name], [association.fields[0]]: parentRecord.id };
+        const throughRecord = { ...record[association.through.name], [association.fields[0]]: parentRecord[parentKeys[0]] };
 
         // id is not present, we need to create association record as well as through record.
-        if (!record.id) {
+        if (!record[keys[0]]) {
           const assocciationArgs = { [association.target.name]: { ...record } };
           const associationRecord = await operation({ ...graphqlParams, args: assocciationArgs }, { ...mutationOptions, modelTypeName: association.target.name, skipReturning: true });
 
-          throughRecord[reverseAssociationForeignKey] = associationRecord.id;
+          throughRecord[reverseAssociationForeignKey] = associationRecord[keys[0]];
         } else {
-          throughRecord[reverseAssociationForeignKey] = record.id;
+          throughRecord[reverseAssociationForeignKey] = record[keys[0]];
         }
 
         newModelTypeName = association.through.name;
@@ -74,7 +76,9 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
   const { modelTypeName, models, nestedUpdateMode, Sequelize } = mutationOptions;
   const model = models[modelTypeName];
-  const { input, parentRecord } = options;
+  const keys = model.primaryKeyAttributes;
+  const { input, parentRecord, parentModel } = options;
+  const parentKeys = parentModel.primaryKeyAttributes;
   const availableAssociations = keysWhichAreModelAssociations(input, model.associations);
   const updateMode = nestedUpdateMode.toUpperCase();
 
@@ -83,7 +87,6 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
     const recordsToAdd = [];
     const recordsToUpdate = [];
     const recordsToDestroy = [];
-    const keys = model.primaryKeyAttributes;
     // following are to be used for belongsToMany association
     const reverseAssociations = association.through ? association.target.associations : {};
     const reverseAssociationKeys = Object.keys(reverseAssociations).filter((key) => reverseAssociations[key].target.name === model.name);
@@ -102,7 +105,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
           if (record[association.through.name] || (recordForDelete && !record[association.through.name])) {
             recordsToDestroy.push(
               {
-                [association.fields[0]]: input.id,
+                [association.fields[0]]: input[parentKeys[0]],
                 [reverseAssociationForeignKey]: record[keys[0]]
               }
             );
@@ -111,7 +114,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
           if (record[association.through.name]) {
             recordsToAdd.push({
               ...record[association.through.name],
-              [association.fields[0]]: input.id,
+              [association.fields[0]]: input[parentKeys[0]],
               [reverseAssociationForeignKey]: record[keys[0]]
             });
           }
@@ -140,7 +143,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
         [keys[0]]: {
           [updateMode === 'UPDATE_ADD_DELETE' ? Sequelize.Op.notIn : Sequelize.Op.in]: recordsToDestroy
         },
-        [association.fields[0]]: parentRecord.id
+        [association.fields[0]]: parentRecord[parentKeys[0]]
       };
 
       operationsPromises.push(
@@ -171,8 +174,8 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
         recordsToAdd.forEach((record) => {
 
           const newCreateArgs = {
-            [association.target.name]: { ...record, [association.fields[0]]: parentRecord.id }
-          }; // TODO: fix id
+            [association.target.name]: { ...record, [association.fields[0]]: parentRecord[parentKeys[0]] }
+          };
 
           operationsPromises.push(
             createMutation({ ...graphqlParams, args: newCreateArgs }, { ...mutationOptions, modelTypeName: association.through ? association.through.name : association.target.name, skipReturning: true })
@@ -244,7 +247,7 @@ async function createMutation (graphqlParams, mutationOptions) {
 
   const createdRecord = await model.create(input, { transaction });
 
-  await recursiveCreateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: createdRecord, operation: createMutation });
+  await recursiveCreateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: createdRecord, operation: createMutation, parentModel: model });
 
   return createdRecord;
 
@@ -294,7 +297,7 @@ async function updateMutation (graphqlParams, mutationOptions) {
   await model.update(input, { where, transaction });
 
   if (nestedUpdateMode.toUpperCase() !== 'IGNORE') {
-    await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: input });
+    await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: input, parentModel: model });
   }
 
   if (skipReturning) {
