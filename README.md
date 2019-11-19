@@ -46,7 +46,10 @@ naming: {
 ```
 ```javascript
 // default limit to be applied on find queries.
-  defaultLimit: 50,
+limits: {
+  default: 50,
+  max: 100 // maximum allowed limit. use 0 for unlimited
+},
 // nested objects can be passed and will be mutated automatically. Only hasMany and belongsTo relation supported.
 nestedMutations: true, // doesn't work with add bulk mutation
 ```
