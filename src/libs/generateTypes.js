@@ -217,6 +217,7 @@ function generateGraphQLTypeFromJson(typeJson, existingTypes = {}, allCustomType
   const fields = {};
 
   for (const fieldName in type) {
+
     const sanitizedTypeName = sanitizeField(type[fieldName]);
 
     // Recursively generate nested types
