@@ -21,90 +21,90 @@ This library uses two set of configurations, **Library Options** and **Model Opt
 These options are defined globally and are applied throughout schema and all models.
 ```javascript
 /**
-   * naming convention for mutations/queries and types.
-   * {name} = Model Name or type name
-   * {type} = Get | Create | Update | Delete
-   * {bulk} = Bulk for bulk operations only
-   * */
+ * naming convention for mutations/queries and types.
+ * {name} = Model Name or type name
+ * {type} = Get | Create | Update | Delete
+ * {bulk} = Bulk for bulk operations only
+ * */
    
 naming: {
-    pascalCase: true, // applied everywhere
-    queries: '{name}', // applied to auto generated queries
-    mutations: '{name}{type}{bulk}', // applied to auto generated mutations
-    input: '{name}', // applied to all input types
-    rootQueries: 'RootQueries',
-    rootMutations: 'RootMutations'
-  },
+  pascalCase: true, // applied everywhere
+  queries: '{name}', // applied to auto generated queries
+  mutations: '{name}{type}{bulk}', // applied to auto generated mutations
+  input: '{name}', // applied to all input types
+  rootQueries: 'RootQueries',
+  rootMutations: 'RootMutations'
+}
 ```
 ```javascript
 // nested objects can be passed and will be mutated automatically. Only hasMany and belongsTo relation supported.
-  nestedMutations: true, // doesn't work with add bulk mutation
+nestedMutations: true, // doesn't work with add bulk mutation
 ```
 ```javascript
 /**
-   * update modes when sending nested association objects
-   * UPDATE_ONLY > update only incoming records
-   * UPDATE_ADD > update existing records and add new ones i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated and record[1] will be added
-   * UPDATE_ADD_DELETE > not recommended: update existing records, add new ones and delete non-existent records i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated, record[1] will be added, anything else will be deleted
-   * MIXED > i.e [{id: 1, name: 'test'}, {id:2}, {name: 'test2'}], record[0] will be updated, record[1] will be deleted and record[2] will be added
-   * IGNORE > ignore nested update
-   */
+ * update modes when sending nested association objects
+ * UPDATE_ONLY > update only incoming records
+ * UPDATE_ADD > update existing records and add new ones i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated and record[1] will be added
+ * UPDATE_ADD_DELETE > not recommended: update existing records, add new ones and delete non-existent records i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated, record[1] will be added, anything else will be deleted
+ * MIXED > i.e [{id: 1, name: 'test'}, {id:2}, {name: 'test2'}], record[0] will be updated, record[1] will be deleted and record[2] will be added
+ * IGNORE > ignore nested update
+ */
 
-  nestedUpdateMode: 'MIXED',
+nestedUpdateMode: 'MIXED',
 ```
 ```javascript
 // applied globaly on both auto-generated and custom queries/mutations.
 // only specified queries/ and mutations would be exposed via api
-  exposeOnly: {
-    queries: [], // ['Product'] this will only generate Product query
-    mutations: [] // ['ProductUpdate'] this will only generate ProductUpdate mutation
-  },
+exposeOnly: {
+  queries: [], // ['Product'] this will only generate Product query
+  mutations: [] // ['ProductUpdate'] this will only generate ProductUpdate mutation
+},
 ```
 ```javascript
 // these models will be excluded from graphql schema
-  exclude: [], // ['Product'] this will exclude all queries/mutations for Product model.
+exclude: [], // ['Product'] this will exclude all queries/mutations for Product model.
 ```
 ```javascript
 // include these arguments to all queries/mutations
-  includeArguments: {}, // {'scopeId': 'int'} this will add scopeId in arguments for all queries and mutations
+includeArguments: {}, // {'scopeId': 'int'} this will add scopeId in arguments for all queries and mutations
 ```
 ```javascript
 // enabled/disable dataloader for nested queries
-  dataloader: false, // use dataloader for queries. Uses dataloader-sequelize
+dataloader: false, // use dataloader for queries. Uses dataloader-sequelize
 ```
 ```javascript
 // mutations are run inside transactions. Transactions are accessible in extend hook.
-  transactionedMutations: true,
+transactionedMutations: true,
 ```
 ```javascript
 // generic or those types/queries/mutations which are not model specific
 // custom graphql types
-  types: {},
-  // custom queries
-  queries: {},
-  // custom mutations
-  mutations: {},
+types: {},
+// custom queries
+queries: {},
+// custom mutations
+mutations: {},
 ```
 ```javascript
 // data, source, args, context, info are passed as function arguments
 // executes after all queries/mutations
-  logger() {
-    return Promise.resolve();
-  },
+logger() {
+  return Promise.resolve();
+},
 ```
 ```javascript
 // your custom authorizer
 // executes before all queries/mutations
-  authorizer() {
-    return Promise.resolve();
-  },
+authorizer() {
+  return Promise.resolve();
+},
 ```
 ```javascript
 // these error messages are used when certain exceptions are thrown
 // must be used with errorHandler function exposed via library
-  errorHandler: {
-    'ETIMEDOUT': { statusCode: 503 }
-  }
+errorHandler: {
+  'ETIMEDOUT': { statusCode: 503 }
+}
 ```
 
 ## Model Options
@@ -113,18 +113,18 @@ Following options are model specific options, must be accessible via `model.grap
 ```javascript
 // manipulate your model attributes
 attributes: {
-	// list attributes which are to be ignored in Model Input
-    exclude: [], // ['id', 'createdAt'], these fields will be excluded from GraphQL Schema
-	// attributes in key:type format which are to be included in Model Input
-    include: {}, // {'customKey': 'string'} this extra field will be added in GraphQL schema
-  },
+// list attributes which are to be ignored in Model Input
+  exclude: [], // ['id', 'createdAt'], these fields will be excluded from GraphQL Schema
+// attributes in key:type format which are to be included in Model Input
+  include: {}, // {'customKey': 'string'} this extra field will be added in GraphQL schema
+},
 ```
 ```javascript
 // scope usage is highy recommended.
 // common scope to be applied on all find/update/destroy operations
-  scopes: null, 
-  // 'scopes': ['scope', 'args.scopeId'] this will pass value of args.scopeId to model scope
-  // values can be either picked from args or context
+scopes: null, 
+// 'scopes': ['scope', 'args.scopeId'] this will pass value of args.scopeId to model scope
+// values can be either picked from args or context
 ```
 ```javascript
 // rename default queries/mutations to specified custom name
@@ -133,11 +133,11 @@ alias: {},
 ```
 ```javascript
 bulk: { // OR bulk: ['create', 'destroy', ....]
-    enabled: [], // enable bulk options ['create', 'destroy', 'update']
-    // Use bulkColumn when using bulk option for 'create' and using returning true to increase efficiency.
-    bulkColumn: false, // bulk identifier column, when bulk creating this column will be auto filled with a uuid and later used to fetch added records 'columnName' or ['columnName', true] when using a foreign key as bulk column
-    returning: true // This will return all created/updated items, doesn't use sequelize returning option.
-  },
+  enabled: [], // enable bulk options ['create', 'destroy', 'update']
+  // Use bulkColumn when using bulk option for 'create' and using returning true to increase efficiency.
+  bulkColumn: false, // bulk identifier column, when bulk creating this column will be auto filled with a uuid and later used to fetch added records 'columnName' or ['columnName', true] when using a foreign key as bulk column
+  returning: true // This will return all created/updated items, doesn't use sequelize returning option.
+}
 ```
 ```javascript
 types: {}, // user defined custom types
