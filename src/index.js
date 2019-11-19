@@ -26,7 +26,7 @@ const defaultOptions = {
       create: 'Create',
       update: 'Update',
       delete: 'Delete',
-      get: 'Get',
+      get: '',
       bulk: 'Bulk'
     }
   },

@@ -51,7 +51,7 @@ module.exports = (options) => {
         const aliases = model.graphql.alias;
 
         if (!model.graphql.excludeQueries.includes('fetch')) {
-          queries[generateName(aliases.fetch || options.naming.queries, { type: naming.get, name: modelTypeName }, { pascalCase })] = {
+          queries[generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase })] = {
             type: new GraphQLList(modelType),
             args: Object.assign(defaultArgs(model), defaultListArguments, includeArguments, paranoidType),
             resolve: (source, args, context, info) => {

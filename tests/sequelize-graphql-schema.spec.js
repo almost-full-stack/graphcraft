@@ -7,7 +7,8 @@ const { generateSchema } = require('../src/index')({
   nestedMutations: true,
   naming: {
     type: {
-      create: 'Add'
+      create: 'Add',
+      get: 'Get'
     }
   }
 });
