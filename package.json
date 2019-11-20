@@ -5,6 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "publish-beta": "npm run lint && npm run build && npm publish --tag beta",
+    "publish": "npm run lint && npm run build && npm publish",
     "build": "rm -rf lib/* && babel src --out-dir lib",
     "check": "npm run lint && npm run test",
     "clean": "rm -f lib/*",
