@@ -1,9 +1,14 @@
-name: NPM Package
+name: npm Package
 
 on:
   push:
     branches:
-    - master
+      - master
+      - develop
+      - releast/*
+  pull_request:
+    branches: 
+      - develop
 
 jobs:
   build:
@@ -14,7 +19,7 @@ jobs:
         with:
           node-version: 12
       - run: npm ci
-      - run: npm run test
+      - run: npm run check
 
   publish-npm:
     needs: build
@@ -27,5 +32,9 @@ jobs:
           registry-url: https://registry.npmjs.org/
       - run: npm ci
       - run: npm run publish
+        if: github.event == 'push' && github.ref != 'develop'
+      - run: npm run publish-beta
+        if: github.event == 'push' && github.ref == 'develop'
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+  
