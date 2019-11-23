@@ -82,11 +82,10 @@
     "testEnvironment": "node",
     "verbose": true
   },
-  "lint-staged": {
-    "*.js": [
-      "eslint . --fix",
-      "git add"
-    ]
+  "husky": {
+    "hooks": {
+      "pre-commit": "eslint . --fix"
+    }
   },
   "babel": {
     "plugins": [
