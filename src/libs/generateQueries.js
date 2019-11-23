@@ -57,7 +57,7 @@ module.exports = (options) => {
         const model = models[modelType.name];
         const paranoidType = model.graphql.paranoid && model.options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
         const aliases = model.graphql.alias;
-        const modelQueryName = generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase })
+        const modelQueryName = generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase });
 
         if (!model.graphql.excludeQueries.includes('fetch') && isAvailable(exposeOnly.queries, [modelQueryName])) {
           queries[generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase })] = {
@@ -66,7 +66,7 @@ module.exports = (options) => {
             resolve: (source, args, context, info) => {
               return query(model, modelType.name, source, args, context, info);
             }
-          }
+          };
         }
 
         // Setup Custom Queries
@@ -83,7 +83,7 @@ module.exports = (options) => {
             await options.authorizer(source, args, context, info);
 
             return currentQuery.resolver(source, args, context, info);
-          }
+          };
 
           queries[generateName(query, {}, { pascalCase })] = { type, args, resolve };
 

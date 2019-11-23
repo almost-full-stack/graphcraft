@@ -148,7 +148,7 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
         fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), throughArguments);
         fields[associationName].resolve = (source, args, context, info) => {
           return queryResolver(options)(relation, relation.target.name, source, args, context, info, true);
-        }
+        };
 
       }
 
@@ -264,7 +264,7 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
     const allOperations = Object.assign({}, model.graphql.queries, model.graphql.mutations);
 
     for (const operation in allOperations) {
-      if (allOperations[operation].input) inputCustomTypes.push(sanitizeField(allOperations[operation].input))
+      if (allOperations[operation].input) inputCustomTypes.push(sanitizeField(allOperations[operation].input));
     }
 
   });

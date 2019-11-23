@@ -26,7 +26,7 @@ const getOrderBy = (orderArgs = '') => {
   }
 
   return orderBy;
-}
+};
 
 module.exports = (options) => {
 

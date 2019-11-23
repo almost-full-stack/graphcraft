@@ -11,7 +11,7 @@ const {
   GraphQLInputObjectType
 } = require('graphql');
 const { JSONType, DateType } = require('graphql-sequelize');
-const stringifier = require('stringifier')({ maxDepth: 10, indent: '  ' })
+const stringifier = require('stringifier')({ maxDepth: 10, indent: '  ' });
 const { generateGraphQLField, generateGraphQLTypeFromJson, generateGraphQLTypeFromModel, generateModelTypes } = require('../generateTypes')({});
 const Sequelize = require('sequelize');
 const sequelize = new Sequelize({ dialect: 'sqlite' });

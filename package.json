@@ -16,7 +16,11 @@
     "test": "npm run test-db-reset && npm run jest",
     "test-db-reset": "rm -rf tests/database.db && node tests/reset-db.js"
   },
-  "files": ["/lib", "package.json", "README"],
+  "files": [
+    "/lib",
+    "package.json",
+    "README"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alirizwan/sequelize-graphql-schema.git"
@@ -78,10 +82,11 @@
     "testEnvironment": "node",
     "verbose": true
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
+  "lint-staged": {
+    "*.js": [
+      "eslint . --fix",
+      "git add"
+    ]
   },
   "babel": {
     "plugins": [
@@ -89,12 +94,6 @@
     ],
     "presets": [
       "@babel/preset-env"
-    ]
-  },
-  "lint-staged": {
-    "*.js": [
-      "eslint --fix",
-      "git add"
     ]
   }
 }
