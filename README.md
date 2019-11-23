@@ -1,6 +1,7 @@
-[![npm version](https://badge.fury.io/js/sequelize-graphql-schema.svg)](https://badge.fury.io/js/sequelize-graphql-schema)
-
 # sequelize-graphql-schema
+
+[![npm version](https://badge.fury.io/js/sequelize-graphql-schema.svg)](https://www.npmjs.com/package/sequelize-graphql-schema)
+[![dev depenndencies](https://david-dm.org/almost-full-stack/sequelize-graphql-schema.svg)](https://github.com/almost-full-stack/sequelize-graphql-schema)
 
 Rapildy build and extend GraphQL API based on [Sequelize](https://github.com/sequelize/sequelize "Sequelize") models. This library helps you focus on business logic while taking care of GraphQL schema automatically.
 [https://almost-full-stack.github.io/sequelize-graphql-schema/](https://almost-full-stack.github.io/sequelize-graphql-schema/http:// "https://almost-full-stack.github.io/sequelize-graphql-schema/")
