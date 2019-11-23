@@ -1,0 +1,40 @@
+name: Node.js Package
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - releast/*
+  pull_request:
+    branches: 
+      - develop
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12
+      - run: npm ci
+      - run: npm run check
+
+  publish-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12
+          registry-url: https://registry.npmjs.org/
+      - run: npm ci
+      - run: npm run publish
+        if: github.event == 'push' && github.ref != 'develop'
+      - run: npm run publish-beta
+        if: github.event == 'push' && github.ref == 'develop'
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+  
