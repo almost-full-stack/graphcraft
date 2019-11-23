@@ -8,7 +8,7 @@ on:
       - releast/*
 
 jobs:
-  build:
+  code-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -19,7 +19,7 @@ jobs:
       - run: npm run check
 
   publish-npm:
-    needs: build
+    needs: code-check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
