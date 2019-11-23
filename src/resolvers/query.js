@@ -73,7 +73,8 @@ module.exports = (options) => {
     };
 
     // see if a scope is specified to be applied to find queries.
-    const scope = Array.isArray(graphql.scopes) ? { method: [graphql.scopes[0], _.get(args, graphql.scopes[1], graphql.scopes[2] || null)] } : graphql.scopes;
+    const variablePath = { args, context };
+    const scope = Array.isArray(graphql.scopes) ? { method: [graphql.scopes[0], _.get(variablePath, graphql.scopes[1], graphql.scopes[2] || null)] } : graphql.scopes;
 
     const data = await resolver((isAssociation ? model : model.scope(scope)), {
       [EXPECTED_OPTIONS_KEY]: dataloaderContext,

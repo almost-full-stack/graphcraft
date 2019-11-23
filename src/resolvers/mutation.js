@@ -255,7 +255,7 @@ async function createMutation (graphqlParams, mutationOptions) {
 
 async function updateMutation (graphqlParams, mutationOptions) {
 
-  const { args } = graphqlParams;
+  const { args, context } = graphqlParams;
   const { isBulk, where, modelTypeName, models, transaction, skipReturning, nestedUpdateMode } = mutationOptions;
   const model = models[modelTypeName];
   const { returning } = Array.isArray(model.graphql.bulk) ? {} : model.graphql.bulk;
@@ -294,7 +294,11 @@ async function updateMutation (graphqlParams, mutationOptions) {
     return model.findAll({ where: findWhere, transaction });
   }
 
-  await model.update(input, { where, transaction });
+  // see if a scope is specified to be applied to find queries.
+  const variablePath = { args, context };
+  const scope = Array.isArray(model.graphql.scopes) ? { method: [model.graphql.scopes[0], _.get(variablePath, model.graphql.scopes[1], model.graphql.scopes[2] || null)] } : model.graphql.scopes;
+
+  await model.scope(scope).update(input, { where, transaction });
 
   if (nestedUpdateMode.toUpperCase() !== 'IGNORE') {
     await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: input, parentModel: model });
@@ -310,15 +314,20 @@ return model.findOne({ where, transaction });
 
 function destroyMutation(graphqlParams, mutationOptions) {
 
+  const { args, context } = graphqlParams;
   const { isBulk, where, key, modelTypeName, models, transaction, skipBulkChecks } = mutationOptions;
   const model = models[modelTypeName];
+
+  // see if a scope is specified to be applied to find queries.
+  const variablePath = { args, context };
+  const scope = Array.isArray(model.graphql.scopes) ? { method: [model.graphql.scopes[0], _.get(variablePath, model.graphql.scopes[1], model.graphql.scopes[2] || null)] } : model.graphql.scopes;
 
   // Unlikely to happen but still an extra check to not allow array of ids when destroying with non-bulk option.
   if (Array.isArray(where[key]) && !isBulk && !skipBulkChecks) {
     throw Error('Invalid operation input.');
   }
 
-  return model.destroy({ where, transaction });
+  return model.scope(scope).destroy({ where, transaction });
 
 }
 
