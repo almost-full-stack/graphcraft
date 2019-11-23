@@ -21,9 +21,10 @@
     "package.json",
     "README"
   ],
+  "publishConfig": { "registry": "https://registry.npmjs.org/" },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/alirizwan/sequelize-graphql-schema.git"
+    "url": "git+https://github.com/almost-full-stack/sequelize-graphql-schema"
   },
   "keywords": [
     "graphql",
@@ -38,9 +39,9 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/alirizwan/sequelize-graphql-schema/issues"
+    "url": "https://github.com/almost-full-stack/sequelize-graphql-schema/issues"
   },
-  "homepage": "https://github.com/alirizwan/sequelize-graphql-schema#readme",
+  "homepage": "https://github.com/almost-full-stack/sequelize-graphql-schema#readme",
   "dependencies": {
     "camelcase": "^5.3.1",
     "cls-hooked": "^4.2.2",
