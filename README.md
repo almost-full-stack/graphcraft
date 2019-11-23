@@ -4,7 +4,6 @@
 [![dependencies](https://david-dm.org/almost-full-stack/sequelize-graphql-schema.svg)](https://github.com/almost-full-stack/sequelize-graphql-schema)
 [![devdependencies](https://david-dm.org/almost-full-stack/sequelize-graphql-schema.svg?type=dev)](https://github.com/almost-full-stack/sequelize-graphql-schema)
 [![Build Status](https://github.com/almost-full-stack/sequelize-graphql-schema/workflows/codecheck/badge.svg)](https://github.com/almost-full-stack/sequelize-graphql-schema/actions)
-[![Package Status](https://github.com/almost-full-stack/sequelize-graphql-schema/workflows/npmpublish/badge.svg)](https://github.com/almost-full-stack/sequelize-graphql-schema/actions)
 
 Rapildy build and extend GraphQL API based on [Sequelize](https://github.com/sequelize/sequelize "Sequelize") models. This library helps you focus on business logic while taking care of GraphQL schema automatically.
 [https://almost-full-stack.github.io/sequelize-graphql-schema/](https://almost-full-stack.github.io/sequelize-graphql-schema/http:// "https://almost-full-stack.github.io/sequelize-graphql-schema/")
