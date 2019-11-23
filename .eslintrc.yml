@@ -66,9 +66,7 @@ rules:
     - after: true
       before: true
   line-comment-position: 'off'
-  linebreak-style:
-    - error
-    - unix
+  linebreak-style: 'off'
   lines-around-comment: error
   lines-around-directive: error
   max-depth: error
@@ -90,7 +88,9 @@ rules:
   no-bitwise: error
   no-caller: error
   no-catch-shadow: 'off'
-  no-confusing-arrow: error
+  no-confusing-arrow: 
+    - error
+    - allowParens: true
   no-continue: error
   no-div-regex: error
   no-duplicate-imports: error
@@ -222,6 +222,7 @@ rules:
   require-await: error
   require-jsdoc: 'off'
   rest-spread-spacing: error
+  semi: error
   semi-spacing: error
   sort-imports: error
   sort-keys: 'off'

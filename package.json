@@ -38,10 +38,10 @@
   },
   "homepage": "https://github.com/alirizwan/sequelize-graphql-schema#readme",
   "dependencies": {
-    "camelcase": "^5.0.0",
+    "camelcase": "^5.3.1",
     "cls-hooked": "^4.2.2",
-    "dataloader-sequelize": "^1.7.8",
-    "graphql-relay": "^0.5.0",
+    "dataloader-sequelize": "^2.0.1",
+    "graphql-relay": "^0.6.0",
     "graphql-request": "^1.8.2",
     "graphql-sequelize": "^9.3.6",
     "uuid": "^3.3.2"
@@ -71,12 +71,25 @@
     "stringifier": "^2.0.0"
   },
   "peerDependencies": {
-    "sequelize": "^4.41.2",
-    "graphql": "^14.1.1"
+    "sequelize": "^5.18.1",
+    "graphql": "^14.5.4"
   },
   "jest": {
     "testEnvironment": "node",
     "verbose": true
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "babel": {
+    "plugins": [
+      "@babel/plugin-proposal-object-rest-spread"
+    ],
+    "presets": [
+      "@babel/preset-env"
+    ]
   },
   "lint-staged": {
     "*.js": [

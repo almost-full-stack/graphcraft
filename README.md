@@ -120,6 +120,20 @@ errorHandler: {
 }
 ```
 
+
+```javascript
+const options = {
+  exclude: ["payments"],
+  authorizer: function authorizer(source, args, context, info) {
+    const { fieldName } = info; // resource name
+
+    return Promise.resolve();
+  }
+};
+
+const { generateSchema } = require("sequelize-graphql-schema")(options);
+```
+
 ## Model Options
 Following options are model specific options, must be accessible via `model.graphql` property.
 
@@ -176,7 +190,7 @@ before: {},
 overwrite: {}
 ```
 
-```js
+```javascript
 Product.graphql = {
     attributes: {
         exclude: ['description'],

@@ -9,9 +9,7 @@ module.exports = async (options, context) => {
     queries: [],
     headers: null
   };
-
   const IgnoreTypes = ['Int', 'SequelizeJSON', 'String', 'Boolean'];
-
   const introspectionQuery = `query IntrospectionQuery {
       __schema {
         queryType { name }
