@@ -132,15 +132,15 @@ function generateSchema(models, context) {
   assert(models.Sequelize, 'Sequelize not found as models.Sequelize.');
   assert(models.sequelize, 'sequelize instance not found as models.sequelize.');
 
-  options.Sequelize = models.Sequelize;
-  options.sequelize = models.sequelize;
-
-  options.Sequelize.useCLS(sequelizeNamespace);
-
   if (options.dataloader) {
     dataloaderContext = createContext(models.sequelize);
     options.dataloaderContext = dataloaderContext;
   }
+
+  options.Sequelize = models.Sequelize;
+  options.sequelize = models.sequelize;
+
+  options.Sequelize.useCLS(sequelizeNamespace);
 
   const { generateModelTypes } = GenerateTypes(options);
   const generateQueries = GenerateQueries(options);

@@ -21,7 +21,9 @@
     "package.json",
     "README"
   ],
-  "publishConfig": { "registry": "https://registry.npmjs.org/" },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/almost-full-stack/sequelize-graphql-schema"
@@ -45,7 +47,7 @@
   "dependencies": {
     "camelcase": "^5.3.1",
     "cls-hooked": "^4.2.2",
-    "dataloader-sequelize": "^2.0.1",
+    "dataloader-sequelize": "^2.1.1",
     "graphql-relay": "^0.6.0",
     "graphql-request": "^1.8.2",
     "graphql-sequelize": "^9.3.6",

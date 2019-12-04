@@ -3,7 +3,7 @@ const express = require('express');
 const graphqlHTTP = require('express-graphql');
 const { generateSchema } = require('../src/index')({
   exclude: [],
-  dataloader: false,
+  dataloader: true,
   nestedMutations: true
 });
 
@@ -11,7 +11,7 @@ const app = express();
 const models = require('./models');
 
 app.use('/', (req, res) => {
-  const schemaPromise = generateSchema(models, null, req, models.Sequelize);
+  const schemaPromise = generateSchema(models, req);
 
   if (schemaPromise.then) {
 

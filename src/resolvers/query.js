@@ -37,8 +37,10 @@ module.exports = (options) => {
     const realModel = isAssociation ? model.target : model;
     const graphql = realModel.graphql;
 
-    args.limit = args.limit || limits.default;
-    args.limit = args.limit > limits.max ? limits.max : args.limit;
+    if (!isAssociation) {
+      args.limit = args.limit || limits.default;
+      args.limit = args.limit > limits.max ? limits.max : args.limit;
+    }
 
     // No need to call authorizer again on associations
     if (!isAssociation) await options.authorizer(source, args, context, info);
@@ -62,6 +64,7 @@ module.exports = (options) => {
           where: throughFindOptions.where,
           attributes: Object.keys(model.through.model.rawAttributes)
         };
+
       }
 
       findOptions.order = getOrderBy(args.order || '');
@@ -75,12 +78,13 @@ module.exports = (options) => {
     // see if a scope is specified to be applied to find queries.
     const variablePath = { args, context };
     const scope = Array.isArray(graphql.scopes) ? { method: [graphql.scopes[0], _.get(variablePath, graphql.scopes[1], graphql.scopes[2] || null)] } : graphql.scopes;
-
-    const data = await resolver((isAssociation ? model : model.scope(scope)), {
+    const resolverOptions = {
       [EXPECTED_OPTIONS_KEY]: dataloaderContext,
       before,
       separate: isAssociation
-    })(source, args, context, info);
+    };
+
+    const data = await resolver((isAssociation ? model : model.scope(scope)), resolverOptions)(source, args, context, info);
 
     if (_.has(graphql.extend, QUERY_TYPE) || _.has(graphql.after, QUERY_TYPE)) {
       await (graphql.extend || graphql.after)[QUERY_TYPE](data, source, args, context, info);
