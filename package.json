@@ -77,11 +77,6 @@
     "testEnvironment": "node",
     "verbose": true
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "babel": {
     "plugins": [
       "@babel/plugin-proposal-object-rest-spread"
