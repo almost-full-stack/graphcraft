@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       scopeId: DataTypes.INTEGER
   }, {
-    paranoid: false,
+    paranoid: true,
     scopes: {
       scope(value) {
         return { where: { scopeId: value } };
@@ -32,16 +32,17 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   Product.associate = function(models) {
-    Product.belongsToMany(models.Attribute, {through: models.ProductAttribute, foreignKey: 'productId', direction: ['product']});
+    Product.belongsToMany(models.Attribute, {through: models.ProductAttribute, foreignKey: 'productId'});
     Product.hasMany(models.Image);
   };
 
   Product.graphql = {
-    associationDirection: {
-      Attribute: 'Product'
-    },
+    paranoid: true,
     queries: {
       ProductQuery: { output: 'Product', resolver: () => Promise.resolve({}) }
+    },
+    mutations: {
+      ProductMutation: {input: 'Product', output: 'Product', resolver: () => Promise.resolve({}) }
     }
   };
 

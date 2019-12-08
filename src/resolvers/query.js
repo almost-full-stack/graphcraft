@@ -7,11 +7,11 @@ const ASC = 'ASC';
 const DESC = 'DESC';
 const QUERY_TYPE = 'fetch';
 
-const getOrderBy = (orderArgs = '') => {
+const getOrderBy = (orderArgs) => {
 
   const orderBy = [];
 
-  if (orderArgs != '') {
+  if (orderArgs) {
 
     const orderByClauses = orderArgs.split(',');
 
@@ -37,6 +37,10 @@ module.exports = (options) => {
     const realModel = isAssociation ? model.target : model;
     const graphql = realModel.graphql;
 
+    // setup dataloader for resolver.
+    resolver.contextToOptions = { [EXPECTED_OPTIONS_KEY]: EXPECTED_OPTIONS_KEY };
+    context[EXPECTED_OPTIONS_KEY] = dataloaderContext;
+
     if (!isAssociation) {
       args.limit = args.limit || limits.default;
       args.limit = args.limit > limits.max ? limits.max : args.limit;
@@ -54,20 +58,21 @@ module.exports = (options) => {
     await hooks.before(isAssociation ? model.target : model, source, args, context, info, QUERY_TYPE);
 
     // sequelize-graphql before hook to parse orderby clause to make sure it supports multiple orderby
-    const before = (findOptions, args, context) => {
+    const before = (findOptions, args) => {
 
-      if (args.throughWhere) {
-
-        const throughFindOptions = argsToFindOptions.default({ where: args.throughWhere }, Object.keys(model.through.model.rawAttributes));
-
+      if (isAssociation && model.through) {
         findOptions.through = {
-          where: throughFindOptions.where,
           attributes: Object.keys(model.through.model.rawAttributes)
         };
-
       }
 
-      findOptions.order = getOrderBy(args.order || '');
+      if (args.throughWhere) {
+        findOptions.where = argsToFindOptions.default({ where: args.throughWhere }, Object.keys(model.through.model.rawAttributes));
+      }
+
+      const order = getOrderBy(args.order);
+
+      findOptions.order = order.length ? order : undefined;
 
       // if paranoid option from sequelize is set, this switch can be used to fetch archived, non-archived or all items.
       findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : model.options.paranoid;
@@ -79,7 +84,6 @@ module.exports = (options) => {
     const variablePath = { args, context };
     const scope = Array.isArray(graphql.scopes) ? { method: [graphql.scopes[0], _.get(variablePath, graphql.scopes[1], graphql.scopes[2] || null)] } : graphql.scopes;
     const resolverOptions = {
-      [EXPECTED_OPTIONS_KEY]: dataloaderContext,
       before,
       separate: isAssociation
     };
