@@ -73,10 +73,32 @@ function isAvailable(exposed, toBeGenerated) {
 
 }
 
+const whereQueryVarsToValues = (o, vals) => {
+  [
+    ...Object.getOwnPropertyNames(o),
+    ...Object.getOwnPropertySymbols(o)
+  ].forEach((k) => {
+    const obj = o[k];
+
+    if (obj && obj.constructor && obj.call && obj.apply) {
+      o[k] = o[k](vals);
+
+      return;
+    }
+
+    const type = typeof obj;
+
+    if (obj != null && (type == 'object' || type == 'function')) {
+      whereQueryVarsToValues(o[k], vals);
+    }
+  });
+};
+
 module.exports = {
   isFieldArray,
   isFieldRequired,
   sanitizeField,
   generateName,
-  isAvailable
+  isAvailable,
+  whereQueryVarsToValues
 };

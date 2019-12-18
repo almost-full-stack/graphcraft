@@ -27,7 +27,9 @@ const defaultOptions = {
       update: 'Update',
       delete: 'Delete',
       get: '',
-      bulk: 'Bulk'
+      bulk: 'Bulk',
+      count: 'Count',
+      default: 'Default'
     }
   },
 
