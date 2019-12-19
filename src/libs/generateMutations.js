@@ -25,6 +25,10 @@ module.exports = (options) => {
     for (const outputTypeName in outputTypes) {
 
       const model = models[outputTypeName];
+
+      if (!model)
+        continue;
+
       const aliases = model.graphql.alias;
       const bulk = model.graphql.bulk;
       const bulkEnabled = Array.isArray(bulk) ? bulk : bulk.enabled;
