@@ -3,13 +3,15 @@ const {
   GraphQLObjectType,
   GraphQLList,
   GraphQLInt,
-  GraphQLBoolean
+  GraphQLBoolean,
+  GraphQLString
 } = require('graphql');
 const {
   defaultListArgs,
-  defaultArgs
+  defaultArgs,
+  argsToFindOptions
 } = require('graphql-sequelize');
-const { sanitizeField, generateName, isAvailable } = require('../utils');
+const { sanitizeField, generateName, isAvailable, whereQueryVarsToValues } = require('../utils');
 
 module.exports = (options) => {
 
@@ -34,6 +36,10 @@ module.exports = (options) => {
     for (const outputTypeName in outputTypes) {
 
       const model = models[outputTypeName];
+
+      if (!model)
+        continue;
+
       const customQueryNames = Object.keys(model.graphql.queries || {});
       const modelQueryName = generateName(model.graphql.alias.fetch || options.naming.queries, { type: naming.type.get, name: outputTypeName }, { pascalCase });
       const toBeGenerated = [].concat(customQueryNames).concat(
@@ -58,6 +64,34 @@ module.exports = (options) => {
         const paranoidType = model.graphql.paranoid && model.options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
         const aliases = model.graphql.alias;
         const modelQueryName = generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase });
+
+
+        queries[generateName(model.graphql.alias.default || options.naming.queries, { type: naming.type.default, name: modelTypeName }, { pascalCase })] = {
+            type: GraphQLString,
+            description: 'An empty default Query. Can be overwritten for your needs (for example metadata).',
+            resolve: () => '1'
+          };
+
+        if (models[modelType.name].graphql.excludeQueries.indexOf('count') === -1) {
+          queries[generateName(model.graphql.alias.count || options.naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase })] = {
+            type: GraphQLInt,
+            args: {
+              where: defaultListArgs().where
+            },
+            resolve: (source, {
+              where
+            }, context, info) => {
+              const args = argsToFindOptions.default({ where });
+
+              if (args.where) whereQueryVarsToValues(args.where, info.variableValues);
+
+              return models[modelTypeName].count({
+                where: args.where
+              });
+            },
+            description: 'A count of the total number of objects in this connection, ignoring pagination.'
+          };
+        }
 
         if (!model.graphql.excludeQueries.includes('fetch') && isAvailable(exposeOnly.queries, [modelQueryName])) {
           queries[generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase })] = {

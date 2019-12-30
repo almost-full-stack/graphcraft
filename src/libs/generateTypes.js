@@ -249,6 +249,23 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
   const inputTypes = {};
   const inputCustomTypes = [];
 
+  for (const typeName in customTypes) {
+    const cache = {};
+    const type = {
+      name: typeName,
+      type: customTypes[typeName]
+    };
+
+    if (inputCustomTypes.includes(typeName) && !inputTypes[typeName]) {
+      inputTypes[typeName] = generateGraphQLTypeFromJson(type, inputTypes, customTypes, true, cache);
+    }
+
+    if (!outputTypes[typeName]) {
+      outputTypes[typeName] = generateGraphQLTypeFromJson(type, outputTypes, customTypes, false, cache);
+    }
+
+  }
+
   Object.keys(models).forEach((modelName) => {
 
     const model = models[modelName];
@@ -268,23 +285,6 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
     }
 
   });
-
-  for (const typeName in customTypes) {
-    const cache = {};
-    const type = {
-      name: typeName,
-      type: customTypes[typeName]
-    };
-
-    if (inputCustomTypes.includes(typeName) && !inputTypes[typeName]) {
-      inputTypes[typeName] = generateGraphQLTypeFromJson(type, inputTypes, customTypes, true, cache);
-    }
-
-    if (!outputTypes[typeName]) {
-      outputTypes[typeName] = generateGraphQLTypeFromJson(type, outputTypes, customTypes, false, cache);
-    }
-
-  }
 
   return { outputTypes, inputTypes };
 }
