@@ -20,15 +20,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.BOOLEAN,
         defaultValue: true,
         allowNull: false
-      },
-      scopeId: DataTypes.INTEGER
-  }, {
-    paranoid: true,
-    scopes: {
-      scope(value) {
-        return { where: { scopeId: value } };
       }
-    }
+  }, {
+    paranoid: true
   });
 
   Product.associate = function(models) {
