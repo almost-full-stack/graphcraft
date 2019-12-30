@@ -9,13 +9,13 @@ const defaultOptions = {
 
   /**
    * naming convention for mutations/queries and types.
-   * {name} = Model Name or type name
+   * {name} = Model Name or gql Type name
    * {type} = Get | Create | Update | Delete
-   * {bulk} = Bulk for bulk operations only
+   * {bulk} = Bulk (bulk operations only)
    * */
 
   naming: {
-    pascalCase: true, // applied everywhere
+    pascalCase: true, // applied everywhere, set to true if you want to use camelCase
     queries: '{name}', // applied to auto generated queries
     mutations: '{name}{type}{bulk}', // applied to auto generated mutations
     input: '{name}', // applied to all input types
@@ -34,7 +34,8 @@ const defaultOptions = {
   // default limit to be applied on find queries.
   limits: {
     default: 50,
-    max: 100 // maximum allowed limit. use 0 for unlimited
+    max: 100, // maximum allowed limit. use 0 for unlimited,
+    nested: false // whether to apply these limits on nested/sub types or not.
   },
 
   // nested objects can be passed and will be mutated automatically. Only hasMany and belongsTo relation supported.
