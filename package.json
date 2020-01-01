@@ -75,7 +75,7 @@
     "prettier-eslint-cli": "^4.7.1",
     "sequelize": "^5.21.2",
     "sequelize-cli": "^5.4.0",
-    "sqlite3": "^4.1.0",
+    "sqlite3": "^4.1.1",
     "stringifier": "^2.0.0"
   },
   "peerDependencies": {

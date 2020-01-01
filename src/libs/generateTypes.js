@@ -199,7 +199,6 @@ function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false
 
 function generateGraphQLTypeFromJson(typeJson, existingTypes = {}, allCustomTypes = {}, isInput = false, cache) {
 
-
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   const name = typeJson.name;
   const type = typeJson.type;
@@ -248,23 +247,7 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
   const outputTypes = remoteTypes || {};
   const inputTypes = {};
   const inputCustomTypes = [];
-
-  for (const typeName in customTypes) {
-    const cache = {};
-    const type = {
-      name: typeName,
-      type: customTypes[typeName]
-    };
-
-    if (inputCustomTypes.includes(typeName) && !inputTypes[typeName]) {
-      inputTypes[typeName] = generateGraphQLTypeFromJson(type, inputTypes, customTypes, true, cache);
-    }
-
-    if (!outputTypes[typeName]) {
-      outputTypes[typeName] = generateGraphQLTypeFromJson(type, outputTypes, customTypes, false, cache);
-    }
-
-  }
+  const allCustomTypes = {};
 
   Object.keys(models).forEach((modelName) => {
 
@@ -276,15 +259,32 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
     inputTypes[modelName] = generateGraphQLTypeFromModel(model, inputTypes, true, cache);
 
     // accumulate all types from all models
-    Object.assign(customTypes, model.graphql.types);
+    Object.assign(allCustomTypes, customTypes, model.graphql.types, customTypes);
 
-    const allOperations = Object.assign({}, model.graphql.queries, model.graphql.mutations);
+    const allOperations = Object.assign({}, model.graphql.queries, model.graphql.mutations, options.queries, options.mutations);
 
     for (const operation in allOperations) {
       if (allOperations[operation].input) inputCustomTypes.push(sanitizeField(allOperations[operation].input));
     }
 
   });
+
+  for (const typeName in customTypes) {
+    const cache = {};
+    const type = {
+      name: typeName,
+      type: customTypes[typeName]
+    };
+
+    if (inputCustomTypes.includes(typeName) && !inputTypes[typeName]) {
+      inputTypes[typeName] = generateGraphQLTypeFromJson(type, inputTypes, allCustomTypes, true, cache);
+    }
+
+    if (!outputTypes[typeName]) {
+      outputTypes[typeName] = generateGraphQLTypeFromJson(type, outputTypes, allCustomTypes, false, cache);
+    }
+
+  }
 
   return { outputTypes, inputTypes };
 }

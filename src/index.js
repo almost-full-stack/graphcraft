@@ -68,11 +68,11 @@ const defaultOptions = {
   dataloader: false,
   // mutations are run inside transactions. Transactions are accessible in extend hook.
   transactionedMutations: true,
-  // custom graphql types
+  // custom graphql types: type names should be unique throughout the project
   types: {},
-  // custom queries
+  // custom queries: query names should be unique throughout the project
   queries: {},
-  // custom mutations
+  // custom mutations: mutation names should be unique throughout the project
   mutations: {},
   // executes after all queries/mutations
   logger() {
@@ -103,9 +103,9 @@ const defaultModelGraphqlOptions = {
     bulkColumn: false, // bulk identifier column, when bulk creating this column will be auto filled with a uuid and later used to fetch added records 'columnName' or ['columnName', true] when using a foreign key as bulk column
     returning: true // This will return all created/updated items, doesn't use sequelize returning option.
   },
-  types: {}, // user defined custom types
-  mutations: {}, // user defined custom mutations
-  queries: {}, // user defined custom queries
+  types: {}, // user defined custom types: type names should be unique throughout the project
+  mutations: {}, // user defined custom mutations: : mutation names should be unique throughout the project
+  queries: {}, // user defined custom queries: : query names should be unique throughout the project
   excludeMutations: [], // exclude one or more default mutations ['create', 'destroy', 'update']
   excludeQueries: [], // exclude one or more default queries ['fetch']
   extend: {}, // extend/after hook default queries/mutations behavior {fetch, create, destroy, update}

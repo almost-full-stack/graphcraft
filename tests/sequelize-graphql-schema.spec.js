@@ -4,7 +4,16 @@ const graphqlHTTP = require('express-graphql');
 const { generateSchema } = require('../src/index')({
   exclude: [],
   dataloader: true,
-  nestedMutations: true
+  nestedMutations: true,
+  types: {
+    customGlobalType: { id: 'id', key: 'string', value: 'string' }
+  },
+  queries: {
+    customGlobalQuery: { input: 'customGlobalType', output: '[customGlobalType]', resolver: () => { return [{ key: '1', value: '2' }]; } }
+  },
+  mutations: {
+    customGlobalMutation: { input: 'customGlobalType', output: 'int', resolver: () => 1 }
+  }
 });
 
 const app = express();
@@ -24,10 +33,10 @@ app.use('/', (req, res) => {
 
   }
 
-    return graphqlHTTP({
-      schema: new GraphQLSchema(schemaPromise),
-      graphiql: true
-    })(req, res);
+  return graphqlHTTP({
+    schema: new GraphQLSchema(schemaPromise),
+    graphiql: true
+  })(req, res);
 
 
 });

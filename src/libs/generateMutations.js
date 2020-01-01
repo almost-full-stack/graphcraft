@@ -20,15 +20,13 @@ module.exports = (options) => {
     const createMutationsFor = {};
     const modelMutationNames = {};
     const modelBulkOptions = {};
+    const allCustomMutations = Object.assign({}, options.mutations);
 
     // outputTypes are generated for all non-excluded models
-    for (const outputTypeName in outputTypes) {
+    for (const modelName in models) {
 
-      const model = models[outputTypeName];
-
-      if (!model)
-        continue;
-
+      const model = models[modelName];
+      const outputTypeName = modelName;
       const aliases = model.graphql.alias;
       const bulk = model.graphql.bulk;
       const bulkEnabled = Array.isArray(bulk) ? bulk : bulk.enabled;
@@ -72,110 +70,109 @@ module.exports = (options) => {
       }
     }
 
+    const fields = Object.keys(createMutationsFor).reduce((allMutations, modelTypeName) => {
+
+      const mutations = {};
+      const inputModelType = inputTypes[modelTypeName];
+      const outputModelType = outputTypes[modelTypeName];
+      const model = models[modelTypeName];
+      const key = model.primaryKeyAttributes[0];
+
+      if (!model.graphql.excludeMutations.includes('create') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].create)) {
+        mutations[modelMutationNames[modelTypeName].create] = {
+          type: outputModelType,
+          description: 'Create a ' + modelTypeName,
+          args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
+          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'create', models, modelTypeName })
+        };
+      }
+
+      if (!model.graphql.excludeMutations.includes('update') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].update)) {
+        mutations[modelMutationNames[modelTypeName].update] = {
+          type: outputModelType || GraphQLInt,
+          description: 'Update a ' + modelTypeName,
+          args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
+          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'update', models, modelTypeName })
+        };
+      }
+
+      if (!model.graphql.excludeMutations.includes('destroy') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].delete)) {
+        mutations[modelMutationNames[modelTypeName].delete] = {
+          type: GraphQLInt,
+          description: 'Delete a ' + modelTypeName,
+          // enhance this to support composite keys
+          args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments),
+          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'destroy', models, modelTypeName })
+        };
+      }
+
+      const bulk = model.graphql.bulk;
+      const bulkOptions = modelBulkOptions[modelTypeName];
+
+      if (bulkOptions.create && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].createBulk)) {
+
+        mutations[modelMutationNames[modelTypeName].createBulk] = {
+          type: (typeof bulk.bulkColumn === 'string' || bulk.returning) ? new GraphQLList(outputModelType) : GraphQLInt,
+          description: 'Create bulk ' + modelTypeName + ' and return number of rows or created rows.',
+          args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
+          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName })
+        };
+
+      }
+
+      if (bulkOptions.update && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].updateBulk)) {
+
+        mutations[modelMutationNames[modelTypeName].updateBulk] = {
+          type: bulk.returning ? new GraphQLList(outputModelType) : GraphQLInt,
+          description: 'Delete bulk ' + modelTypeName,
+          args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
+          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'update', isBulk: true, models, modelTypeName })
+        };
+
+      }
+
+      if (bulkOptions.destroy && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].deleteBulk)) {
+
+        mutations[modelMutationNames[modelTypeName].deleteBulk] = {
+          type: GraphQLInt,
+          description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
+          args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(GraphQLInt)) } }, includeArguments),
+          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'destroy', isBulk: true, models, modelTypeName })
+        };
+
+      }
+
+      Object.assign(allCustomMutations, (model.graphql.mutations || {}));
+
+      return Object.assign(allMutations, mutations);
+
+    }, {});
+
+    // Setup Custom Mutations
+    for (const mutationName in allCustomMutations) {
+
+      if (isAvailable(exposeOnly.mutations, mutationName)) {
+
+        const currentMutation = allCustomMutations[mutationName];
+        const type = currentMutation.output ? generateGraphQLField(currentMutation.output, outputTypes) : GraphQLInt;
+        const args = Object.assign(
+          {}, includeArguments,
+          currentMutation.input ? { [sanitizeField(currentMutation.input)]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
+        );
+
+        fields[generateName(mutationName, {}, { pascalCase })] = {
+          type,
+          args,
+          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'custom', models, resolver: currentMutation.resolver })
+        };
+
+      }
+
+    }
+
     return new GraphQLObjectType({
       name: options.naming.rootMutations,
-      fields: Object.keys(createMutationsFor).reduce((allMutations, modelTypeName) => {
-
-        const mutations = {};
-        const inputModelType = inputTypes[modelTypeName];
-        const outputModelType = outputTypes[modelTypeName];
-        const model = models[modelTypeName];
-        const key = model.primaryKeyAttributes[0];
-
-        if (!model.graphql.excludeMutations.includes('create') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].create)) {
-          mutations[modelMutationNames[modelTypeName].create] = {
-            type: outputModelType,
-            description: 'Create a ' + modelTypeName,
-            args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
-            resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'create', models, modelTypeName })
-          };
-        }
-
-        if (!model.graphql.excludeMutations.includes('update') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].update)) {
-          mutations[modelMutationNames[modelTypeName].update] = {
-            type: outputModelType || GraphQLInt,
-            description: 'Update a ' + modelTypeName,
-            args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
-            resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'update', models, modelTypeName })
-          };
-        }
-
-        if (!model.graphql.excludeMutations.includes('destroy') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].delete)) {
-          mutations[modelMutationNames[modelTypeName].delete] = {
-            type: GraphQLInt,
-            description: 'Delete a ' + modelTypeName,
-            // enhance this to support composite keys
-            args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments),
-            resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'destroy', models, modelTypeName })
-          };
-        }
-
-        const bulk = model.graphql.bulk;
-        const bulkOptions = modelBulkOptions[modelTypeName];
-
-        if (bulkOptions.create && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].createBulk)) {
-
-          mutations[modelMutationNames[modelTypeName].createBulk] = {
-            type: (typeof bulk.bulkColumn === 'string' || bulk.returning) ? new GraphQLList(outputModelType) : GraphQLInt,
-            description: 'Create bulk ' + modelTypeName + ' and return number of rows or created rows.',
-            args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
-            resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName })
-          };
-
-        }
-
-        if (bulkOptions.update && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].updateBulk)) {
-
-          mutations[modelMutationNames[modelTypeName].updateBulk] = {
-            type: bulk.returning ? new GraphQLList(outputModelType) : GraphQLInt,
-            description: 'Delete bulk ' + modelTypeName,
-            args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
-            resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'update', isBulk: true, models, modelTypeName })
-          };
-
-        }
-
-        if (bulkOptions.destroy && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].deleteBulk)) {
-
-          mutations[modelMutationNames[modelTypeName].deleteBulk] = {
-            type: GraphQLInt,
-            description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
-            args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(GraphQLInt)) } }, includeArguments),
-            resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'destroy', isBulk: true, models, modelTypeName })
-          };
-
-        }
-
-        // Setup Custom Mutations
-        for (const mutation in (model.graphql.mutations || {})) {
-
-          if (isAvailable(exposeOnly.mutations, mutation)) {
-
-            const currentMutation = model.graphql.mutations[mutation];
-            const type = currentMutation.output ? generateGraphQLField(currentMutation.output, outputTypes) : GraphQLInt;
-            const args = Object.assign(
-              {}, includeArguments,
-              currentMutation.input ? { [sanitizeField(currentMutation.input)]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
-            );
-
-            mutations[generateName(mutation, {}, { pascalCase })] = {
-              type,
-              args,
-              resolve: (source, args, context, info) => {
-                const where = key && args[modelTypeName] ? { [key]: args[modelTypeName][key] } : {};
-
-                return mutation(source, args, context, info, { type: 'custom', where, models, modelTypeName, resolver: model.graphql.mutations[mutation].resolver });
-
-              }
-            };
-
-          }
-
-        }
-
-        return Object.assign(allMutations, mutations);
-
-      }, {})
+      fields
     });
   };
 

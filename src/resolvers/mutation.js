@@ -337,12 +337,17 @@ module.exports = (options) => {
 
   return async (source, args, context, info, mutationOptions) => {
 
-    const { type, isBulk, modelTypeName, models } = mutationOptions;
+    const { type, isBulk, modelTypeName, models, resolver } = mutationOptions;
+
+    await options.authorizer(source, args, context, info);
+
+    if (type === 'custom') {
+      return resolver(source, args, context, info);
+    }
+
     const model = models[modelTypeName];
     const key = model.primaryKeyAttributes[0];
     const where = { [key]: (type === 'destroy' ? args[key] : args[modelTypeName][key]) };
-
-    await options.authorizer(source, args, context, info);
 
     // mutation being overwritten at graphql.overwrite.[create/destroy/update], run it and skip the rest
     if (_.has(model.graphql.overwrite, type)) {
