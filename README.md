@@ -192,7 +192,8 @@ extend: {},
 before: {},
 // overwrite default queries/mutations behavior {fetch, create, destroy, update}
 // overwrite hooks are passed (source, args, context, info) arguments
-overwrite: {}
+overwrite: {},
+joins: false // make a query using join (left/right/inner) instead of batch dataloader, join will appear in all subtype args. Right join won't work for sqlite
 ```
 
 ```javascript
