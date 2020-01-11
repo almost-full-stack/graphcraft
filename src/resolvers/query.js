@@ -2,57 +2,8 @@ const _ = require('lodash');
 const { resolver, argsToFindOptions } = require('graphql-sequelize');
 const { EXPECTED_OPTIONS_KEY } = require('dataloader-sequelize');
 const hooks = require('./hooks');
-const REVERSE_CLAUSE_STRING = 'reverse:';
-const ASC = 'ASC';
-const DESC = 'DESC';
+const { getIncludes, getOrderBy } = require('../utils');
 const QUERY_TYPE = 'fetch';
-
-const getOrderBy = (orderArgs) => {
-
-  const orderBy = [];
-
-  if (orderArgs) {
-
-    const orderByClauses = orderArgs.split(',');
-
-    orderByClauses.forEach((clause) => {
-      if (clause.indexOf(REVERSE_CLAUSE_STRING) === 0) {
-        orderBy.push([clause.substring(REVERSE_CLAUSE_STRING.length), DESC]);
-      } else {
-        orderBy.push([clause, ASC]);
-      }
-    });
-
-  }
-
-  return orderBy;
-};
-
-const getIncludes = (ast, associations) => {
-
-  const includes = [];
-
-  for (const key in ast) {
-
-    const args = ast[key].args || {};
-    const join = args.join;
-
-    // check if it is really a association/model
-    if (associations[key] && join) {
-
-      includes.push(Object.assign({}, argsToFindOptions.default(args, Object.keys(associations[key].target.rawAttributes)), {
-        model: associations[key].target,
-        required: join === 'INNER',
-        right: join === 'RIGHT',
-      }));
-
-    }
-
-  }
-
-  return includes;
-
-};
 
 module.exports = (options) => {
 

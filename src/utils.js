@@ -1,4 +1,8 @@
 const camelCase = require('camelcase');
+const { argsToFindOptions } = require('graphql-sequelize');
+const REVERSE_CLAUSE_STRING = 'reverse:';
+const ASC = 'ASC';
+const DESC = 'DESC';
 
 function isFieldArray (name) {
   if (name.startsWith('[') && name.endsWith('!]')) return 3;
@@ -94,11 +98,60 @@ const whereQueryVarsToValues = (o, vals) => {
   });
 };
 
+const getIncludes = (ast, associations) => {
+
+  const includes = [];
+
+  for (const key in ast) {
+
+    const args = ast[key].args || {};
+    const join = args.join;
+
+    // check if it is really a association/model
+    if (associations[key] && join) {
+
+      includes.push(Object.assign({}, argsToFindOptions.default(args, Object.keys(associations[key].target.rawAttributes)), {
+        model: associations[key].target,
+        required: join === 'INNER',
+        right: join === 'RIGHT',
+      }));
+
+    }
+
+  }
+
+  return includes;
+
+};
+
+const getOrderBy = (orderArgs) => {
+
+  const orderBy = [];
+
+  if (orderArgs) {
+
+    const orderByClauses = orderArgs.split(',');
+
+    orderByClauses.forEach((clause) => {
+      if (clause.indexOf(REVERSE_CLAUSE_STRING) === 0) {
+        orderBy.push([clause.substring(REVERSE_CLAUSE_STRING.length), DESC]);
+      } else {
+        orderBy.push([clause, ASC]);
+      }
+    });
+
+  }
+
+  return orderBy;
+};
+
 module.exports = {
   isFieldArray,
   isFieldRequired,
   sanitizeField,
   generateName,
   isAvailable,
-  whereQueryVarsToValues
+  whereQueryVarsToValues,
+  getIncludes,
+  getOrderBy
 };
