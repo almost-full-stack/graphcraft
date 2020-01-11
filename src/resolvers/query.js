@@ -28,14 +28,43 @@ const getOrderBy = (orderArgs) => {
   return orderBy;
 };
 
+const getIncludes = (ast, associations) => {
+
+  const includes = [];
+
+  for (const key in ast) {
+
+    const args = ast[key].args || {};
+    const join = args.join;
+
+    // check if it is really a association/model
+    if (associations[key] && join) {
+
+      includes.push(Object.assign({}, argsToFindOptions.default(args, Object.keys(associations[key].target.rawAttributes)), {
+        model: associations[key].target,
+        required: join === 'INNER',
+        right: join === 'RIGHT',
+      }));
+
+    }
+
+  }
+
+  return includes;
+
+};
+
 module.exports = (options) => {
 
   const { dataloaderContext, limits } = options;
 
-  return async (model, inputTypeName, source, args, context, info, isAssociation = false) => {
+  return async (model, source, args, context, info, queryOptions) => {
 
+    const isAssociation = Boolean(model.target);
     const realModel = isAssociation ? model.target : model;
     const graphql = realModel.graphql;
+    const { simpleAST } = queryOptions;
+    const includes = getIncludes(simpleAST, realModel.associations);
 
     // setup dataloader for resolver.
     resolver.contextToOptions = { [EXPECTED_OPTIONS_KEY]: EXPECTED_OPTIONS_KEY };
@@ -76,6 +105,10 @@ module.exports = (options) => {
 
       // if paranoid option from sequelize is set, this switch can be used to fetch archived, non-archived or all items.
       findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : model.options.paranoid;
+
+      if (includes.length) {
+        findOptions.include = includes;
+      }
 
       return findOptions;
     };

@@ -25,6 +25,7 @@ const stringToTypeMap = {
   json: JSONType,
   date: DateType
 };
+const JOINS = ['LEFT', 'RIGHT', 'INNER'];
 const queryResolver = require('../resolvers/query');
 const options = {};
 
@@ -92,7 +93,12 @@ function generateGraphQLField(fieldType, existingTypes = {}) {
   return field;
 }
 
-function generateIncludeArguments (includeArguments, existingTypes = {}) {
+const joinTypeEnum = new GraphQLEnumType({
+  name: 'SequelizeJoinEnum',
+  values: generateGraphQLField(JOINS)
+});
+
+function generateIncludeArguments(includeArguments, existingTypes = {}) {
   const fields = {};
 
   for (const argument in includeArguments) {
@@ -116,43 +122,48 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
   const { nestedMutations } = options;
 
   for (const associationName in associations) {
-    if (associations[associationName]) {
 
-      const relation = associations[associationName];
+    const relation = associations[associationName];
+    const target = relation.target;
 
-      if (!existingTypes[relation.target.name]) {
-        return fields;
-      }
+    if (!existingTypes[target.name]) {
+      return fields;
+    }
 
-      // BelongsToMany is represented as a list, just like HasMany
-      const type = relation.associationType === 'BelongsToMany' ||
-        relation.associationType === 'HasMany'
-        ? new GraphQLList(existingTypes[relation.target.name])
-        : existingTypes[relation.target.name];
+    // BelongsToMany is represented as a list, just like HasMany
+    const type = relation.associationType === 'BelongsToMany' ||
+      relation.associationType === 'HasMany'
+      ? new GraphQLList(existingTypes[target.name])
+      : existingTypes[target.name];
 
-      // Remove belongs to associations for input types to avoide foreign key constraint errors.
-      if (!(isInput && relation.associationType === 'BelongsTo') && !(isInput && !nestedMutations)) {
-        fields[associationName] = { type };
-      }
+    // Remove belongs to associations for input types to avoide foreign key constraint errors.
+    if (!(isInput && relation.associationType === 'BelongsTo') && !(isInput && !nestedMutations)) {
+      fields[associationName] = { type };
+    }
 
-      // Add through table, this doesn't need resolver since this is already included when quering n:m relations.
-      if (relation.associationType === 'BelongsToMany' ) {
-        fields[relation.through.model.name] = { type: existingTypes[relation.through.model.name] };
-      }
+    // Add through table, this doesn't need resolver since this is already included when quering n:m relations.
+    if (relation.associationType === 'BelongsToMany') {
+      fields[relation.through.model.name] = { type: existingTypes[relation.through.model.name] };
+    }
 
-      if (!isInput && !relation.isRemote) {
+    // GraphQLInputObjectType do not accept fields with resolve
+    if (!isInput && !relation.isRemote) {
 
-        const throughArguments = relation.associationType === 'BelongsToMany' ? { throughWhere: defaultListArgs().where } : {};
+      const throughArguments = relation.associationType === 'BelongsToMany' ? { throughWhere: defaultListArgs().where } : {};
+      const joinType = relation.source.graphql.joins ? { join: { type: joinTypeEnum } } : {};
 
-        // GraphQLInputObjectType do not accept fields with resolve
-        fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), throughArguments);
-        fields[associationName].resolve = (source, args, context, info) => {
-          return queryResolver(options)(relation, relation.target.name, source, args, context, info, true);
-        };
+      fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), throughArguments, joinType);
+      fields[associationName].resolve = (source, args, context, info) => {
 
-      }
+        if (JOINS.includes(args.join)) {
+          return source[associationName];
+        }
+
+        return queryResolver(options)(relation, source, args, context, info, true);
+      };
 
     }
+
   }
 
   return fields;

@@ -8,7 +8,7 @@ const { createContext, resetCache } = require('dataloader-sequelize');
 const defaultOptions = {
 
   /**
-   * naming convention for mutations/queries and types.
+   * naming convention for mutations/queries and types
    * {name} = Model Name or gql Type name
    * {type} = Get | Create | Update | Delete
    * {bulk} = Bulk (bulk operations only)
@@ -33,17 +33,17 @@ const defaultOptions = {
     }
   },
 
-  // default limit to be applied on find queries.
+  // default limit to be applied on find queries
   limits: {
     default: 50,
-    max: 100, // maximum allowed limit. use 0 for unlimited,
-    nested: false // whether to apply these limits on nested/sub types or not.
+    max: 100, // maximum allowed limit. use 0 for unlimited
+    nested: false // whether to apply these limits on nested/sub types or not
   },
 
-  // nested objects can be passed and will be mutated automatically. Only hasMany and belongsTo relation supported.
+  // nested objects can be passed and will be mutated automatically. Only hasMany and belongsTo relation supported
   nestedMutations: true, // doesn't work with add bulk mutation
 
-  // applied globaly on both auto-generated and custom queries/mutations.
+  // applied globaly on both auto-generated and custom queries/mutations
   exposeOnly: {
     queries: [],
     mutations: []
@@ -66,7 +66,7 @@ const defaultOptions = {
   remote: {},
   // enabled/disable dataloader for nested queries
   dataloader: false,
-  // mutations are run inside transactions. Transactions are accessible in extend hook.
+  // mutations are run inside transactions. Transactions are accessible in extend hook
   transactionedMutations: true,
   // custom graphql types: type names should be unique throughout the project
   types: {},
@@ -99,9 +99,9 @@ const defaultModelGraphqlOptions = {
   alias: {}, // rename default queries/mutations to specified custom name
   bulk: { // OR bulk: ['create', 'destroy', ....]
     enabled: [], // enable bulk options ['create', 'destroy', 'update']
-    // Use bulkColumn when using bulk option for 'create' when using returning true and to increase efficiency.
+    // Use bulkColumn when using bulk option for 'create' when using returning true and to increase efficiency
     bulkColumn: false, // bulk identifier column, when bulk creating this column will be auto filled with a uuid and later used to fetch added records 'columnName' or ['columnName', true] when using a foreign key as bulk column
-    returning: true // This will return all created/updated items, doesn't use sequelize returning option.
+    returning: true // This will return all created/updated items, doesn't use sequelize returning option
   },
   types: {}, // user defined custom types: type names should be unique throughout the project
   mutations: {}, // user defined custom mutations: : mutation names should be unique throughout the project
@@ -110,7 +110,8 @@ const defaultModelGraphqlOptions = {
   excludeQueries: [], // exclude one or more default queries ['fetch']
   extend: {}, // extend/after hook default queries/mutations behavior {fetch, create, destroy, update}
   before: {}, // before hook for default queries/mutations behavior {fetch, create, destroy, update}
-  overwrite: {} // overwrite default queries/mutations behavior {fetch, create, destroy, update}
+  overwrite: {}, // overwrite default queries/mutations behavior {fetch, create, destroy, update}
+  joins: false // make a query using join (left/right/inner) instead of batch dataloader, join will appear in all subtype args. Right join won't work for sqlite
 };
 
 const options = {};
@@ -142,6 +143,7 @@ function generateSchema(models, context) {
 
   options.Sequelize = models.Sequelize;
   options.sequelize = models.sequelize;
+  options.models = models;
 
   options.Sequelize.useCLS(sequelizeNamespace);
 

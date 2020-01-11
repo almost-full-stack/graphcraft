@@ -9,7 +9,8 @@ const {
 const {
   defaultListArgs,
   defaultArgs,
-  argsToFindOptions
+  argsToFindOptions,
+  simplifyAST
 } = require('graphql-sequelize');
 const { sanitizeField, generateName, isAvailable, whereQueryVarsToValues } = require('../utils');
 
@@ -91,7 +92,11 @@ module.exports = (options) => {
           type: new GraphQLList(modelType),
           args: Object.assign(defaultArgs(model), defaultListArguments, includeArguments, paranoidType),
           resolve: (source, args, context, info) => {
-            return query(model, modelType.name, source, args, context, info);
+
+            const simpleAST = simplifyAST(info.fieldASTs || info.fieldNodes, info).fields || {};
+
+            return query(model, source, args, context, info, { simpleAST });
+
           }
         };
       }

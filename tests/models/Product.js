@@ -32,6 +32,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Product.graphql = {
     paranoid: true,
+    joins: true,
     queries: {
       ProductQuery: { output: 'Product', resolver: () => Promise.resolve({}) }
     },
