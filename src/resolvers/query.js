@@ -7,7 +7,7 @@ const QUERY_TYPE = 'fetch';
 
 module.exports = (options) => {
 
-  const { dataloaderContext, limits } = options;
+  const { dataloaderContext, limits, globalHooks } = options;
 
   return async (model, source, args, context, info, queryOptions) => {
 
@@ -28,6 +28,10 @@ module.exports = (options) => {
 
     // No need to call authorizer again on associations
     if (!isAssociation) await options.authorizer(source, args, context, info);
+
+    if (globalHooks.before.fetch) {
+      await globalHooks.before.fetch(source, args, context, info);
+    }
 
     // query being overwritten at graphql.overwrite.fetch, run it and skip the rest
     if (_.has(graphql.overwrite, QUERY_TYPE)) {
@@ -76,6 +80,10 @@ module.exports = (options) => {
 
     if (_.has(graphql.extend, QUERY_TYPE) || _.has(graphql.after, QUERY_TYPE)) {
       await (graphql.extend || graphql.after)[QUERY_TYPE](data, source, args, context, info);
+    }
+
+    if ((globalHooks.extend || globalHooks.extend || {}).fetch) {
+      await (globalHooks.extend || globalHooks.extend).fetch(data, source, args, context, info);
     }
 
     // Logger only runs for base query.

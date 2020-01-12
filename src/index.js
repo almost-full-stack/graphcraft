@@ -46,7 +46,9 @@ const defaultOptions = {
   // applied globaly on both auto-generated and custom queries/mutations
   exposeOnly: {
     queries: [],
-    mutations: []
+    mutations: [],
+    // instead of not generating queries/mutations this will instead throw an error.
+    throw: false // string message
   },
 
   /**
@@ -74,6 +76,11 @@ const defaultOptions = {
   queries: {},
   // custom mutations: mutation names should be unique throughout the project
   mutations: {},
+  // global hooks, behaves same way as model before/extend
+  globalHooks: {
+    before: {}, // will be executed before all auto-generated mutations/queries (fetch/create/update/destroy)
+    extend: {} // will be executed after all auto-generated mutations/queries (fetch/create/update/destroy)
+  },
   // executes after all queries/mutations
   logger() {
     return Promise.resolve();

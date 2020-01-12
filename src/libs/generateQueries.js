@@ -47,7 +47,7 @@ module.exports = (options) => {
 
       // model must have atleast one query to implement.
       if (model && (!model.graphql.excludeQueries.includes('fetch') || customQueryNames.length)) {
-        if (isAvailable(exposeOnly.queries, toBeGenerated)) {
+        if (isAvailable(exposeOnly.queries, toBeGenerated) && !exposeOnly.throw) {
           createQueriesFor[outputTypeName] = outputTypes[outputTypeName];
         }
       }
@@ -61,6 +61,7 @@ module.exports = (options) => {
       const paranoidType = model.graphql.paranoid && model.options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
       const aliases = model.graphql.alias;
       const modelQueryName = generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase });
+      const modelCountQueryName = generateName(model.graphql.alias.count || options.naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase });
 
       queries[generateName(model.graphql.alias.default || options.naming.queries, { type: naming.type.default, name: modelTypeName }, { pascalCase })] = {
         type: GraphQLString,
@@ -68,13 +69,18 @@ module.exports = (options) => {
         resolve: () => '1'
       };
 
-      if (models[modelType.name].graphql.excludeQueries.indexOf('count') === -1) {
-        queries[generateName(model.graphql.alias.count || options.naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase })] = {
+      if (models[modelType.name].graphql.excludeQueries.indexOf('count') === -1 && isAvailable(exposeOnly.queries, [modelCountQueryName])) {
+        queries[modelCountQueryName] = {
           type: GraphQLInt,
           args: {
             where: defaultListArgs().where
           },
           resolve: (source, { where }, context, info) => {
+
+            if (!isAvailable(exposeOnly.queries, [modelCountQueryName]) && exposeOnly.throw) {
+              throw Error(exposeOnly.throw);
+            }
+
             const args = argsToFindOptions.default({ where });
 
             if (args.where) whereQueryVarsToValues(args.where, info.variableValues);
@@ -88,10 +94,14 @@ module.exports = (options) => {
       }
 
       if (!model.graphql.excludeQueries.includes('fetch') && isAvailable(exposeOnly.queries, [modelQueryName])) {
-        queries[generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase })] = {
+        queries[modelQueryName] = {
           type: new GraphQLList(modelType),
           args: Object.assign(defaultArgs(model), defaultListArguments, includeArguments, paranoidType),
           resolve: (source, args, context, info) => {
+
+            if (!isAvailable(exposeOnly.queries, [modelQueryName]) && exposeOnly.throw) {
+              throw Error(exposeOnly.throw);
+            }
 
             const simpleAST = simplifyAST(info.fieldASTs || info.fieldNodes, info).fields || {};
 
@@ -110,20 +120,28 @@ module.exports = (options) => {
     // Setup Custom Queries
     for (const query in allCustomQueries) {
 
-      const currentQuery = allCustomQueries[query];
-      const type = currentQuery.output ? generateGraphQLField(currentQuery.output, outputTypes) : GraphQLInt;
-      const args = Object.assign(
-        {}, defaultListArguments, includeArguments,
-        currentQuery.input ? { [sanitizeField(currentQuery.input)]: { type: generateGraphQLField(currentQuery.input, inputTypes) } } : {},
-      );
-      const resolve = async (source, args, context, info) => {
+      if (isAvailable(exposeOnly.mutations, query)) {
 
-        await options.authorizer(source, args, context, info);
+        const currentQuery = allCustomQueries[query];
+        const type = currentQuery.output ? generateGraphQLField(currentQuery.output, outputTypes) : GraphQLInt;
+        const args = Object.assign(
+          {}, defaultListArguments, includeArguments,
+          currentQuery.input ? { [sanitizeField(currentQuery.input)]: { type: generateGraphQLField(currentQuery.input, inputTypes) } } : {},
+        );
+        const resolve = async (source, args, context, info) => {
 
-        return currentQuery.resolver(source, args, context, info);
-      };
+          if (!isAvailable(exposeOnly.queries, [query]) && exposeOnly.throw) {
+            throw Error(exposeOnly.throw);
+          }
 
-      fields[generateName(query, {}, { pascalCase })] = { type, args, resolve };
+          await options.authorizer(source, args, context, info);
+
+          return currentQuery.resolver(source, args, context, info);
+        };
+
+        fields[generateName(query, {}, { pascalCase })] = { type, args, resolve };
+
+      }
 
     }
 

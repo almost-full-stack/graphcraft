@@ -333,7 +333,7 @@ function destroyMutation(graphqlParams, mutationOptions) {
 
 module.exports = (options) => {
 
-  const { sequelize, Sequelize, nestedUpdateMode } = options;
+  const { sequelize, Sequelize, nestedUpdateMode, globalHooks } = options;
 
   return async (source, args, context, info, mutationOptions) => {
 
@@ -348,6 +348,10 @@ module.exports = (options) => {
     const model = models[modelTypeName];
     const key = model.primaryKeyAttributes[0];
     const where = { [key]: (type === 'destroy' ? args[key] : args[modelTypeName][key]) };
+
+    if (globalHooks.before[type]) {
+      await globalHooks.before[type](source, args, context, info, where);
+    }
 
     // mutation being overwritten at graphql.overwrite.[create/destroy/update], run it and skip the rest
     if (_.has(model.graphql.overwrite, type)) {
@@ -377,6 +381,10 @@ module.exports = (options) => {
 
       if (_.has(model.graphql.extend, type) || _.has(model.graphql.after, type)) {
         await (model.graphql.extend || model.graphql.after)[type](previousRecord || data, source, args, context, info, where);
+      }
+
+      if ((globalHooks.extend || globalHooks.extend || {})[type]) {
+        await (globalHooks.extend || globalHooks.extend)[type](previousRecord || data, source, args, context, info, where);
       }
 
       await options.logger(data, source, args, context, info);

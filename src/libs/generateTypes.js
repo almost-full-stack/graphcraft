@@ -155,6 +155,7 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), throughArguments, joinType);
       fields[associationName].resolve = (source, args, context, info) => {
 
+        // when using joins, association data is coming as an included model
         if (JOINS.includes(args.join)) {
           return source[associationName];
         }

@@ -13,6 +13,20 @@ const { generateSchema } = require('../src/index')({
   },
   mutations: {
     customGlobalMutation: { input: 'customGlobalType', output: 'int', resolver: () => 1 }
+  },
+  globalHooks: {
+    before: {
+      create: () => {
+        console.log('before global');
+        return Promise.resolve();
+      }
+    },
+    extend: {
+      create: () => {
+        console.log('extend global');
+        return Promise.resolve();
+      }
+    }
   }
 });
 

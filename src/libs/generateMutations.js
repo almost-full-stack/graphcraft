@@ -70,6 +70,15 @@ module.exports = (options) => {
       }
     }
 
+    const mutationWrapper = (mutationName) => {
+
+      if (!isAvailable(exposeOnly.mutations, [mutationName]) && exposeOnly.throw) {
+        throw Error(exposeOnly.throw);
+      }
+
+      return mutation;
+    };
+
     const fields = Object.keys(createMutationsFor).reduce((allMutations, modelTypeName) => {
 
       const mutations = {};
@@ -83,7 +92,7 @@ module.exports = (options) => {
           type: outputModelType,
           description: 'Create a ' + modelTypeName,
           args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
-          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'create', models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].create)(source, args, context, info, { type: 'create', models, modelTypeName })
         };
       }
 
@@ -92,7 +101,7 @@ module.exports = (options) => {
           type: outputModelType || GraphQLInt,
           description: 'Update a ' + modelTypeName,
           args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
-          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'update', models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].update)(source, args, context, info, { type: 'update', models, modelTypeName })
         };
       }
 
@@ -102,7 +111,7 @@ module.exports = (options) => {
           description: 'Delete a ' + modelTypeName,
           // enhance this to support composite keys
           args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments),
-          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'destroy', models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].delete)(source, args, context, info, { type: 'destroy', models, modelTypeName })
         };
       }
 
@@ -115,7 +124,7 @@ module.exports = (options) => {
           type: (typeof bulk.bulkColumn === 'string' || bulk.returning) ? new GraphQLList(outputModelType) : GraphQLInt,
           description: 'Create bulk ' + modelTypeName + ' and return number of rows or created rows.',
           args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
-          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].createBulk)(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName })
         };
 
       }
@@ -126,7 +135,7 @@ module.exports = (options) => {
           type: bulk.returning ? new GraphQLList(outputModelType) : GraphQLInt,
           description: 'Delete bulk ' + modelTypeName,
           args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
-          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'update', isBulk: true, models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].updateBulk)(source, args, context, info, { type: 'update', isBulk: true, models, modelTypeName })
         };
 
       }
@@ -137,7 +146,7 @@ module.exports = (options) => {
           type: GraphQLInt,
           description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
           args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(GraphQLInt)) } }, includeArguments),
-          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'destroy', isBulk: true, models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].deleteBulk)(source, args, context, info, { type: 'destroy', isBulk: true, models, modelTypeName })
         };
 
       }
@@ -163,7 +172,7 @@ module.exports = (options) => {
         fields[generateName(mutationName, {}, { pascalCase })] = {
           type,
           args,
-          resolve: (source, args, context, info) => mutation(source, args, context, info, { type: 'custom', models, resolver: currentMutation.resolver })
+          resolve: (source, args, context, info) => mutationWrapper(mutationName)(source, args, context, info, { type: 'custom', models, resolver: currentMutation.resolver })
         };
 
       }
