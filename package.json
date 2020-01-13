@@ -17,6 +17,7 @@
     "test-db-reset": "rm -rf tests/database.db && node tests/reset-db.js"
   },
   "files": [
+    "/src",
     "/lib",
     "package.json",
     "README"
