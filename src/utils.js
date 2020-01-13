@@ -1,8 +1,21 @@
+require('./jsdoc.def.js');
 const camelCase = require('camelcase');
 const { argsToFindOptions } = require('graphql-sequelize');
 const REVERSE_CLAUSE_STRING = 'reverse:';
 const ASC = 'ASC';
 const DESC = 'DESC';
+
+
+/**
+ * This function will monkey-patch a Sequelize Model injecting the graphql property
+ * for sequelize-graphql-schema library
+ * @instance
+ * @param {import("sequelize").Sequelize.Model} model - The sequelize model to monkey patch.
+ * @param {SeqGraphQL} opt - object with all information needed for sequelize-graphql-schema and our node-platform lib.
+ */
+function define(model, opt) {
+    model.graphql = opt.graphql;
+}
 
 function isFieldArray (name) {
   if (name.startsWith('[') && name.endsWith('!]')) return 3;
@@ -146,6 +159,7 @@ const getOrderBy = (orderArgs) => {
 };
 
 module.exports = {
+  define,
   isFieldArray,
   isFieldRequired,
   sanitizeField,
