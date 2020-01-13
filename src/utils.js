@@ -14,7 +14,7 @@ const DESC = 'DESC';
  * @param {SeqGraphQL} opt - object with all information needed for sequelize-graphql-schema and our node-platform lib.
  */
 function define(model, opt) {
-    model.graphql = opt.graphql;
+    model.graphql = opt;
 }
 
 function isFieldArray (name) {
