@@ -5,6 +5,7 @@ const {
   GraphQLInt,
   GraphQLNonNull
 } = require('graphql');
+const { typeMapper } = require('graphql-sequelize');
 const { sanitizeField, generateName, isAvailable } = require('../utils');
 
 module.exports = (options) => {
@@ -110,7 +111,7 @@ module.exports = (options) => {
           type: GraphQLInt,
           description: 'Delete a ' + modelTypeName,
           // enhance this to support composite keys
-          args: Object.assign({ [key]: { type: new GraphQLNonNull(GraphQLInt) } }, includeArguments),
+          args: Object.assign({ [key]: { type: new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize)) } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].delete)(source, args, context, info, { type: 'destroy', models, modelTypeName })
         };
       }
