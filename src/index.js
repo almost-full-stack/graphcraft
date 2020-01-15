@@ -3,6 +3,7 @@ const cls = require('cls-hooked');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
 const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 const { createContext, resetCache } = require('dataloader-sequelize');
+const { define } = require('./utils');
 
 // library options
 const defaultOptions = {
@@ -94,6 +95,7 @@ const defaultOptions = {
     'ETIMEDOUT': { statusCode: 503 }
   }
 };
+
 // Model options model.graphql
 const defaultModelGraphqlOptions = {
   attributes: {
@@ -181,7 +183,7 @@ function generateSchema(models, context) {
 
 }
 
-module.exports = (_options) => {
+const init = (_options) => {
   const newOptions = { ..._options };
 
   newOptions.naming = Object.assign({}, defaultOptions.naming, newOptions.naming);
@@ -199,3 +201,11 @@ module.exports = (_options) => {
     errorHandler
   };
 };
+
+// Other utils that can be exported
+// should be defined here
+// TODO: maybe better to use a class
+// export multiple things in the common way
+init.define = define;
+
+module.exports = init;
