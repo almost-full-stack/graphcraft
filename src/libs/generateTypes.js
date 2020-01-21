@@ -281,11 +281,11 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
 
   });
 
-  for (const typeName in customTypes) {
+  for (const typeName in allCustomTypes) {
     const cache = {};
     const type = {
       name: typeName,
-      type: customTypes[typeName]
+      type: allCustomTypes[typeName]
     };
 
     if (inputCustomTypes.includes(typeName) && !inputTypes[typeName]) {

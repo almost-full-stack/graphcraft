@@ -25,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
     paranoid: true
   });
 
-  Product.associate = function(models) {
+  Product.associate = (models) => {
     Product.belongsToMany(models.Attribute, {through: models.ProductAttribute, foreignKey: 'productId'});
     Product.hasMany(models.Image);
   };
@@ -34,8 +34,11 @@ module.exports = (sequelize, DataTypes) => {
     bulk: ['destroy'],
     paranoid: true,
     joins: true,
+    types: {
+      customProduct: {id: 'int'}
+    },
     queries: {
-      ProductQuery: { output: 'Product', resolver: () => Promise.resolve({}) }
+      ProductQuery: { input: 'customProduct', output: 'Product', resolver: () => Promise.resolve({}) }
     },
     mutations: {
       ProductMutation: {input: 'Product', output: 'Product', resolver: () => Promise.resolve({}) }
