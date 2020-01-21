@@ -3,6 +3,13 @@
 module.exports = (sequelize, DataTypes) => {
 
   const Product = sequelize.define('Product', {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      allowNull: false,
+      primaryKey: true,
+      autoIncrement: false
+    },
       name: {
         type: DataTypes.STRING,
         allowNull: false
@@ -31,7 +38,7 @@ module.exports = (sequelize, DataTypes) => {
   };
 
   Product.graphql = {
-    bulk: ['destroy'],
+    bulk: ['destroy', 'update'],
     paranoid: true,
     joins: true,
     types: {
