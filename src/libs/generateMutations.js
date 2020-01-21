@@ -135,7 +135,7 @@ module.exports = (options) => {
         mutations[modelMutationNames[modelTypeName].updateBulk] = {
           type: bulk.returning ? new GraphQLList(outputModelType) : GraphQLInt,
           description: 'Delete bulk ' + modelTypeName,
-          args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
+          args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize))) } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].updateBulk)(source, args, context, info, { type: 'update', isBulk: true, models, modelTypeName })
         };
 

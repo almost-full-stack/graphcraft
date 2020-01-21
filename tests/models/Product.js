@@ -31,6 +31,7 @@ module.exports = (sequelize, DataTypes) => {
   };
 
   Product.graphql = {
+    bulk: ['destroy'],
     paranoid: true,
     joins: true,
     queries: {
