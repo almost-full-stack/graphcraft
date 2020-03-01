@@ -26,6 +26,7 @@ const stringToTypeMap = {
   date: DateType
 };
 const JOINS = ['LEFT', 'RIGHT', 'INNER'];
+const OPS = ['CREATE', 'DELETE', 'UPDATE', 'KEEP'];
 const queryResolver = require('../resolvers/query');
 const options = {};
 
@@ -95,7 +96,14 @@ function generateGraphQLField(fieldType, existingTypes = {}) {
 
 const joinTypeEnum = new GraphQLEnumType({
   name: 'SequelizeJoinEnum',
+  description: 'Join between parent and child type.',
   values: generateGraphQLField(JOINS)
+});
+
+const opsTypeEnum = new GraphQLEnumType({
+  name: 'OpsEnum',
+  description: 'Operation on object. Defaults to KEEP.',
+  values: generateGraphQLField(OPS)
 });
 
 function generateIncludeArguments(includeArguments, existingTypes = {}) {
@@ -118,6 +126,7 @@ function generateIncludeArguments(includeArguments, existingTypes = {}) {
 * @param {*} existingTypes Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
 function generateAssociationFields(associations, existingTypes = {}, isInput = false) {
+
   const fields = {};
   const { nestedMutations } = options;
 
@@ -144,6 +153,11 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
     // Add through table, this doesn't need resolver since this is already included when quering n:m relations.
     if (relation.associationType === 'BelongsToMany') {
       fields[relation.through.model.name] = { type: existingTypes[relation.through.model.name] };
+    }
+
+    // Add operation field for nested mutations
+    if (isInput) {
+      fields._Op = { type: opsTypeEnum, description: 'Affects only when updating sub types.' };
     }
 
     // GraphQLInputObjectType do not accept fields with resolve

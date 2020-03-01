@@ -18,7 +18,7 @@ module.exports = (options) => {
 
   const { query } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
-  const { naming, exposeOnly } = options;
+  const { naming, exposeOnly, fetchDeleted } = options;
   const pascalCase = naming.pascalCase;
 
   /**
@@ -58,7 +58,7 @@ module.exports = (options) => {
       const queries = {};
       const modelType = outputTypes[modelTypeName];
       const model = models[modelType.name];
-      const paranoidType = model.graphql.paranoid && model.options.paranoid ? { paranoid: { type: GraphQLBoolean } } : {};
+      const paranoidType = model.options.paranoid && (model.graphql.paranoid || fetchDeleted) ? { fetchDeleted: { type: GraphQLBoolean } } : {};
       const aliases = model.graphql.alias;
       const modelQueryName = generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase });
       const modelCountQueryName = generateName(model.graphql.alias.count || options.naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase });

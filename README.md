@@ -1,19 +1,19 @@
-# sequelize-graphql-schema
+# GraphCraft
 
-[![npm version](https://badge.fury.io/js/sequelize-graphql-schema.svg)](https://www.npmjs.com/package/sequelize-graphql-schema)
-[![dependencies](https://david-dm.org/almost-full-stack/sequelize-graphql-schema.svg)](https://github.com/almost-full-stack/sequelize-graphql-schema)
-[![devdependencies](https://david-dm.org/almost-full-stack/sequelize-graphql-schema.svg?type=dev)](https://github.com/almost-full-stack/sequelize-graphql-schema)
-[![Build Status](https://github.com/almost-full-stack/sequelize-graphql-schema/workflows/codecheck/badge.svg?branch=develop)](https://github.com/almost-full-stack/sequelize-graphql-schema/actions)
+[![npm version](https://badge.fury.io/js/graphcraft.svg)](https://www.npmjs.com/package/graphcraft)
+[![dependencies](https://david-dm.org/almost-full-stack/graphcraft.svg)](https://github.com/almost-full-stack/graphcraft)
+[![devdependencies](https://david-dm.org/almost-full-stack/graphcraft.svg?type=dev)](https://github.com/almost-full-stack/graphcraft)
+[![Build Status](https://github.com/almost-full-stack/graphcraft/workflows/codecheck/badge.svg?branch=develop)](https://github.com/almost-full-stack/graphcraft/actions)
 
 Rapildy build and extend GraphQL API based on [Sequelize](https://github.com/sequelize/sequelize "Sequelize") models. This library helps you focus on business logic while taking care of GraphQL schema automatically.
-[https://almost-full-stack.github.io/sequelize-graphql-schema/](https://almost-full-stack.github.io/sequelize-graphql-schema/http:// "https://almost-full-stack.github.io/sequelize-graphql-schema/")
+[https://almost-full-stack.github.io/graphcraft/](https://almost-full-stack.github.io/graphcraft/http:// "https://almost-full-stack.github.io/graphcraft/")
 
 If you are updating from a previous version to `1.0` read notes at the end to fix breaking changes it will cause.
 
 ## Installation
 
 ```bash
-npm install sequelize-graphql-schema
+npm install graphcraft
 ```
 
 ## Prerequisites
@@ -136,7 +136,7 @@ const options = {
   }
 };
 
-const { generateSchema } = require("sequelize-graphql-schema")(options);
+const { generateSchema } = require("graphcraft")(options);
 ```
 
 ## Model Options
@@ -208,7 +208,7 @@ Product.graphql = {
 ## Usage
 
 ```javascript
-const {generateModelTypes, generateSchema} = require('sequelize-graphql-schema')(options);
+const {generateModelTypes, generateSchema} = require('graphcraft')(options);
 const models = require('./models')
 const schema = generateSchema(models) // Generates the schema
 // OR
@@ -227,7 +227,7 @@ var options = {
   exclude: ["Users"]
 }
 
-const {generateSchema} = require('sequelize-graphql-schema')(options);
+const {generateSchema} = require('graphcraft')(options);
 
 const models = require('./models');
 

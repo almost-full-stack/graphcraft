@@ -64,7 +64,7 @@ module.exports = (options) => {
       );
 
       // model must have atleast one mutation to implement.
-      if (model && (model.graphql.excludeMutations.length < 3 || Object.keys(model.graphql.mutations).length)) {
+      if (model && !model.graphql.readonly && (model.graphql.excludeMutations.length < 3 || Object.keys(model.graphql.mutations).length)) {
         if (isAvailable(exposeOnly.mutations, toBeGenerated)) {
           createMutationsFor[outputTypeName] = outputTypes[outputTypeName];
         }

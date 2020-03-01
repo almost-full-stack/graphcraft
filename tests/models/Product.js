@@ -34,12 +34,13 @@ module.exports = (sequelize, DataTypes) => {
 
   Product.associate = (models) => {
     Product.belongsToMany(models.Attribute, {through: models.ProductAttribute, foreignKey: 'productId'});
-    Product.hasMany(models.Image);
+    Product.belongsToMany(models.Image, {through: models.ProductMedia, as: 'Media', foreignKey: 'productId'});
+    Product.belongsToMany(models.Image, {through: models.ProductImage, foreignKey: 'productId'});
   };
 
   Product.graphql = {
     bulk: ['destroy', 'update'],
-    paranoid: true,
+    readonly: true,
     joins: true,
     types: {
       customProduct: {id: 'int'}

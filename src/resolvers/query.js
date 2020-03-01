@@ -59,7 +59,7 @@ module.exports = (options) => {
       findOptions.order = order.length ? order : undefined;
 
       // if paranoid option from sequelize is set, this switch can be used to fetch archived, non-archived or all items.
-      findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.paranoid === false) ? false : model.options.paranoid;
+      findOptions.paranoid = ((args.where && args.where.deletedAt && args.where.deletedAt.ne === null) || args.fetchDeleted) ? false : model.options.paranoid;
 
       if (includes.length) {
         findOptions.include = includes;

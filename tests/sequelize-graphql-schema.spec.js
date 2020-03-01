@@ -5,6 +5,7 @@ const { generateSchema } = require('../src/index')({
   exclude: [],
   dataloader: false,
   nestedMutations: true,
+  fetchDeleted: true,
   types: {
     customGlobalType: { id: 'id', key: 'string', value: 'string' }
   },

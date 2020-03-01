@@ -171,6 +171,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
         );
 
       } else {
+
         recordsToAdd.forEach((record) => {
 
           const newCreateArgs = {
@@ -181,6 +182,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
             createMutation({ ...graphqlParams, args: newCreateArgs }, { ...mutationOptions, modelTypeName: association.through ? association.through.name : association.target.name, skipReturning: true })
           );
         });
+
       }
 
     }
@@ -292,6 +294,7 @@ async function updateMutation (graphqlParams, mutationOptions) {
     }
 
     return model.findAll({ where: findWhere, transaction });
+
   }
 
   // see if a scope is specified to be applied to find queries.
@@ -308,7 +311,7 @@ async function updateMutation (graphqlParams, mutationOptions) {
     return;
   }
 
-return model.findOne({ where, transaction });
+  return model.findOne({ where, transaction });
 
 }
 

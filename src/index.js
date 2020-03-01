@@ -53,11 +53,12 @@ const defaultOptions = {
   },
 
   /**
-   * update modes when sending nested association objects
+   * update modes when sending nested association objects, if _Op field is not specified and updateMode is not set to WITHOP one of following will apply automatically.
    * UPDATE_ONLY > update incoming records
    * UPDATE_ADD > update existing records and add new ones i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated and record[1] will be added
    * UPDATE_ADD_DELETE > not recommended: update existing records, add new ones and delete non-existent records i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated, record[1] will be added, anything else will be deleted
    * MIXED > i.e [{id: 1, name: 'test'}, {id:2}, {name: 'test2'}], record[0] will be updated, record[1] will be deleted and record[2] will be added
+   * WITHOP > _Op field to be specified with an operation, that operation to be used while mutating sub types
    * IGNORE > ignore nested update
    */
 
@@ -82,6 +83,7 @@ const defaultOptions = {
     before: {}, // will be executed before all auto-generated mutations/queries (fetch/create/update/destroy)
     extend: {} // will be executed after all auto-generated mutations/queries (fetch/create/update/destroy)
   },
+  fetchDeleted: false, // Globally when using queries, this will allow to fetch both deleted and undeleted records (works only when tables have paranoid option enabled)
   // executes after all queries/mutations
   logger() {
     return Promise.resolve();
@@ -120,7 +122,9 @@ const defaultModelGraphqlOptions = {
   extend: {}, // extend/after hook default queries/mutations behavior {fetch, create, destroy, update}
   before: {}, // before hook for default queries/mutations behavior {fetch, create, destroy, update}
   overwrite: {}, // overwrite default queries/mutations behavior {fetch, create, destroy, update}
-  joins: false // make a query using join (left/right/inner) instead of batch dataloader, join will appear in all subtype args. Right join won't work for sqlite
+  joins: false, // make a query using join (left/right/inner) instead of batch dataloader, join will appear in all subtype args. Right join won't work for sqlite
+  readonly: false, // exclude create/delete/update mutations automatically
+  fetchDeleted: false // same as fetchDeleted as global except it lets you override global settings
 };
 
 const options = {};
