@@ -3,3 +3,4 @@ node_modules/
 coverage/
 tests/database.db
 lib/
+.npmrc
