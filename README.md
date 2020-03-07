@@ -210,10 +210,7 @@ Product.graphql = {
 ```javascript
 const {generateModelTypes, generateSchema} = require('graphcraft')(options);
 const models = require('./models')
-const schema = generateSchema(models) // Generates the schema
-// OR
-const types = generateModelTypes(models)
-const schema = generateSchema(models, types) // Generates the schema by reusing the types
+const schema = await generateSchema(models) // Generates the schema, return promise.
 ```
 
 ### Example with Express
@@ -233,13 +230,16 @@ const models = require('./models');
 
 const app = express();
 
-app.use(
-  '/graphql',
-  graphqlHTTP({
-    schema: new GraphQLSchema(generateSchema(models)),
-    graphiql: true
-  })
-)
+app.use('/graphql', async (req, res) => {
+  
+  const schema = await generateSchema(models, req);
+
+  return graphqlHTTP({
+      schema: new GraphQLSchema(schema),
+      graphiql: true
+    })(req, res);
+
+});
 
 app.listen(8080, function() {
   console.log('RUNNING ON 8080. Graphiql http://localhost:8080/graphql')

@@ -22,7 +22,7 @@ module.exports = (options) => {
     context[EXPECTED_OPTIONS_KEY] = dataloaderContext;
 
     if (!isAssociation) {
-      args.limit = args.limit || limits.default;
+      args.limit = args.limit || limits.default || undefined;
       args.limit = args.limit > limits.max ? limits.max : args.limit;
     }
 
@@ -39,7 +39,11 @@ module.exports = (options) => {
     }
 
     // hook coming from graphql.before.fetch
-    await hooks.before(isAssociation ? model.target : model, source, args, context, info, QUERY_TYPE);
+    const beforeHookResponse = await hooks.before(isAssociation ? model.target : model, source, args, context, info, QUERY_TYPE);
+
+    if (beforeHookResponse) {
+      return beforeHookResponse;
+    }
 
     // sequelize-graphql before hook to parse orderby clause to make sure it supports multiple orderby
     const before = (findOptions, args) => {

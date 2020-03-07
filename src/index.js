@@ -36,7 +36,7 @@ const defaultOptions = {
 
   // default limit to be applied on find queries
   limits: {
-    default: 50,
+    default: 50, // default limit. use 0 for no limit
     max: 100, // maximum allowed limit. use 0 for unlimited
     nested: false // whether to apply these limits on nested/sub types or not
   },
@@ -67,7 +67,6 @@ const defaultOptions = {
   exclude: [],
   // include these arguments to all queries/mutations
   includeArguments: {},
-  remote: {},
   // enabled/disable dataloader for nested queries
   dataloader: false,
   // mutations are run inside transactions. Transactions are accessible in extend hook
@@ -103,7 +102,6 @@ const defaultModelGraphqlOptions = {
   attributes: {
     exclude: [], // list attributes which are to be ignored in Model Input
     include: {}, // attributes in key:type format which are to be included in Model Input
-    import: [] // must be used in combination with remote option
   },
   // scope usage is highy recommended.
   scopes: null, // common scope to be applied on all find/update/destroy operations
@@ -180,10 +178,10 @@ function generateSchema(models, context) {
 
   const modelTypes = generateModelTypes(modelsIncluded, options.types || {});
 
-  return {
+  return Promise.resolve({
     query: generateQueries(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes),
     mutation: generateMutations(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes)
-  };
+  });
 
 }
 

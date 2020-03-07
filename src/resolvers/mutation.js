@@ -361,7 +361,11 @@ module.exports = (options) => {
       return model.graphql.overwrite[type](source, args, context, info, where);
     }
 
-    await hooks.before(model, source, args, context, info, type, where);
+    const beforeHookResponse = await hooks.before(model, source, args, context, info, type, where);
+
+    if (beforeHookResponse) {
+      return beforeHookResponse;
+    }
 
     const resolve = async (transaction) => {
 

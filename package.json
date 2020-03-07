@@ -1,6 +1,6 @@
 {
   "name": "graphcraft",
-  "version": "1.0.0-beta.18",
+  "version": "1.0.0-beta.19",
   "description": "A helper library that lets you focus on business logic by automatically generating GraphQLSchema and manages graphQL from Sequelize model.",
   "main": "lib/index.js",
   "scripts": {
@@ -27,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/almost-full-stack/sequelize-graphql-schema"
+    "url": "git+https://github.com/almost-full-stack/graphcraft"
   },
   "keywords": [
     "graphql",
@@ -42,9 +42,9 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/almost-full-stack/sequelize-graphql-schema/issues"
+    "url": "https://github.com/almost-full-stack/graphcraft/issues"
   },
-  "homepage": "https://github.com/almost-full-stack/sequelize-graphql-schema#readme",
+  "homepage": "https://github.com/almost-full-stack/graphcraft#readme",
   "dependencies": {
     "camelcase": "^5.3.1",
     "cls-hooked": "^4.2.2",

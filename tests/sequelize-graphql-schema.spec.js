@@ -6,6 +6,10 @@ const { generateSchema } = require('../src/index')({
   dataloader: false,
   nestedMutations: true,
   fetchDeleted: true,
+  limits: {
+    default: 0,
+    max: 0,
+  },
   types: {
     customGlobalType: { id: 'id', key: 'string', value: 'string' }
   },
@@ -34,22 +38,12 @@ const { generateSchema } = require('../src/index')({
 const app = express();
 const models = require('./models');
 
-app.use('/', (req, res) => {
-  const schemaPromise = generateSchema(models, req);
-
-  if (schemaPromise.then) {
-
-    return schemaPromise.then((schema) => {
-      return graphqlHTTP({
-        schema: new GraphQLSchema(schema),
-        graphiql: true
-      })(req, res);
-    });
-
-  }
+app.use('/', async (req, res) => {
+  
+  const schema = await generateSchema(models, req);
 
   return graphqlHTTP({
-    schema: new GraphQLSchema(schemaPromise),
+    schema: new GraphQLSchema(schema),
     graphiql: true
   })(req, res);
 
