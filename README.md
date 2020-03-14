@@ -1,3 +1,5 @@
+### This repository and package is renamed to graphcraft.
+
 # sequelize-graphql-schema
 
 A helper library that lets you focus on business logic by automatically generates `GraphQLSchema` and manages graphQL from Sequelize model.
