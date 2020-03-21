@@ -175,6 +175,7 @@ module.exports = (options) => {
 
         const currentMutation = allCustomMutations[mutationName];
         const type = currentMutation.output ? generateGraphQLField(currentMutation.output, outputTypes) : GraphQLInt;
+        const description = currentMutation.description || undefined;
         const args = Object.assign(
           {}, includeArguments,
           currentMutation.input ? { [sanitizeField(currentMutation.input)]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
@@ -183,6 +184,7 @@ module.exports = (options) => {
         fields[generateName(mutationName, {}, { pascalCase })] = {
           type,
           args,
+          description,
           resolve: (source, args, context, info) => mutationWrapper(mutationName)(source, args, context, info, { type: 'custom', models, resolver: currentMutation.resolver })
         };
 

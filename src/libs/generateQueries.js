@@ -96,6 +96,7 @@ module.exports = (options) => {
       if (!model.graphql.excludeQueries.includes('fetch') && isAvailable(exposeOnly.queries, [modelQueryName])) {
         queries[modelQueryName] = {
           type: new GraphQLList(modelType),
+          description: `Fetch ${modelQueryName}.`,
           args: Object.assign(defaultArgs(model), defaultListArguments, includeArguments, paranoidType),
           resolve: (source, args, context, info) => {
 
@@ -124,6 +125,7 @@ module.exports = (options) => {
 
         const currentQuery = allCustomQueries[query];
         const type = currentQuery.output ? generateGraphQLField(currentQuery.output, outputTypes) : GraphQLInt;
+        const description = currentQuery.description || undefined;
         const args = Object.assign(
           {}, defaultListArguments, includeArguments,
           currentQuery.input ? { [sanitizeField(currentQuery.input)]: { type: generateGraphQLField(currentQuery.input, inputTypes) } } : {},
@@ -134,12 +136,14 @@ module.exports = (options) => {
             throw Error(exposeOnly.throw);
           }
 
-          await options.authorizer(source, args, context, info);
+          if (!currentQuery.public) {
+            await options.authorizer(source, args, context, info);
+          }
 
           return currentQuery.resolver(source, args, context, info);
         };
 
-        fields[generateName(query, {}, { pascalCase })] = { type, args, resolve };
+        fields[generateName(query, {}, { pascalCase })] = { type, description, args, resolve };
 
       }
 
