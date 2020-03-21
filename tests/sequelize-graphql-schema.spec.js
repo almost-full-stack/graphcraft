@@ -5,7 +5,7 @@ const { generateSchema } = require('../src/index')({
   exclude: [],
   dataloader: false,
   nestedMutations: true,
-  fetchDeleted: true,
+  restoreDeleted: true,
   limits: {
     default: 0,
     max: 0,

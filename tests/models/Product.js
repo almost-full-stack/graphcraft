@@ -39,8 +39,9 @@ module.exports = (sequelize, DataTypes) => {
   };
 
   Product.graphql = {
+    //restoreDeleted: true,
     bulk: ['destroy', 'update'],
-    readonly: true,
+    readonly: false,
     joins: true,
     types: {
       customProduct: {id: 'int'}

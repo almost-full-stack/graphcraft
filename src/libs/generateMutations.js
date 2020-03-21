@@ -12,7 +12,7 @@ module.exports = (options) => {
 
   const { mutation } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
-  const { naming, exposeOnly } = options;
+  const { naming, exposeOnly, restoreDeleted } = options;
   const pascalCase = naming.pascalCase;
 
   return (models, outputTypes = {}, inputTypes = {}) => {
@@ -40,6 +40,7 @@ module.exports = (options) => {
         create: generateName(aliases.create || options.naming.mutations, { type: naming.type.create, name: outputTypeName }, { pascalCase }),
         update: generateName(aliases.update || options.naming.mutations, { type: naming.type.update, name: outputTypeName }, { pascalCase }),
         delete: generateName(aliases.destroy || options.naming.mutations, { type: naming.type.delete, name: outputTypeName }, { pascalCase }),
+        restore: generateName(aliases.restore || options.naming.mutations, { type: naming.type.restore, name: outputTypeName }, { pascalCase }),
         createBulk: generateName(aliases.createBulk || options.naming.mutations, { type: naming.type.create, name: outputTypeName, bulk: naming.type.bulk }, { pascalCase }),
         updateBulk: generateName(aliases.updateBulk || options.naming.mutations, { type: naming.type.update, name: outputTypeName, bulk: naming.type.bulk }, { pascalCase }),
         deleteBulk: generateName(aliases.destroyBulk || options.naming.mutations, { type: naming.type.delete, name: outputTypeName, bulk: naming.type.bulk }, { pascalCase })
@@ -91,7 +92,7 @@ module.exports = (options) => {
       if (!model.graphql.excludeMutations.includes('create') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].create)) {
         mutations[modelMutationNames[modelTypeName].create] = {
           type: outputModelType,
-          description: 'Create a ' + modelTypeName,
+          description: 'Create ' + modelTypeName,
           args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].create)(source, args, context, info, { type: 'create', models, modelTypeName })
         };
@@ -100,7 +101,7 @@ module.exports = (options) => {
       if (!model.graphql.excludeMutations.includes('update') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].update)) {
         mutations[modelMutationNames[modelTypeName].update] = {
           type: outputModelType || GraphQLInt,
-          description: 'Update a ' + modelTypeName,
+          description: 'Update ' + modelTypeName,
           args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].update)(source, args, context, info, { type: 'update', models, modelTypeName })
         };
@@ -109,10 +110,19 @@ module.exports = (options) => {
       if (!model.graphql.excludeMutations.includes('destroy') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].delete)) {
         mutations[modelMutationNames[modelTypeName].delete] = {
           type: GraphQLInt,
-          description: 'Delete a ' + modelTypeName,
+          description: 'Delete ' + modelTypeName,
           // enhance this to support composite keys
           args: Object.assign({ [key]: { type: new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize)) } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].delete)(source, args, context, info, { type: 'destroy', models, modelTypeName })
+        };
+      }
+
+      if ((!model.graphql.excludeMutations.includes('restore') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].restore)) && model.options.paranoid && (model.graphql.restoreDeleted || restoreDeleted)) {
+        mutations[modelMutationNames[modelTypeName].restore] = {
+          type: outputModelType,
+          description: 'Restore ' + modelTypeName,
+          args: Object.assign({ [key]: { type: new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize)) } }, includeArguments),
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].restore)(source, args, context, info, { type: 'restore', models, modelTypeName })
         };
       }
 

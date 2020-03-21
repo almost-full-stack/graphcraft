@@ -334,6 +334,25 @@ function destroyMutation(graphqlParams, mutationOptions) {
 
 }
 
+async function restoreMutation(graphqlParams, mutationOptions) {
+
+  const { args, context } = graphqlParams;
+  const { isBulk, where, key, modelTypeName, models, transaction, skipBulkChecks } = mutationOptions;
+  const model = models[modelTypeName];
+
+  const variablePath = { args, context };
+  const scope = Array.isArray(model.graphql.scopes) ? { method: [model.graphql.scopes[0], _.get(variablePath, model.graphql.scopes[1], model.graphql.scopes[2] || null)] } : model.graphql.scopes;
+
+  // Unlikely to happen but still an extra check to not allow array of ids when destroying with non-bulk option.
+  if (Array.isArray(where[key]) && !isBulk && !skipBulkChecks) {
+    throw Error('Invalid operation input.');
+  }
+
+  await model.scope(scope).update({ deletedAt: null }, { where, transaction, paranoid: false });
+
+  return model.scope(scope).findOne({ where, transaction });
+}
+
 module.exports = (options) => {
 
   const { sequelize, Sequelize, nestedUpdateMode, globalHooks } = options;
@@ -380,6 +399,8 @@ module.exports = (options) => {
         data = await updateMutation(graphqlParams, preparedOptions);
       } else if (type === 'destroy') {
         data = await destroyMutation(graphqlParams, preparedOptions);
+      } else if (type === 'restore') {
+        data = await restoreMutation(graphqlParams, preparedOptions);
       } else {
         throw Error('Invalid mutation.');
       }

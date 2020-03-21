@@ -27,6 +27,7 @@ const defaultOptions = {
       create: 'Create',
       update: 'Update',
       delete: 'Delete',
+      restore: 'Restore',
       get: '',
       bulk: 'Bulk',
       count: 'Count',
@@ -83,6 +84,7 @@ const defaultOptions = {
     extend: {} // will be executed after all auto-generated mutations/queries (fetch/create/update/destroy)
   },
   fetchDeleted: false, // Globally when using queries, this will allow to fetch both deleted and undeleted records (works only when tables have paranoid option enabled)
+  restoreDeleted: false, // Applies globally, create restore endpoint for deleted records
   // executes after all queries/mutations
   logger() {
     return Promise.resolve();
@@ -122,7 +124,8 @@ const defaultModelGraphqlOptions = {
   overwrite: {}, // overwrite default queries/mutations behavior {fetch, create, destroy, update}
   joins: false, // make a query using join (left/right/inner) instead of batch dataloader, join will appear in all subtype args. Right join won't work for sqlite
   readonly: false, // exclude create/delete/update mutations automatically
-  fetchDeleted: false // same as fetchDeleted as global except it lets you override global settings
+  fetchDeleted: false, // same as fetchDeleted as global except it lets you override global settings
+  restoreDeleted: false // same as restoreDeleted as global except it lets you override global settings
 };
 
 const options = {};
