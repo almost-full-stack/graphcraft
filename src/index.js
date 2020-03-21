@@ -17,7 +17,7 @@ const defaultOptions = {
 
   naming: {
     pascalCase: true, // applied everywhere, set to true if you want to use camelCase
-    queries: '{name}', // applied to auto generated queries
+    queries: '{name}{type}', // applied to auto generated queries
     mutations: '{name}{type}{bulk}', // applied to auto generated mutations
     input: '{name}', // applied to all input types
     rootQueries: 'RootQueries',

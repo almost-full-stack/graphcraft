@@ -61,7 +61,7 @@ module.exports = (options) => {
       const paranoidType = model.options.paranoid && (model.graphql.paranoid || model.graphql.fetchDeleted || fetchDeleted) ? { fetchDeleted: { type: GraphQLBoolean } } : {};
       const aliases = model.graphql.alias;
       const modelQueryName = generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase });
-      const modelCountQueryName = generateName(model.graphql.alias.count || options.naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase });
+      const modelCountQueryName = generateName(aliases.count || options.naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase });
 
       queries[generateName(model.graphql.alias.default || options.naming.queries, { type: naming.type.default, name: modelTypeName }, { pascalCase })] = {
         type: GraphQLString,
