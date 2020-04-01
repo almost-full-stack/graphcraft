@@ -111,23 +111,29 @@ const whereQueryVarsToValues = (o, vals) => {
   });
 };
 
-const getIncludes = (ast, associations) => {
+const getIncludes = (ast, modelName, models) => {
 
   const includes = [];
+  const model = models[modelName];
 
   for (const key in ast) {
 
     const args = ast[key].args || {};
     const join = args.join;
+    const fieldsAst = ast[key].fields;
+    const associations = model.associations;
 
     // check if it is really a association/model
     if (associations[key] && join) {
 
-      includes.push(Object.assign({}, argsToFindOptions.default(args, Object.keys(associations[key].target.rawAttributes)), {
+      const include = Object.assign({}, argsToFindOptions.default(args, Object.keys(associations[key].target.rawAttributes)), {
         model: associations[key].target,
         required: join === 'INNER',
         right: join === 'RIGHT',
-      }));
+        include: fieldsAst ? getIncludes(fieldsAst, key, models) : []
+      });
+
+      includes.push(include);
 
     }
 

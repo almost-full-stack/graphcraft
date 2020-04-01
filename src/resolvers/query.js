@@ -7,7 +7,7 @@ const QUERY_TYPE = 'fetch';
 
 module.exports = (options) => {
 
-  const { dataloaderContext, limits, globalHooks } = options;
+  const { dataloaderContext, limits, globalHooks, models } = options;
 
   return async (model, source, args, context, info, queryOptions) => {
 
@@ -15,7 +15,7 @@ module.exports = (options) => {
     const realModel = isAssociation ? model.target : model;
     const graphql = realModel.graphql;
     const { simpleAST } = queryOptions;
-    const includes = getIncludes(simpleAST, realModel.associations);
+    const includes = getIncludes(simpleAST, realModel.name, models);
 
     // setup dataloader for resolver.
     resolver.contextToOptions = { [EXPECTED_OPTIONS_KEY]: EXPECTED_OPTIONS_KEY };
