@@ -152,7 +152,9 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
 
     // Add through table, this doesn't need resolver since this is already included when quering n:m relations.
     if (relation.associationType === 'BelongsToMany') {
-      fields[relation.through.model.name] = { type: existingTypes[relation.through.model.name] };
+      fields[relation.through.model.name] = {
+        type: existingTypes[relation.through.model.name]
+      };
     }
 
     // Add operation field for nested mutations
@@ -163,11 +165,71 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
     // GraphQLInputObjectType do not accept fields with resolve
     if (!isInput && !relation.isRemote) {
 
+      // when using dataloader belongsToMany would become an array with plural key name. In that case we need to filter out records manually.
+      if (relation.associationType === 'BelongsToMany' && options.dataloader) {
+        fields[relation.through.model.name].resolve = (source, args, ctx) => {
+          const parentName = source.constructor.name;
+          const grandParentName = ctx.GrandParent.constructor.name;
+          const parentAssociations = relation.source.associations;
+          const grandParentAssociations = relation.target.associations;
+          const keysToMatch = {};
+
+          // foreignkey is inversed hence source and grandparent are also inversed
+          for (const key in parentAssociations) {
+            const association = parentAssociations[key];
+
+            if (association.target.name === grandParentName) {
+              keysToMatch[association.foreignKey] = source[association.targetKey];
+              break;
+            }
+          }
+
+          for (const key in grandParentAssociations) {
+            const association = grandParentAssociations[key];
+
+            if (association.target.name === parentName) {
+              keysToMatch[association.foreignKey] = ctx.GrandParent[association.targetKey];
+              break;
+            }
+          }
+
+          const includeMap = source._options.includeMap;
+
+          for (const key in includeMap) {
+
+            if (includeMap[key].model.name === relation.through.model.name) {
+              const data = source[key];
+
+              for (let index = 0; index < data.length; index++) {
+
+                const item = data[index].toJSON();
+
+                const found = Object.keys(keysToMatch).reduce((result, foreignKey) => {
+                  const value = keysToMatch[foreignKey];
+
+                  result = item[foreignKey] == value;
+
+                  return result;
+
+                }, false);
+
+                if (found) return data[index];
+
+              }
+
+            }
+          }
+        };
+      }
+
       const throughArguments = relation.associationType === 'BelongsToMany' ? { throughWhere: defaultListArgs().where } : {};
       const joinType = relation.source.graphql.joins ? { join: { type: joinTypeEnum } } : {};
 
       fields[associationName].args = Object.assign(defaultArgs(relation), defaultListArgs(), throughArguments, joinType);
       fields[associationName].resolve = (source, args, context, info) => {
+
+        // to be able to fetch this in through tables
+        context.GrandParent = source;
 
         // when using joins, association data is coming as an included model
         if (JOINS.includes(args.join)) {
