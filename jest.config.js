@@ -1,5 +1,5 @@
 module.exports = {
-  'name': 'sequelize-graphql-schema',
+  'name': 'graphcraft',
   'testEnvironment': 'node',
   'testMatch': [
     '<rootDir>/src/**/__tests__/*.test.js',

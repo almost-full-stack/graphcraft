@@ -245,7 +245,3 @@ app.listen(8080, function() {
   console.log('RUNNING ON 8080. Graphiql http://localhost:8080/graphql')
 })
 ```
-
-### Credits
-
-This library is inspired and was initiated from https://github.com/rpellerin/graphql-sequelize-schema-generator.
