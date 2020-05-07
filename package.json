@@ -1,7 +1,7 @@
 {
   "name": "graphcraft",
-  "version": "1.0.0-beta.25",
-  "description": "Rapildy build and extend GraphQL API based on Sequelize models. This library helps you focus on business logic while taking care of GraphQL schema automatically.",
+  "version": "1.0.0-beta.27",
+  "description": "A helper library that lets you focus on business logic by automatically generating GraphQLSchema and manages graphQL from Sequelize model.",
   "main": "lib/index.js",
   "scripts": {
     "publish-beta": "npm run lint && npm run build && npm publish --tag beta",

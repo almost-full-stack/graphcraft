@@ -44,10 +44,13 @@ module.exports = (sequelize, DataTypes) => {
     readonly: false,
     joins: true,
     types: {
-      customProduct: {id: 'int'}
+      customProduct: {id: 'int'},
+      customNestedTye: {
+        image: 'Image'
+      }
     },
     queries: {
-      ProductQuery: { input: 'customProduct', output: 'Product', resolver: () => Promise.resolve({}) }
+      ProductQuery: { input: 'customNestedTye', output: 'Product', resolver: () => Promise.resolve({}) }
     },
     mutations: {
       ProductMutation: {input: 'Product', output: 'Product', resolver: () => Promise.resolve({}) }

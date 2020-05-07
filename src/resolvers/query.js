@@ -69,6 +69,8 @@ module.exports = (options) => {
         findOptions.include = includes;
       }
 
+      findOptions.gqlContext = context;
+
       return findOptions;
     };
 
