@@ -1,12 +1,7 @@
-const { attributeFields, JSONType, DateType } = require('graphql-sequelize');
+const { attributeFields } = require('graphql-sequelize');
 const {
   GraphQLObjectType,
   GraphQLInputObjectType,
-  GraphQLInt,
-  GraphQLBoolean,
-  GraphQLFloat,
-  GraphQLString,
-  GraphQLID,
   GraphQLList,
   GraphQLEnumType,
   GraphQLNonNull
@@ -15,19 +10,16 @@ const {
   defaultListArgs,
   defaultArgs
 } = require('graphql-sequelize');
+
 const { isFieldArray, isFieldRequired, sanitizeField } = require('../utils');
-const stringToTypeMap = {
-  int: GraphQLInt,
-  boolean: GraphQLBoolean,
-  string: GraphQLString,
-  float: GraphQLFloat,
-  id: GraphQLID,
-  json: JSONType,
-  date: DateType
-};
-const JOINS = ['LEFT', 'RIGHT', 'INNER'];
-const OPS = ['CREATE', 'DELETE', 'UPDATE', 'KEEP'];
+const constants = require('../constants');
+
+const stringToTypeMap = constants.STRINGTOTYPEMAP;
+const JOINS = constants.JOINS.get();
+const OPS = constants.OPS.get();
+
 const queryResolver = require('../resolvers/query');
+
 const options = {};
 
 /**

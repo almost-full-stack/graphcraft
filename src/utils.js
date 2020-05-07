@@ -5,7 +5,6 @@ const REVERSE_CLAUSE_STRING = 'reverse:';
 const ASC = 'ASC';
 const DESC = 'DESC';
 
-
 /**
  * This function will monkey-patch a Sequelize Model injecting the graphql property
  * for sequelize-graphql-schema library
