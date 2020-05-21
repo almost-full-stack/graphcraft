@@ -12,7 +12,7 @@ module.exports.JOINS = {
   RIGHT: 'RIGHT',
   INNER: 'INNER',
   get() {
-    Object.keys(this).filter((key) => key != 'get').map((key) => key);
+    return Object.keys(this).filter((key) => key != 'get').map((key) => key);
   }
 };
 
@@ -22,7 +22,7 @@ module.exports.OPS = {
   UPDATE: 'UPDATE',
   KEEP: 'KEEP',
   get() {
-    Object.keys(this).filter((key) => key != 'get').map((key) => key);
+    return Object.keys(this).filter((key) => key != 'get').map((key) => key);
   }
 };
 
