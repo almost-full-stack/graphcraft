@@ -32,6 +32,6 @@ module.exports.STRINGTOTYPEMAP = {
   string: GraphQLString,
   float: GraphQLFloat,
   id: GraphQLID,
-  json: JSONType,
-  date: DateType
+  json: JSONType.default || JSONType,
+  date: DateType.default || DateType
 };
