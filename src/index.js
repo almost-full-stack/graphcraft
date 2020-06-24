@@ -96,7 +96,8 @@ const defaultOptions = {
   // executes when exceptions are thrown
   errorHandler: {
     'ETIMEDOUT': { statusCode: 503 }
-  }
+  },
+  debug: false
 };
 
 // Model options model.graphql

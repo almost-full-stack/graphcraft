@@ -22,8 +22,8 @@ module.exports = (options) => {
     context[EXPECTED_OPTIONS_KEY] = dataloaderContext;
 
     if (!isAssociation) {
-      args.limit = args.limit || limits.default || undefined;
-      args.limit = args.limit > limits.max ? limits.max : args.limit;
+      args.limit = args.limit || (limits.default !== 0 && limits.default) || undefined;
+      args.limit = (limits.max !== 0 && args.limit > limits.max) ? limits.max : args.limit;
     }
 
     // No need to call authorizer again on associations
