@@ -129,82 +129,93 @@ const defaultModelGraphqlOptions = {
   restoreDeleted: false // same as restoreDeleted as global except it lets you override global settings
 };
 
-const options = {};
 const GenerateQueries = require('./libs/generateQueries');
 const GenerateMutations = require('./libs/generateMutations');
 const GenerateTypes = require('./libs/generateTypes');
 let dataloaderContext;
 
-const errorHandler = (error) => {
-  for (const name in options.errorHandler) {
-    if (error.message.indexOf(name) > -1) {
-      Object.assign(error, options.errorHandler[name]);
-      break;
-    }
-  }
+const errorHandler = (options) => {
 
-  return error;
+  return (error) => {
+
+    for (const name in options.errorHandler) {
+      if (error.message.indexOf(name) > -1) {
+        Object.assign(error, options.errorHandler[name]);
+        break;
+      }
+    }
+
+    return error;
+
+  };
+
 };
 
-function generateSchema(models, context) {
+function generateSchema(options) {
 
-  assert(models.Sequelize, 'Sequelize not found as models.Sequelize.');
-  assert(models.sequelize, 'sequelize instance not found as models.sequelize.');
+  return (models, context) => {
+    assert(models.Sequelize, 'Sequelize not found as models.Sequelize.');
+    assert(models.sequelize, 'sequelize instance not found as models.sequelize.');
 
-  if (options.dataloader) {
-    dataloaderContext = createContext(models.sequelize);
-    options.dataloaderContext = dataloaderContext;
-  }
-
-  options.Sequelize = models.Sequelize;
-  options.sequelize = models.sequelize;
-  options.models = models;
-
-  options.Sequelize.useCLS(sequelizeNamespace);
-
-  const { generateModelTypes } = GenerateTypes(options);
-  const generateQueries = GenerateQueries(options);
-  const generateMutations = GenerateMutations(options);
-  const modelsIncluded = {};
-
-  for (const modelName in models) {
-
-    const model = models[modelName];
-
-    if ('name' in model && modelName !== 'Sequelize' && !options.exclude.includes(modelName)) {
-      model.graphql = model.graphql || defaultModelGraphqlOptions;
-      model.graphql.attributes = Object.assign({}, defaultModelGraphqlOptions.attributes, model.graphql.attributes);
-      model.graphql = Object.assign({}, defaultModelGraphqlOptions, model.graphql);
-      modelsIncluded[modelName] = model;
+    if (options.dataloader) {
+      dataloaderContext = createContext(models.sequelize);
+      options.dataloaderContext = dataloaderContext;
     }
 
-  }
+    options.Sequelize = models.Sequelize;
+    options.sequelize = models.sequelize;
+    options.models = models;
 
-  const modelTypes = generateModelTypes(modelsIncluded, options.types || {});
+    options.Sequelize.useCLS(sequelizeNamespace);
 
-  return Promise.resolve({
-    query: generateQueries(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes),
-    mutation: generateMutations(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes)
-  });
+    const { generateModelTypes } = GenerateTypes(options);
+    const generateQueries = GenerateQueries(options);
+    const generateMutations = GenerateMutations(options);
+    const modelsIncluded = {};
+
+    for (const modelName in models) {
+
+      const model = models[modelName];
+
+      if ('name' in model && modelName !== 'Sequelize' && !options.exclude.includes(modelName)) {
+        model.graphql = model.graphql || defaultModelGraphqlOptions;
+        model.graphql.attributes = Object.assign({}, defaultModelGraphqlOptions.attributes, model.graphql.attributes);
+        model.graphql = Object.assign({}, defaultModelGraphqlOptions, model.graphql);
+        modelsIncluded[modelName] = model;
+      }
+
+    }
+
+    const modelTypes = generateModelTypes(modelsIncluded, options.types || {});
+
+    return Promise.resolve({
+      query: generateQueries(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes),
+      mutation: generateMutations(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes)
+    });
+  };
+
 
 }
 
 const init = (_options) => {
+
   const newOptions = { ..._options };
+  const options = {};
 
   newOptions.naming = Object.assign({}, defaultOptions.naming, newOptions.naming);
   newOptions.naming.type = Object.assign({}, defaultOptions.naming.type, newOptions.naming.type);
   newOptions.exposeOnly = Object.assign({}, defaultOptions.exposeOnly, newOptions.exposeOnly);
   newOptions.limits = Object.assign({}, defaultOptions.limits, newOptions.limits);
+
   Object.assign(options, defaultOptions, newOptions);
 
   return {
-    generateSchema,
+    generateSchema: generateSchema(options),
     // reset dataloader cache, recommended to be used at the end of each request when working with aws lambda
     resetCache,
     // use this to prime custom queries
     dataloaderContext,
-    errorHandler
+    errorHandler: errorHandler(options)
   };
 };
 
