@@ -1,7 +1,6 @@
 const assert = require('assert');
 const cls = require('cls-hooked');
 const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
-const sequelizeNamespace = cls.createNamespace(TRANSACTION_NAMESPACE);
 const { createContext, resetCache } = require('dataloader-sequelize');
 const { define } = require('./utils');
 
@@ -132,8 +131,6 @@ const defaultModelGraphqlOptions = {
 const GenerateQueries = require('./libs/generateQueries');
 const GenerateMutations = require('./libs/generateMutations');
 const GenerateTypes = require('./libs/generateTypes');
-let dataloaderContext;
-
 const errorHandler = (options) => {
 
   return (error) => {
@@ -158,15 +155,14 @@ function generateSchema(options) {
     assert(models.sequelize, 'sequelize instance not found as models.sequelize.');
 
     if (options.dataloader) {
-      dataloaderContext = createContext(models.sequelize);
-      options.dataloaderContext = dataloaderContext;
+      options.dataloaderContext = createContext(models.sequelize);
     }
 
     options.Sequelize = models.Sequelize;
     options.sequelize = models.sequelize;
     options.models = models;
 
-    options.Sequelize.useCLS(sequelizeNamespace);
+    options.Sequelize.useCLS(cls.createNamespace(TRANSACTION_NAMESPACE));
 
     const { generateModelTypes } = GenerateTypes(options);
     const generateQueries = GenerateQueries(options);
@@ -208,13 +204,14 @@ const init = (_options) => {
   newOptions.limits = Object.assign({}, defaultOptions.limits, newOptions.limits);
 
   Object.assign(options, defaultOptions, newOptions);
+  options.dataloaderContext = null;
 
   return {
     generateSchema: generateSchema(options),
     // reset dataloader cache, recommended to be used at the end of each request when working with aws lambda
     resetCache,
     // use this to prime custom queries
-    dataloaderContext,
+    dataloaderContext: options.dataloaderContext,
     errorHandler: errorHandler(options)
   };
 };
