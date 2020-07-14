@@ -1,6 +1,11 @@
 const { GraphQLSchema, introspectionQuery } = require('graphql');
 const express = require('express');
 const graphqlHTTP = require('express-graphql');
+const { JSONType, DateType } = require('graphql-sequelize');
+const {
+  GraphQLBoolean
+} = require('graphql');
+
 const { generateSchema } = require('../src/index')({
   exclude: [],
   dataloader: true,
@@ -10,6 +15,9 @@ const { generateSchema } = require('../src/index')({
     default: 0,
     max: 0,
   },
+  importTypes: {
+    ImportCustomType: JSONType.default
+  },
   types: {
     customGlobalType: { id: 'id', key: 'string', value: 'string' }
   },
@@ -17,7 +25,7 @@ const { generateSchema } = require('../src/index')({
     customGlobalQuery: { input: 'customGlobalType', output: '[customGlobalType]', resolver: () => { return [{ key: '1', value: '2' }]; } }
   },
   mutations: {
-    customGlobalMutation: { input: 'customGlobalType', output: 'int', resolver: () => 1 }
+    customGlobalMutation: { input: 'customGlobalType', output: 'ImportCustomType', resolver: () => 1 }
   },
   globalHooks: {
     before: {

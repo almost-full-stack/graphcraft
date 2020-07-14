@@ -71,6 +71,8 @@ const defaultOptions = {
   dataloader: false,
   // mutations are run inside transactions. Transactions are accessible in extend hook
   transactionedMutations: true,
+  // use this to import other non-supported graphql types such as Upload or anyother
+  importTypes: {},
   // custom graphql types: type names should be unique throughout the project
   types: {},
   // custom queries: query names should be unique throughout the project
@@ -182,7 +184,7 @@ function generateSchema(options) {
 
     }
 
-    const modelTypes = generateModelTypes(modelsIncluded, options.types || {});
+    const modelTypes = generateModelTypes(modelsIncluded, {}, options);
 
     return Promise.resolve({
       query: generateQueries(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes),
@@ -196,7 +198,6 @@ function generateSchema(options) {
 const init = (_options) => {
 
   const newOptions = { ..._options };
-
 
   newOptions.naming = Object.assign({}, defaultOptions.naming, newOptions.naming);
   newOptions.naming.type = Object.assign({}, defaultOptions.naming.type, newOptions.naming.type);

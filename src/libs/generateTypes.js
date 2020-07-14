@@ -322,8 +322,10 @@ function generateGraphQLTypeFromJson(typeJson, existingTypes = {}, allCustomType
 * from Sequelize models.
 * @param {*} models The sequelize models used to create the types
 */
-function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
+function generateModelTypes(models, remoteTypes = {}, options) {
 
+  const customTypes = options.types;
+  const importTypes = options.importTypes;
   const outputTypes = remoteTypes || {};
   const inputTypes = {};
   const inputCustomTypes = [];
@@ -339,7 +341,7 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
     inputTypes[modelName] = generateGraphQLTypeFromModel(model, inputTypes, true, cache);
 
     // accumulate all types from all models
-    Object.assign(allCustomTypes, customTypes, model.graphql.types, customTypes);
+    Object.assign(allCustomTypes, customTypes, model.graphql.types, customTypes, importTypes);
 
     const allOperations = Object.assign({}, model.graphql.queries, model.graphql.mutations, options.queries, options.mutations);
 
@@ -357,11 +359,11 @@ function generateModelTypes(models, customTypes = {}, remoteTypes = {}) {
     };
 
     if (inputCustomTypes.includes(typeName) && !inputTypes[typeName]) {
-      inputTypes[typeName] = generateGraphQLTypeFromJson(type, inputTypes, allCustomTypes, true, cache);
+      inputTypes[typeName] = importTypes[typeName] || generateGraphQLTypeFromJson(type, inputTypes, allCustomTypes, true, cache);
     }
 
     if (!outputTypes[typeName]) {
-      outputTypes[typeName] = generateGraphQLTypeFromJson(type, outputTypes, allCustomTypes, false, cache);
+      outputTypes[typeName] = importTypes[typeName] || generateGraphQLTypeFromJson(type, outputTypes, allCustomTypes, false, cache);
     }
 
   }
