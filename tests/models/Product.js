@@ -33,6 +33,10 @@ module.exports = (sequelize, DataTypes) => {
 
   Product.graphql = {
     //restoreDeleted: true,
+    attributes: {
+      include: {
+      customField: {output: 'int', resolver: () => Promise.resolve(1) }
+    }},
     bulk: ['destroy', 'update'],
     readonly: false,
     joins: true,

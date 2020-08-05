@@ -98,11 +98,18 @@ const opsTypeEnum = new GraphQLEnumType({
   values: generateGraphQLField(OPS)
 });
 
-function generateIncludeArguments(includeArguments, existingTypes = {}) {
+function generateIncludeArguments(includeArguments, existingTypes = {}, isInput = false) {
   const fields = {};
 
   for (const argument in includeArguments) {
-    fields[argument] = { type: generateGraphQLField(includeArguments[argument], existingTypes) };
+    if (includeArguments[argument].output && includeArguments[argument].resolver) {
+      if (!isInput) {
+        fields[argument] = { type: generateGraphQLField(includeArguments[argument].output, existingTypes), resolve: includeArguments[argument].resolver };
+      }
+    } else {
+      fields[argument] = { type: generateGraphQLField(includeArguments[argument], existingTypes) };
+    }
+
   }
 
   return fields;
@@ -248,17 +255,11 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
 */
 function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false, cache) {
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
-  const includeAttributes = {};
   const attributes = model.graphql.attributes || {};
+  const modelAttributes = model.rawAttributes;
 
   // Include attributes which are to be included in GraphQL Type but doesn't exist in Models.
-  if (attributes.include) {
-    for (const attribute in attributes.include) {
-      includeAttributes[attribute] = { type: generateGraphQLField(attributes.include[attribute], existingTypes) };
-    }
-  }
-
-  const modelAttributes = model.rawAttributes;
+  const includeAttributes = attributes.include ? generateIncludeArguments(attributes.include, existingTypes, isInput) : {};
 
   const renameFieldMap = Object.keys(modelAttributes).reduce((attributes, attributeName) => {
 
