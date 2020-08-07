@@ -258,9 +258,6 @@ function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false
   const attributes = model.graphql.attributes || {};
   const modelAttributes = model.rawAttributes;
 
-  // Include attributes which are to be included in GraphQL Type but doesn't exist in Models.
-  const includeAttributes = attributes.include ? generateIncludeArguments(attributes.include, existingTypes, isInput) : {};
-
   const renameFieldMap = Object.keys(modelAttributes).reduce((attributes, attributeName) => {
 
     const attribute = modelAttributes[attributeName];
@@ -274,7 +271,13 @@ function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false
 
   return new GraphQLClass({
     name: isInput ? `${model.name}Input` : model.name,
-    fields: () => Object.assign({}, modelAttributeFields, generateAssociationFields(model.associations, existingTypes, isInput), includeAttributes)
+    fields: () => Object.assign(
+      {},
+      modelAttributeFields,
+      generateAssociationFields(model.associations, existingTypes, isInput),
+      // Include attributes which are to be included in GraphQL Type but doesn't exist in Models.
+      (attributes.include ? generateIncludeArguments(attributes.include, existingTypes, isInput) : {})
+    )
   });
 }
 

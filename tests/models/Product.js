@@ -35,7 +35,7 @@ module.exports = (sequelize, DataTypes) => {
     //restoreDeleted: true,
     attributes: {
       include: {
-      customField: {output: 'int', resolver: () => Promise.resolve(1) }
+      customField: {output: '[customProduct]', resolver: () => Promise.resolve(1) }
     }},
     bulk: ['destroy', 'update'],
     readonly: false,
