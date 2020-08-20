@@ -392,6 +392,9 @@ module.exports = (options) => {
 
       const preparedOptions = { ...mutationOptions, where, transaction, key, nestedUpdateMode, Sequelize };
       const graphqlParams = { source, args, context, info };
+      const previousRecord = await findOneRecord(model, !isBulk && (type === 'destroy' || type === 'update') ? where : null);
+
+      context.previousData = previousRecord;
 
       if (type === 'create') {
         data = await createMutation(graphqlParams, preparedOptions);
@@ -404,8 +407,6 @@ module.exports = (options) => {
       } else {
         throw Error('Invalid mutation.');
       }
-
-      const previousRecord = await findOneRecord(model, !isBulk && type === 'destroy' ? where : null);
 
       if (_.has(model.graphql.extend, type) || _.has(model.graphql.after, type)) {
         await (model.graphql.extend || model.graphql.after)[type](previousRecord || data, source, args, context, info, where);
