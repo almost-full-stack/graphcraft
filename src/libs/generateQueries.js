@@ -1,4 +1,5 @@
 /* eslint-disable max-depth */
+const _ = require('lodash');
 const {
   GraphQLObjectType,
   GraphQLList,
@@ -62,12 +63,29 @@ module.exports = (options) => {
       const aliases = model.graphql.alias;
       const modelQueryName = generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase });
       const modelCountQueryName = generateName(aliases.count || options.naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase });
+      const modelFineOneQueryName = generateName(aliases.byPk || options.naming.queries, { type: naming.type.byPk, name: modelTypeName }, { pascalCase });
 
       queries[generateName(model.graphql.alias.default || options.naming.queries, { type: naming.type.default, name: modelTypeName }, { pascalCase })] = {
         type: GraphQLString,
         description: 'An empty default Query. Can be overwritten for your needs (for example metadata).',
         resolve: () => '1'
       };
+
+      if ((options.findOneQueries === true || (Array.isArray(options.findOneQueries) && options.findOneQueries.includes(modelType.name))) && isAvailable(exposeOnly.queries, [modelFineOneQueryName])) {
+        queries[modelFineOneQueryName] = {
+          type: modelType,
+          args: _.omit(defaultArgs(model), ['where']),
+          resolve: (source, args, context, info) => {
+
+            if (!isAvailable(exposeOnly.queries, [modelFineOneQueryName]) && exposeOnly.throw) {
+              throw Error(exposeOnly.throw);
+            }
+
+            return query(model, source, args, context, info, { simpleAST: null });
+          },
+          description: `Returns one  ${modelType.name}.`
+        };
+      }
 
       if (models[modelType.name].graphql.excludeQueries.indexOf('count') === -1 && isAvailable(exposeOnly.queries, [modelCountQueryName])) {
         queries[modelCountQueryName] = {

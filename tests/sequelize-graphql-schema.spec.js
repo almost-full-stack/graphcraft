@@ -15,6 +15,7 @@ const { generateSchema } = require('../src/index')({
     default: 0,
     max: 0,
   },
+  findOneQueries: true,
   importTypes: {
     ImportCustomType: JSONType.default
   },
