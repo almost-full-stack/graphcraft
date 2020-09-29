@@ -104,6 +104,20 @@ queries: {},
 mutations: {},
 ```
 ```javascript
+// global hooks, behaves same way as model before/extend
+globalHooks: {
+  before: {}, // will be executed before all auto-generated mutations/queries (fetch/create/update/destroy)
+  extend: {} // will be executed after all auto-generated mutations/queries (fetch/create/update/destroy)
+},
+```
+```javascript
+findOneQueries: false, // create a find one query for each model (i.e. ProductByPk), which takes primary key (i.e. id) as argument and returns one item. Can also pass an array of models to create for specific models only (i.e. ['Product', 'Image'])
+```
+```javascript
+fetchDeleted: false, // Globally when using queries, this will allow to fetch both deleted and undeleted records (works only when tables have paranoid option enabled)
+restoreDeleted: false, // Applies globally, create restore endpoint for deleted records
+```
+```javascript
 // data, source, args, context, info are passed as function arguments
 // executes after all queries/mutations
 logger() {
