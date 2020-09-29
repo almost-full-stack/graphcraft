@@ -214,7 +214,7 @@ readonly: false, // exclude create/delete/update mutations automatically
 fetchDeleted: false, // same as fetchDeleted as global except it lets you override global settings
 restoreDeleted: false // same as restoreDeleted as global except it lets you override global settings
 ```
-
+### Usage in Model
 ```javascript
 Product.graphql = {
     attributes: {
