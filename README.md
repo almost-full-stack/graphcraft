@@ -207,6 +207,13 @@ before: {},
 overwrite: {},
 joins: false // make a query using join (left/right/inner) instead of batch dataloader, join will appear in all subtype args. Right join won't work for sqlite
 ```
+```javscript
+readonly: false, // exclude create/delete/update mutations automatically
+```
+```javascript
+fetchDeleted: false, // same as fetchDeleted as global except it lets you override global settings
+restoreDeleted: false // same as restoreDeleted as global except it lets you override global settings
+```
 
 ```javascript
 Product.graphql = {
