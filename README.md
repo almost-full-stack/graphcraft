@@ -96,12 +96,10 @@ transactionedMutations: true,
 ```
 ```javascript
 // generic or those types/queries/mutations which are not model specific
-// custom graphql types
-types: {},
-// custom queries
-queries: {},
-// custom mutations
-mutations: {},
+importTypes: {}, // use this to import other non-supported graphql types such as Upload or anyother
+types: {}, // custom graphql types
+queries: {}, // custom queries
+mutations: {}, // custom mutations
 ```
 ```javascript
 // global hooks, behaves same way as model before/extend
