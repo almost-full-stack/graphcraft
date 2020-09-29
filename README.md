@@ -59,11 +59,12 @@ limits: {
   default: 50, // default limit. use 0 for no limit
   max: 100, // maximum allowed limit. use 0 for unlimited
   nested: false // whether to apply these limits on nested/sub types or not
-},
-// nested objects can be passed and will be mutated automatically. Only hasMany and belongsTo relation supported.
-nestedMutations: true, // doesn't work with add bulk mutation
+}
 ```
 ```javascript
+// nested objects can be passed and will be mutated automatically. Only hasMany and belongsTo relation supported.
+nestedMutations: true, // doesn't work with add bulk mutation
+
 /**
  * update modes when sending nested association objects
  * UPDATE_ONLY > update only incoming records
