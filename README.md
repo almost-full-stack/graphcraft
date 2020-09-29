@@ -220,7 +220,8 @@ Product.graphql = {
     attributes: {
         exclude: ['description'],
         include: { modelPortfolioId: 'int', obj: 'myObj' },
-    }
+    },
+    ...REST_OF_OPTIONS
 };
 ```
 
