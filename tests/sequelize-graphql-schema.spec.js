@@ -11,6 +11,9 @@ const { generateSchema } = require('../src/index')({
   dataloader: true,
   nestedMutations: true,
   restoreDeleted: true,
+  naming: {
+    input: 'input'
+  },
   limits: {
     default: 0,
     max: 0,

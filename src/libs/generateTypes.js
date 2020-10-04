@@ -158,7 +158,7 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
 
     // Add operation field for nested mutations
     if (isInput) {
-      fields._Op = { type: opsTypeEnum, description: 'Affects only when updating sub types.' };
+      fields._Op = { type: opsTypeEnum, description: 'Used when mutating relations in update mutations.' };
     }
 
     // GraphQLInputObjectType do not accept fields with resolve

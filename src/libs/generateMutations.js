@@ -88,12 +88,13 @@ module.exports = (options) => {
       const outputModelType = outputTypes[modelTypeName];
       const model = models[modelTypeName];
       const key = model.primaryKeyAttributes[0];
+      const inputName = generateName(naming.input, { name: modelTypeName }, { pascalCase });
 
       if (!model.graphql.excludeMutations.includes('create') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].create)) {
         mutations[modelMutationNames[modelTypeName].create] = {
           type: outputModelType,
           description: 'Create ' + modelTypeName,
-          args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
+          args: Object.assign({ [inputName]: { type: inputModelType } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].create)(source, args, context, info, { type: 'create', models, modelTypeName })
         };
       }
@@ -102,7 +103,7 @@ module.exports = (options) => {
         mutations[modelMutationNames[modelTypeName].update] = {
           type: outputModelType || GraphQLInt,
           description: 'Update ' + modelTypeName,
-          args: Object.assign({ [modelTypeName]: { type: inputModelType } }, includeArguments),
+          args: Object.assign({ [inputName]: { type: inputModelType } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].update)(source, args, context, info, { type: 'update', models, modelTypeName })
         };
       }
@@ -134,7 +135,7 @@ module.exports = (options) => {
         mutations[modelMutationNames[modelTypeName].createBulk] = {
           type: (typeof bulk.bulkColumn === 'string' || bulk.returning) ? new GraphQLList(outputModelType) : GraphQLInt,
           description: 'Create bulk ' + modelTypeName + ' and return number of rows or created rows.',
-          args: Object.assign({ [modelTypeName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
+          args: Object.assign({ [inputName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].createBulk)(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName })
         };
 
@@ -145,7 +146,7 @@ module.exports = (options) => {
         mutations[modelMutationNames[modelTypeName].updateBulk] = {
           type: bulk.returning ? new GraphQLList(outputModelType) : GraphQLInt,
           description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
-          args: Object.assign({ [modelTypeName]: { type: new GraphQLList(new GraphQLNonNull(inputModelType)) } }, includeArguments),
+          args: Object.assign({ [inputName]: { type: new GraphQLList(new GraphQLNonNull(inputModelType)) } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].updateBulk)(source, args, context, info, { type: 'update', isBulk: true, models, modelTypeName })
         };
 
@@ -176,9 +177,10 @@ module.exports = (options) => {
         const currentMutation = allCustomMutations[mutationName];
         const type = currentMutation.output ? generateGraphQLField(currentMutation.output, outputTypes) : GraphQLInt;
         const description = currentMutation.description || undefined;
+        const inputName = currentMutation.input ? sanitizeField(currentMutation.input) : '';
         const args = Object.assign(
           {}, includeArguments,
-          currentMutation.input ? { [sanitizeField(currentMutation.input)]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
+          currentMutation.input ? { [generateName(naming.input, { name: inputName }, { pascalCase })]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
         );
 
         fields[generateName(mutationName, {}, { pascalCase })] = {

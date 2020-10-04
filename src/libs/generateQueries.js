@@ -19,7 +19,7 @@ module.exports = (options) => {
 
   const { query } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
-  const { naming, exposeOnly, fetchDeleted } = options;
+  const { naming, exposeOnly, fetchDeleted, noDefaults } = options;
   const pascalCase = naming.pascalCase;
 
   /**
@@ -41,7 +41,7 @@ module.exports = (options) => {
       const model = models[modelName];
       const outputTypeName = modelName;
       const customQueryNames = Object.keys(model.graphql.queries || {});
-      const modelQueryName = generateName(model.graphql.alias.fetch || options.naming.queries, { type: naming.type.get, name: outputTypeName }, { pascalCase });
+      const modelQueryName = generateName(model.graphql.alias.fetch || naming.queries, { type: naming.type.get, name: outputTypeName }, { pascalCase });
       const toBeGenerated = [].concat(customQueryNames).concat(
         model.graphql.excludeQueries.includes('fetch') ? [] : modelQueryName
       );
@@ -61,15 +61,17 @@ module.exports = (options) => {
       const model = models[modelType.name];
       const paranoidType = model.options.paranoid && (model.graphql.paranoid || model.graphql.fetchDeleted || fetchDeleted) ? { fetchDeleted: { type: GraphQLBoolean } } : {};
       const aliases = model.graphql.alias;
-      const modelQueryName = generateName(aliases.fetch || options.naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase });
-      const modelCountQueryName = generateName(aliases.count || options.naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase });
-      const modelFineOneQueryName = generateName(aliases.byPk || options.naming.queries, { type: naming.type.byPk, name: modelTypeName }, { pascalCase });
+      const modelQueryName = generateName(aliases.fetch || naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase });
+      const modelCountQueryName = generateName(aliases.count || naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase });
+      const modelFineOneQueryName = generateName(aliases.byPk || naming.queries, { type: naming.type.byPk, name: modelTypeName }, { pascalCase });
 
-      queries[generateName(model.graphql.alias.default || options.naming.queries, { type: naming.type.default, name: modelTypeName }, { pascalCase })] = {
-        type: GraphQLString,
-        description: 'An empty default Query. Can be overwritten for your needs (for example metadata).',
-        resolve: () => '1'
-      };
+      if (!noDefaults) {
+        queries[generateName(model.graphql.alias.default || naming.queries, { type: naming.type.default, name: modelTypeName }, { pascalCase })] = {
+          type: GraphQLString,
+          description: 'An empty default Query. Can be overwritten for your needs (for example metadata).',
+          resolve: () => '1'
+        };
+      }
 
       if ((options.findOneQueries === true || (Array.isArray(options.findOneQueries) && options.findOneQueries.includes(modelType.name))) && isAvailable(exposeOnly.queries, [modelFineOneQueryName])) {
         queries[modelFineOneQueryName] = {
@@ -144,9 +146,10 @@ module.exports = (options) => {
         const currentQuery = allCustomQueries[query];
         const type = currentQuery.output ? generateGraphQLField(currentQuery.output, outputTypes) : GraphQLInt;
         const description = currentQuery.description || undefined;
+        const inputName = currentQuery.input ? sanitizeField(currentQuery.input) : '';
         const args = Object.assign(
           {}, defaultListArguments, includeArguments,
-          currentQuery.input ? { [sanitizeField(currentQuery.input)]: { type: generateGraphQLField(currentQuery.input, inputTypes) } } : {},
+          currentQuery.input ? { [generateName(naming.input, { name: inputName }, { pascalCase })]: { type: generateGraphQLField(currentQuery.input, inputTypes) } } : {},
         );
         const resolve = async (source, args, context, info) => {
 
@@ -168,7 +171,7 @@ module.exports = (options) => {
     }
 
     return new GraphQLObjectType({
-      name: options.naming.rootQueries,
+      name: naming.rootQueries,
       fields
     });
   };
