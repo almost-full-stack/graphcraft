@@ -88,14 +88,14 @@ module.exports = (options) => {
       const outputModelType = outputTypes[modelTypeName];
       const model = models[modelTypeName];
       const key = model.primaryKeyAttributes[0];
-      const inputName = generateName(naming.input, { name: modelTypeName }, { pascalCase });
+      const inputName = generateName(naming.input, { name: modelTypeName }, { noCase: true });
 
       if (!model.graphql.excludeMutations.includes('create') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].create)) {
         mutations[modelMutationNames[modelTypeName].create] = {
           type: outputModelType,
           description: 'Create ' + modelTypeName,
           args: Object.assign({ [inputName]: { type: inputModelType } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].create)(source, args, context, info, { type: 'create', models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].create)(source, args, context, info, { type: 'create', models, modelTypeName, inputName })
         };
       }
 
@@ -104,7 +104,7 @@ module.exports = (options) => {
           type: outputModelType || GraphQLInt,
           description: 'Update ' + modelTypeName,
           args: Object.assign({ [inputName]: { type: inputModelType } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].update)(source, args, context, info, { type: 'update', models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].update)(source, args, context, info, { type: 'update', models, modelTypeName, inputName })
         };
       }
 
@@ -114,7 +114,7 @@ module.exports = (options) => {
           description: 'Delete ' + modelTypeName,
           // enhance this to support composite keys
           args: Object.assign({ [key]: { type: new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize)) } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].delete)(source, args, context, info, { type: 'destroy', models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].delete)(source, args, context, info, { type: 'destroy', models, modelTypeName, inputName })
         };
       }
 
@@ -123,7 +123,7 @@ module.exports = (options) => {
           type: outputModelType,
           description: 'Restore ' + modelTypeName,
           args: Object.assign({ [key]: { type: new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize)) } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].restore)(source, args, context, info, { type: 'restore', models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].restore)(source, args, context, info, { type: 'restore', models, modelTypeName, inputName })
         };
       }
 
@@ -136,7 +136,7 @@ module.exports = (options) => {
           type: (typeof bulk.bulkColumn === 'string' || bulk.returning) ? new GraphQLList(outputModelType) : GraphQLInt,
           description: 'Create bulk ' + modelTypeName + ' and return number of rows or created rows.',
           args: Object.assign({ [inputName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].createBulk)(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].createBulk)(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName, inputName })
         };
 
       }
@@ -147,7 +147,7 @@ module.exports = (options) => {
           type: bulk.returning ? new GraphQLList(outputModelType) : GraphQLInt,
           description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
           args: Object.assign({ [inputName]: { type: new GraphQLList(new GraphQLNonNull(inputModelType)) } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].updateBulk)(source, args, context, info, { type: 'update', isBulk: true, models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].updateBulk)(source, args, context, info, { type: 'update', isBulk: true, models, modelTypeName, inputName })
         };
 
       }
@@ -158,7 +158,7 @@ module.exports = (options) => {
           type: GraphQLInt,
           description: 'Delete bulk ' + modelTypeName,
           args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize))) } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].deleteBulk)(source, args, context, info, { type: 'destroy', isBulk: true, models, modelTypeName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].deleteBulk)(source, args, context, info, { type: 'destroy', isBulk: true, models, modelTypeName, inputName })
         };
 
       }
@@ -177,17 +177,18 @@ module.exports = (options) => {
         const currentMutation = allCustomMutations[mutationName];
         const type = currentMutation.output ? generateGraphQLField(currentMutation.output, outputTypes) : GraphQLInt;
         const description = currentMutation.description || undefined;
-        const inputName = currentMutation.input ? sanitizeField(currentMutation.input) : '';
+        const input = currentMutation.input ? sanitizeField(currentMutation.input) : '';
+        const inputName = generateName(naming.input, { name: input }, { noCase: true });
         const args = Object.assign(
           {}, includeArguments,
-          currentMutation.input ? { [generateName(naming.input, { name: inputName }, { pascalCase })]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
+          currentMutation.input ? { [inputName]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
         );
 
         fields[generateName(mutationName, {}, { pascalCase })] = {
           type,
           args,
           description,
-          resolve: (source, args, context, info) => mutationWrapper(mutationName)(source, args, context, info, { type: 'custom', models, resolver: currentMutation.resolver })
+          resolve: (source, args, context, info) => mutationWrapper(mutationName)(source, args, context, info, { type: 'custom', models, resolver: currentMutation.resolver, inputName })
         };
 
       }

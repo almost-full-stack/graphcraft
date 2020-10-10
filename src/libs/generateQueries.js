@@ -146,12 +146,15 @@ module.exports = (options) => {
         const currentQuery = allCustomQueries[query];
         const type = currentQuery.output ? generateGraphQLField(currentQuery.output, outputTypes) : GraphQLInt;
         const description = currentQuery.description || undefined;
-        const inputName = currentQuery.input ? sanitizeField(currentQuery.input) : '';
+        const input = currentQuery.input ? sanitizeField(currentQuery.input) : '';
+        const inputName = generateName(naming.input, { name: input });
         const args = Object.assign(
           {}, defaultListArguments, includeArguments,
-          currentQuery.input ? { [generateName(naming.input, { name: inputName }, { pascalCase })]: { type: generateGraphQLField(currentQuery.input, inputTypes) } } : {},
+          currentQuery.input ? { [inputName]: { type: generateGraphQLField(currentQuery.input, inputTypes) } } : {},
         );
         const resolve = async (source, args, context, info) => {
+
+          if (input) args[input] = args[inputName];
 
           if (!isAvailable(exposeOnly.queries, [query]) && exposeOnly.throw) {
             throw Error(exposeOnly.throw);

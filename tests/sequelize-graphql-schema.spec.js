@@ -6,17 +6,23 @@ const {
   GraphQLBoolean
 } = require('graphql');
 
-const { generateSchema } = require('../src/index')({
+const { generateSchema, resetCache } = require('../src/index')({
   exclude: [],
   dataloader: true,
   nestedMutations: true,
   restoreDeleted: true,
-  naming: {
-    input: 'input'
-  },
   limits: {
     default: 0,
     max: 0,
+  },
+  naming: {
+    pascalCase: false, // applied everywhere
+    input: 'input',
+    type: {
+      create: "Add",
+      update: "Edit",
+      get: "Get",
+    },
   },
   findOneQueries: true,
   importTypes: {
@@ -53,12 +59,11 @@ const models = require('./models');
 app.use('/', async (req, res) => {
   
   const schema = await generateSchema(models, req);
-
-  return graphqlHTTP({
+  
+  const response = await graphqlHTTP({
     schema: new GraphQLSchema(schema),
     graphiql: true
   })(req, res);
-
 
 });
 

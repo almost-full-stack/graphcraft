@@ -62,14 +62,18 @@ const generateName = (nameTemplate = '', map = {}, options = {}) => {
 
   tokenizeTemplate(nameTemplate, names);
 
-  return camelCase(names.map((name) => {
+  const str = names.map((name) => {
 
     if (!name.startsWith('{')) return name;
 
     name = name.replace('{', '').replace('}', '');
 
     return map[name] || '';
-  }), { pascalCase: options.pascalCase });
+  });
+
+  if (options.noCase) return str.join('');
+
+  return camelCase(str, { pascalCase: options.pascalCase });
 
 };
 

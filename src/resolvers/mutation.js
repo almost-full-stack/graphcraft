@@ -359,7 +359,9 @@ module.exports = (options) => {
 
   return async (source, args, context, info, mutationOptions) => {
 
-    const { type, isBulk, modelTypeName, models, resolver } = mutationOptions;
+    const { type, isBulk, modelTypeName, models, resolver, inputName } = mutationOptions;
+
+    args[modelTypeName] = args[inputName] || args[modelTypeName];
 
     await options.authorizer(source, args, context, info);
 
