@@ -11,6 +11,7 @@ async function createMutation (graphqlParams, mutationOptions) {
   const { isBulk, modelTypeName, models, transaction, skipReturning } = mutationOptions;
   const model = models[modelTypeName];
   const { bulkColumn, returning } = Array.isArray(model.graphql.bulk) ? {} : model.graphql.bulk;
+  // if a column is provided in the table as bulk identifier, this would be used along with bulkColumn option
   const bulkIdentifier = uuid();
   let input = args[modelTypeName];
 
