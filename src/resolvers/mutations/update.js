@@ -1,17 +1,17 @@
 const _ = require('lodash');
 const { keysWhichAreModelAssociations } = require('../../utils');
+const { OPS } = require('../../constants');
 const createMutation = require('./create');
 const destroyMutation = require('./destroy');
 
 function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
-  const { modelTypeName, models, nestedUpdateMode, Sequelize } = mutationOptions;
+  const { modelTypeName, models, Sequelize } = mutationOptions;
   const model = models[modelTypeName];
   const keys = model.primaryKeyAttributes;
   const { input, parentRecord, parentModel } = options;
   const parentKeys = parentModel.primaryKeyAttributes;
   const availableAssociations = keysWhichAreModelAssociations(input, model.associations);
-  const updateMode = nestedUpdateMode.toUpperCase();
 
   return Promise.all(availableAssociations.map((association) => {
 
@@ -27,10 +27,10 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
       if (record[keys[0]]) {
 
-        const inputKeys = Object.keys(record);
-        const recordForDelete = (updateMode === 'MIXED' || updateMode === 'UPDATE_ADD_DELETE') && inputKeys.length === 1 && inputKeys.includes(keys[0]);
-
         if (association.through) {
+
+          const inputKeys = Object.keys(record);
+          const recordForDelete = (record._Op === OPS.DELETE || record._Op === OPS.UPDATE) && inputKeys.length === 1 && inputKeys.includes(keys[0]);
 
           // check if association through input exists, if so it will be added as a new one as well as it will be deleted
           if (record[association.through.name] || (recordForDelete && !record[association.through.name])) {
@@ -50,13 +50,13 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
             });
           }
 
-        } else if (recordForDelete) {
+        } else if (record._Op === OPS.DELETE) {
           recordsToDestroy.push(record[keys[0]]);
         } else {
           recordsToUpdate.push(record);
         }
 
-      } else if (updateMode === 'UPDATE_ADD' || updateMode === 'MIXED' || updateMode === 'UPDATE_ADD_DELETE') {
+      } else if (record._Op === OPS.CREATE) {
         recordsToAdd.push(record);
       }
 
@@ -72,7 +72,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
         [Sequelize.Op.or]: recordsToDestroy
       } : {
         [keys[0]]: {
-          [updateMode === 'UPDATE_ADD_DELETE' ? Sequelize.Op.notIn : Sequelize.Op.in]: recordsToDestroy
+          [Sequelize.Op.in]: recordsToDestroy
         },
         [association.fields[0]]: parentRecord[parentKeys[0]]
       };
@@ -127,7 +127,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 async function updateMutation (graphqlParams, mutationOptions) {
 
   const { args, context } = graphqlParams;
-  const { isBulk, where, modelTypeName, models, transaction, skipReturning, nestedUpdateMode } = mutationOptions;
+  const { isBulk, where, modelTypeName, models, transaction, skipReturning } = mutationOptions;
   const model = models[modelTypeName];
   const { returning } = Array.isArray(model.graphql.bulk) ? {} : model.graphql.bulk;
   const input = args[modelTypeName];
@@ -171,10 +171,7 @@ async function updateMutation (graphqlParams, mutationOptions) {
   const scope = Array.isArray(model.graphql.scopes) ? { method: [model.graphql.scopes[0], _.get(variablePath, model.graphql.scopes[1], model.graphql.scopes[2] || null)] } : model.graphql.scopes;
 
   await model.scope(scope).update(input, { where, transaction });
-
-  if (nestedUpdateMode.toUpperCase() !== 'IGNORE') {
-    await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: input, parentModel: model });
-  }
+  await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: input, parentModel: model });
 
   if (skipReturning) {
     return;
