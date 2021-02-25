@@ -24,7 +24,11 @@ module.exports = (options) => {
     await options.authorizer(source, args, context, info);
 
     if (type === 'custom') {
-      return resolver(source, args, context, info);
+      const data = await resolver(source, args, context, info);
+
+      await options.logger(data, source, args, context, info);
+
+      return data;
     }
 
     const model = models[modelTypeName];
