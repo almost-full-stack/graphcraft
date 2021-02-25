@@ -16,13 +16,7 @@ const { generateSchema, resetCache } = require('../src/index')({
     max: 0,
   },
   naming: {
-    pascalCase: false, // applied everywhere
     input: 'input',
-    type: {
-      create: "Add",
-      update: "Edit",
-      get: "Get",
-    },
   },
   findOneQueries: true,
   importTypes: {

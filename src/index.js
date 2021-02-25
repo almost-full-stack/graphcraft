@@ -53,17 +53,6 @@ const defaultOptions = {
     throw: false // string message
   },
 
-  /**
-   * update modes when sending nested association objects, if _Op field is not specified and updateMode is not set to WITHOP one of following will apply automatically.
-   * UPDATE_ONLY > update incoming records
-   * UPDATE_ADD > update existing records and add new ones i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated and record[1] will be added
-   * UPDATE_ADD_DELETE > not recommended: update existing records, add new ones and delete non-existent records i.e [{id: 1, name: 'test'}, {name: 'test2'}] record[0] will be updated, record[1] will be added, anything else will be deleted
-   * MIXED > i.e [{id: 1, name: 'test'}, {id:2}, {name: 'test2'}], record[0] will be updated, record[1] will be deleted and record[2] will be added
-   * WITHOP > _Op field to be specified with an operation, that operation to be used while mutating sub types
-   * IGNORE > ignore nested update
-   */
-
-  nestedUpdateMode: 'MIXED',
   // these models will be excluded from graphql schema
   exclude: [],
   // include these arguments to all queries/mutations

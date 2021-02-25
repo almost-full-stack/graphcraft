@@ -97,7 +97,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
       if (record[keys[0]]) {
 
         const inputKeys = Object.keys(record);
-        const recordForDelete = (updateMode === 'MIXED' || updateMode === 'UPDATE_ADD_DELETE') && inputKeys.length === 1 && inputKeys.includes(keys[0]);
+        const recordForDelete = (record._Op && record._Op === 'DELETE') && inputKeys.includes(keys[0]);
 
         if (association.through) {
 
@@ -121,11 +121,11 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 
         } else if (recordForDelete) {
           recordsToDestroy.push(record[keys[0]]);
-        } else {
+        } else if (record._Op === 'UPDATE') {
           recordsToUpdate.push(record);
         }
 
-      } else if (updateMode === 'UPDATE_ADD' || updateMode === 'MIXED' || updateMode === 'UPDATE_ADD_DELETE') {
+      } else if (record._Op && record._Op === 'CREATE') {
         recordsToAdd.push(record);
       }
 
@@ -258,7 +258,7 @@ async function createMutation (graphqlParams, mutationOptions) {
 async function updateMutation (graphqlParams, mutationOptions) {
 
   const { args, context } = graphqlParams;
-  const { isBulk, where, modelTypeName, models, transaction, skipReturning, nestedUpdateMode } = mutationOptions;
+  const { isBulk, where, modelTypeName, models, transaction, skipReturning } = mutationOptions;
   const model = models[modelTypeName];
   const { returning } = Array.isArray(model.graphql.bulk) ? {} : model.graphql.bulk;
   const input = args[modelTypeName];
@@ -303,9 +303,7 @@ async function updateMutation (graphqlParams, mutationOptions) {
 
   await model.scope(scope).update(input, { where, transaction });
 
-  if (nestedUpdateMode.toUpperCase() !== 'IGNORE') {
-    await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: input, parentModel: model });
-  }
+  await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: input, parentModel: model });
 
   if (skipReturning) {
     return;
@@ -424,7 +422,7 @@ module.exports = (options) => {
 
     };
 
-    if (options.transactionedMutations && type != 'custom') {
+    if (options.transactionedMutations && type !== 'custom') {
 
       return sequelize.transaction((transaction) => resolve(transaction));
 
