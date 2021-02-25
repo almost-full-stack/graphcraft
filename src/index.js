@@ -52,7 +52,6 @@ const defaultOptions = {
     // instead of not generating queries/mutations this will instead throw an error.
     throw: false // string message
   },
-
   // these models will be excluded from graphql schema
   exclude: [],
   // include these arguments to all queries/mutations

@@ -167,6 +167,19 @@ const getOrderBy = (orderArgs) => {
   return orderBy;
 };
 
+function keysWhichAreModelAssociations (input, associations) {
+
+  const keys = Object.keys(input);
+
+  return keys.reduce((all, key) => {
+    if (associations[key] && input[key] && input[key].length) {
+      all.push({ key, target: associations[key].target, fields: [associations[key].foreignKey], through: associations[key].through ? associations[key].through.model : null }); // Using an array to support multiple keys in future.
+    }
+
+    return all;
+  }, []);
+}
+
 module.exports = {
   define,
   isFieldArray,
@@ -176,5 +189,6 @@ module.exports = {
   isAvailable,
   whereQueryVarsToValues,
   getIncludes,
-  getOrderBy
+  getOrderBy,
+  keysWhichAreModelAssociations
 };

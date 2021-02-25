@@ -1,4 +1,7 @@
 # GraphCraft
+=======
+### This repository and package is renamed to graphcraft.
+
 
 [![npm version](https://badge.fury.io/js/graphcraft.svg)](https://www.npmjs.com/package/graphcraft)
 [![dependencies](https://david-dm.org/almost-full-stack/graphcraft.svg)](https://github.com/almost-full-stack/graphcraft)
