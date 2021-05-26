@@ -1,6 +1,6 @@
 {
   "name": "graphcraft",
-  "version": "1.0.0-beta.39",
+  "version": "1.0.0-beta.41",
   "description": "Rapildy build and extend GraphQL API based on Sequelize models. This library helps you focus on business logic while taking care of GraphQL schema automatically.",
   "main": "src/index.js",
   "scripts": {
@@ -20,6 +20,7 @@
     "README"
   ],
   "publishConfig": {
+    "cache": "cache/.npm",
     "registry": "https://registry.npmjs.org/"
   },
   "repository": {
