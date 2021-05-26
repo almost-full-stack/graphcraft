@@ -4,3 +4,4 @@ coverage/
 tests/database.db
 lib/
 .npmrc
+cache/
