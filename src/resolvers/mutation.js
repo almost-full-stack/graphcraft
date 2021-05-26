@@ -76,19 +76,25 @@ module.exports = (options) => {
         await (globalHooks.extend || globalHooks.extend)[type](previousRecord || data, source, args, context, info, where);
       }
 
-      await options.logger(data, source, args, context, info);
-
       return data;
 
     };
 
+    let data;
+
     if (options.transactionedMutations && type !== 'custom') {
 
-      return sequelize.transaction((transaction) => resolve(transaction));
+      data = await sequelize.transaction((transaction) => resolve(transaction));
+
+    } else {
+
+      data = await resolve();
 
     }
 
-    return resolve();
+    await options.logger(data, source, args, context, info);
+
+    return data;
 
   };
 
