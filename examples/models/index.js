@@ -1,10 +1,11 @@
-'use strict'
+'use strict';
 
 const fs = require('fs');
 const path = require('path');
 const Sequelize = require('sequelize');
 const basename = path.basename(module.filename);
 const env = process.env.NODE_ENV || 'development';
+// eslint-disable-next-line no-path-concat
 const config = require(__dirname + '/../config.json')[env];
 const db = {};
 let sequelize;
@@ -20,6 +21,7 @@ if (config.use_env_variable) {
   );
 }
 
+// eslint-disable-next-line no-sync
 fs.
   readdirSync(__dirname).
   filter((file) => {
@@ -31,13 +33,13 @@ fs.
     const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
 
     db[model.name] = model;
-  })
+  });
 
 Object.keys(db).forEach((modelName) => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
   }
-})
+});
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;

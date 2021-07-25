@@ -1,12 +1,9 @@
-const { GraphQLSchema, introspectionQuery } = require('graphql');
+const { GraphQLSchema } = require('graphql');
 const express = require('express');
 const graphqlHTTP = require('express-graphql');
-const { JSONType, DateType } = require('graphql-sequelize');
-const {
-  GraphQLBoolean
-} = require('graphql');
+const { JSONType } = require('graphql-sequelize');
 
-const { generateSchema, resetCache } = require('../src/index')({
+const { generateSchema } = require('../src/index')({
   exclude: [],
   dataloader: true,
   nestedMutations: true,
@@ -20,47 +17,60 @@ const { generateSchema, resetCache } = require('../src/index')({
   },
   findOneQueries: true,
   importTypes: {
-    ImportCustomType: JSONType.default
+    ImportCustomType: JSONType.default,
   },
   types: {
-    customGlobalType: { id: 'id', key: 'string', value: 'string' }
+    customGlobalType: { id: 'id', key: 'string', value: 'string' },
   },
   queries: {
-    customGlobalQuery: { input: 'customGlobalType', output: '[customGlobalType]', resolver: () => { return [{ key: '1', value: '2' }]; } }
+    customGlobalQuery: {
+      input: 'customGlobalType',
+      output: '[customGlobalType]',
+      resolver: () => {
+        return [{ key: '1', value: '2' }];
+      },
+    },
   },
   mutations: {
-    customGlobalMutation: { input: 'customGlobalType', output: 'ImportCustomType', resolver: () => 1 }
+    customGlobalMutation: {
+      input: 'customGlobalType',
+      output: 'ImportCustomType',
+      resolver: () => 1,
+    },
   },
   globalHooks: {
     before: {
       create: () => {
+        // eslint-disable-next-line no-console
         console.log('before global');
+
         return Promise.resolve();
-      }
+      },
     },
     extend: {
       create: () => {
+        // eslint-disable-next-line no-console
         console.log('extend global');
+
         return Promise.resolve();
-      }
-    }
-  }
+      },
+    },
+  },
 });
 
 const app = express();
 const models = require('./models');
 
 app.use('/', async (req, res) => {
-  
   const schema = await generateSchema(models, req);
-  
-  const response = await graphqlHTTP({
-    schema: new GraphQLSchema(schema),
-    graphiql: true
-  })(req, res);
 
+  await graphqlHTTP({
+    schema: new GraphQLSchema(schema),
+    graphiql: true,
+  })(req, res);
 });
 
 app.listen(3000, () => {
+  // eslint-disable-next-line no-console
   console.log('RUNNING ON 3000');
 });
