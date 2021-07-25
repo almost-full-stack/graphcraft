@@ -1,8 +1,4 @@
 {
-  "plugins": ["transform-object-rest-spread", "babel-plugin-transform-async-to-promises"],
-  "presets": [
-    "babel-preset-es2015"
-  ],
   "ignore": [
     "/src/**/__tests__/",
     "/src/__tests__/"

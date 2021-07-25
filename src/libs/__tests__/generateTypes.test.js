@@ -26,8 +26,8 @@ describe('Type Generators', () => {
     expect(generateGraphQLField('boolean')).toEqual(GraphQLBoolean);
     expect(generateGraphQLField('float')).toEqual(GraphQLFloat);
     expect(generateGraphQLField('id')).toEqual(GraphQLID);
-    expect(generateGraphQLField('json')).toEqual(JSONType);
-    expect(generateGraphQLField('date')).toEqual(DateType);
+    expect(generateGraphQLField('json')).toEqual(JSONType.default);
+    expect(generateGraphQLField('date')).toEqual(DateType.default);
     expect(generateGraphQLField('[string]')).toEqual(new GraphQLList(GraphQLString));
     expect(generateGraphQLField('string!')).toEqual(GraphQLNonNull(GraphQLString));
     expect(generateGraphQLField('[string]!')).toEqual(GraphQLNonNull(new GraphQLList(GraphQLString)));
@@ -190,17 +190,20 @@ describe('Type Generators', () => {
         fieldB: {
           type: GraphQLInt
         },
-        modelC: new GraphQLList(modelCType)
+        modelCs: {
+          type: new GraphQLList(modelCType),
+          resolve: () => true
+        }
       })
     });
 
     const { outputTypes } = generateModelTypes({ modelB, modelC, modelD, modelE });
 
-    it('Should create hasMany association from Model B > C.', () => {
-      expect(outputTypes.modelB._fields().modelC).toEqual(modelBType._fields().modelC);
+    it('Should create hasMany association from Model B to C.', () => {
+      expect(outputTypes.modelB._fields().modelCs.type).toEqual(modelBType._fields().modelCs.type);
     });
 
-    it('Should create belongsTo association from Model C > B.', () => {
+    it('Should create belongsTo association from Model C to B.', () => {
       expect(stringifier(outputTypes.modelC._fields().modelB)).toEqual(stringifier(modelB));
     });
 

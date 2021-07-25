@@ -326,7 +326,7 @@ function generateGraphQLTypeFromJson(typeJson, existingTypes = {}, allCustomType
 * from Sequelize models.
 * @param {*} models The sequelize models used to create the types
 */
-function generateModelTypes(models, remoteTypes = {}, options) {
+function generateModelTypes(models, remoteTypes = {}, options = {}) {
 
   const customTypes = options.types;
   const importTypes = options.importTypes;

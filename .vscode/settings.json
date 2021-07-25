@@ -2,5 +2,6 @@
   "editor.tabSize": 2,
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
-  }
+  },
+  "editor.defaultFormatter": "dbaeumer.vscode-eslint"
 }
