@@ -49,7 +49,7 @@ module.exports = (options) => {
     const before = (findOptions, args) => {
       // hook coming from graphql.find.before
       if (model.graphql.find?.before) {
-        model.graphql.beforeFind(findOptions, args, context);
+        model.graphql.find.before(findOptions, args, context);
       }
 
       if (isAssociation && model.through) {
