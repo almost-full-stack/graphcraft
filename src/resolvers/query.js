@@ -48,7 +48,7 @@ module.exports = (options) => {
     // sequelize-graphql before hook to parse orderby clause to make sure it supports multiple orderby
     const before = (findOptions, args) => {
       // hook coming from graphql.find.before
-      if (model.graphql.find?.before) {
+      if (model.graphql?.find?.before) {
         model.graphql.find.before(findOptions, args, context);
       }
 
@@ -78,7 +78,7 @@ module.exports = (options) => {
       return findOptions;
     };
 
-    const after = model.graphql.find?.after;
+    const after = model.graphql?.find?.after;
 
     // see if a scope is specified to be applied to find queries.
     const variablePath = { args, context };
