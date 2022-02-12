@@ -7,10 +7,10 @@ const app = express();
 module.exports = (models, options) => {
 
   app.use('/', async (req, res) => {
-    
+
     const generateSchema = graphcraft(options);
     const schema = await generateSchema(models, req);
-    
+
     return graphqlHTTP({
       schema: new GraphQLSchema(schema),
       graphiql: true
