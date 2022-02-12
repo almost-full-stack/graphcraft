@@ -10,12 +10,12 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   Attribute.associate = function (models) {
-    Attribute.belongsToMany(models.Product, {through: models.ProductAttribute, foreignKey: 'attributeId'});
+    Attribute.belongsToMany(models.Product, { through: models.ProductAttribute, foreignKey: 'attributeId' });
   };
 
   Attribute.graphql = {
     mutations: {
-      AttributeMutation: {resolver: () => 1}
+      AttributeMutation: { resolver: () => 1 }
     }
   };
 
