@@ -224,6 +224,10 @@ readonly: false, // exclude create/delete/update mutations automatically
 fetchDeleted: false, // same as fetchDeleted as global except it lets you override global settings
 restoreDeleted: false // same as restoreDeleted as global except it lets you override global settings
 ```
+```javascript
+// define hooks to be invoked on find queries {before, after}
+find: {}
+```
 ### Usage in Model
 ```javascript
 Product.graphql = {
