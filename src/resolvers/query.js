@@ -47,6 +47,10 @@ module.exports = (options) => {
 
     // sequelize-graphql before hook to parse orderby clause to make sure it supports multiple orderby
     const before = (findOptions, args) => {
+      // hook coming from graphql.find.before
+      if (model.graphql?.find?.before) {
+        model.graphql.find.before(findOptions, args, context);
+      }
 
       if (isAssociation && model.through) {
         findOptions.through = {
@@ -74,12 +78,15 @@ module.exports = (options) => {
       return findOptions;
     };
 
+    const after = model.graphql?.find?.after;
+
     // see if a scope is specified to be applied to find queries.
     const variablePath = { args, context };
     const scope = Array.isArray(graphql.scopes) ? { method: [graphql.scopes[0], _.get(variablePath, graphql.scopes[1], graphql.scopes[2] || null)] } : graphql.scopes;
     const resolverOptions = {
       before,
-      separate: isAssociation
+      after,
+      separate: isAssociation,
     };
 
     const data = await resolver((isAssociation ? model : model.scope(scope)), resolverOptions)(source, args, context, info);
