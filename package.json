@@ -82,8 +82,5 @@
     "verbose": true
   },
   "husky": {
-    "hooks": {
-      "pre-commit": "eslint . --fix"
-    }
   }
 }

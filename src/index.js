@@ -77,6 +77,34 @@ const defaultOptions = {
   fetchDeleted: false, // Globally when using queries, this will allow to fetch both deleted and undeleted records (works only when tables have paranoid option enabled)
   restoreDeleted: false, // Applies globally, create restore endpoint for deleted records
   noDefaults: true, // set it to false to generate empty default queries
+  /**
+    * {
+    *    strict: true | false // everything restricted except specified rules
+    *    applySchema: true | false // schema generated reflects ommitted fields and queries/mutations instead of throwing error
+    *    rules: {
+    *      [MODEL_NAME0]: '*' // no restrictions
+    *      [MODEL_NAME1]: { fetch: ['name'], update: ['name'], delete: false, create: true } // only exposes name field from model1, only able to update name field, cannot delete but can create new record
+    *      [MODEL_NAME2]: { fetch: ['-name'], update: ['-name'], delete: true, create: false } // excludes name from model2 but includes everything else same for update, can delete but cannot create new
+    *      [MODEL_NAME3]: { fetch: ['-name, id'], update: '*', delete: false, create: false } // excludes name and only includes id from model2, can update all fields, cannot delete or create
+    *      [MUTATION_NAME]: true // allowed to call this mutation
+    *      [QUERY_NAME]: false // not allwoed to call this query
+    *    }
+    * }
+    */
+
+  /**
+   *
+   * rules: {
+   *  fetch: {
+   *    resources: [
+   *      ['MODEL_NAME0', 'name, id', 'userId>ctx.userId, status=false'],
+   *      ['MODEL_NAME1', '-name, -id', 'userId>ctx.userId, status=false']
+   *    ]
+   *  }
+   * }
+   *
+   */
+  permissions: {},
   // executes after all queries/mutations
   logger() {
     return Promise.resolve();
