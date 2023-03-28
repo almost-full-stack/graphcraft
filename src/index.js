@@ -31,15 +31,15 @@ const defaultOptions = {
       get: '',
       bulk: 'Bulk',
       count: 'Count',
-      default: 'Default'
-    }
+      default: 'Default',
+    },
   },
 
   // default limit to be applied on find queries
   limits: {
     default: 50, // default limit. use 0 for no limit
     max: 100, // maximum allowed limit. use 0 for unlimited
-    nested: false // whether to apply these limits on nested/sub types or not
+    nested: false, // whether to apply these limits on nested/sub types or not
   },
 
   // nested objects can be passed and will be mutated automatically. Only hasMany and belongsTo relation supported
@@ -50,7 +50,7 @@ const defaultOptions = {
     queries: [],
     mutations: [],
     // instead of not generating queries/mutations this will instead throw an error.
-    throw: false // string message
+    throw: false, // string message
   },
   // these models will be excluded from graphql schema
   exclude: [],
@@ -71,7 +71,7 @@ const defaultOptions = {
   // global hooks, behaves same way as model before/extend
   globalHooks: {
     before: {}, // will be executed before all auto-generated mutations/queries (fetch/create/update/destroy)
-    extend: {} // will be executed after all auto-generated mutations/queries (fetch/create/update/destroy)
+    extend: {}, // will be executed after all auto-generated mutations/queries (fetch/create/update/destroy)
   },
   findOneQueries: false, // create a find one query for each model (i.e. ProductByPk), which takes primary key (i.e. id) as argument and returns one item. Can also pass an array of models to create for specific models only (i.e. ['Product', 'Image'])
   fetchDeleted: false, // Globally when using queries, this will allow to fetch both deleted and undeleted records (works only when tables have paranoid option enabled)
@@ -92,22 +92,22 @@ const defaultOptions = {
    *    }
    * }
    */
-  permissions: (args, ctx) => {
-    return Promise.resolve();
+  permissions: (ctx) => {
+    return Promise.resolve({});
   },
   // executes after all queries/mutations
   logger() {
     return Promise.resolve();
   },
   // executes before all queries/mutations
-  authorizer() {
+  authorizer(src, arg, ctx) {
     return Promise.resolve();
   },
   // executes when exceptions are thrown
   errorHandler: {
-    'ETIMEDOUT': { statusCode: 503 }
+    ETIMEDOUT: { statusCode: 503 },
   },
-  debug: false
+  debug: false,
 };
 
 // Model options model.graphql
@@ -119,11 +119,12 @@ const defaultModelGraphqlOptions = {
   // scope usage is highy recommended.
   scopes: null, // common scope to be applied on all find/update/destroy operations
   alias: {}, // rename default queries/mutations to specified custom name
-  bulk: { // OR bulk: ['create', 'destroy', ....]
+  bulk: {
+    // OR bulk: ['create', 'destroy', ....]
     enabled: [], // enable bulk options ['create', 'destroy', 'update']
     // Use bulkColumn when using bulk option for 'create' when using returning true and to increase efficiency
     bulkColumn: false, // bulk identifier column, when bulk creating this column will be auto filled with a uuid and later used to fetch added records 'columnName' or ['columnName', true] when using a foreign key as bulk column
-    returning: true // This will return all created/updated items, doesn't use sequelize returning option
+    returning: true, // This will return all created/updated items, doesn't use sequelize returning option
   },
   types: {}, // user defined custom types: type names should be unique throughout the project
   mutations: {}, // user defined custom mutations: : mutation names should be unique throughout the project
@@ -137,16 +138,14 @@ const defaultModelGraphqlOptions = {
   readonly: false, // exclude create/delete/update mutations automatically
   fetchDeleted: false, // same as fetchDeleted as global except it lets you override global settings
   restoreDeleted: false, // same as restoreDeleted as global except it lets you override global settings
-  find: {} // define graphql-sequelize find hooks {before, after}
+  find: {}, // define graphql-sequelize find hooks {before, after}
 };
 
 const GenerateQueries = require('./libs/generateQueries');
 const GenerateMutations = require('./libs/generateMutations');
 const GenerateTypes = require('./libs/generateTypes');
 const errorHandler = (options) => {
-
   return (error) => {
-
     for (const name in options.errorHandler) {
       if (error.message.indexOf(name) > -1) {
         Object.assign(error, options.errorHandler[name]);
@@ -155,16 +154,16 @@ const errorHandler = (options) => {
     }
 
     return error;
-
   };
-
 };
 
 function generateSchema(options) {
-
-  return (models, context) => {
+  return async (models, context) => {
     assert(models.Sequelize, 'Sequelize not found as models.Sequelize.');
-    assert(models.sequelize, 'sequelize instance not found as models.sequelize.');
+    assert(
+      models.sequelize,
+      'sequelize instance not found as models.sequelize.'
+    );
 
     if (options.dataloader) {
       options.dataloaderContext = createContext(models.sequelize);
@@ -174,6 +173,13 @@ function generateSchema(options) {
     options.sequelize = models.sequelize;
     options.models = models;
 
+    const generatedPermissions = await options.permissions({
+      models,
+      ...context,
+    });
+
+    options.GC_PERMISSIONS = { strict: true, ...generatedPermissions };
+
     options.Sequelize.useCLS(cls.createNamespace(TRANSACTION_NAMESPACE));
 
     const { generateModelTypes } = GenerateTypes(options);
@@ -182,44 +188,78 @@ function generateSchema(options) {
     const modelsIncluded = {};
 
     for (const modelName in models) {
-
       const model = models[modelName];
 
-      if ('name' in model && modelName !== 'Sequelize' && !options.exclude.includes(modelName)) {
+      if (
+        'name' in model &&
+        modelName !== 'Sequelize' &&
+        !options.exclude.includes(modelName)
+      ) {
         model.graphql = model.graphql || defaultModelGraphqlOptions;
-        model.graphql.attributes = Object.assign({}, defaultModelGraphqlOptions.attributes, model.graphql.attributes);
-        model.graphql = Object.assign({}, defaultModelGraphqlOptions, model.graphql);
+        model.graphql.attributes = Object.assign(
+          {},
+          defaultModelGraphqlOptions.attributes,
+          model.graphql.attributes
+        );
+        model.graphql = Object.assign(
+          {},
+          defaultModelGraphqlOptions,
+          model.graphql
+        );
         modelsIncluded[modelName] = model;
       }
-
     }
 
     const modelTypes = generateModelTypes(modelsIncluded, {}, options);
 
     return Promise.resolve({
-      query: generateQueries(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes),
-      mutation: generateMutations(modelsIncluded, modelTypes.outputTypes, modelTypes.inputTypes)
+      query: generateQueries(
+        modelsIncluded,
+        modelTypes.outputTypes,
+        modelTypes.inputTypes
+      ),
+      mutation: generateMutations(
+        modelsIncluded,
+        modelTypes.outputTypes,
+        modelTypes.inputTypes
+      ),
     });
   };
-
-
 }
 
 const init = (_options) => {
-
   const newOptions = { ..._options };
 
-  newOptions.naming = Object.assign({}, defaultOptions.naming, newOptions.naming);
-  newOptions.naming.type = Object.assign({}, defaultOptions.naming.type, newOptions.naming.type);
-  newOptions.exposeOnly = Object.assign({}, defaultOptions.exposeOnly, newOptions.exposeOnly);
-  newOptions.limits = Object.assign({}, defaultOptions.limits, newOptions.limits);
+  newOptions.naming = Object.assign(
+    {},
+    defaultOptions.naming,
+    newOptions.naming
+  );
+  newOptions.naming.type = Object.assign(
+    {},
+    defaultOptions.naming.type,
+    newOptions.naming.type
+  );
+  newOptions.exposeOnly = Object.assign(
+    {},
+    defaultOptions.exposeOnly,
+    newOptions.exposeOnly
+  );
+  newOptions.limits = Object.assign(
+    {},
+    defaultOptions.limits,
+    newOptions.limits
+  );
 
   const options = Object.assign({}, defaultOptions, newOptions);
 
   options.dataloaderContext = null;
 
   const resetCache = () => {
-    if (options.dataloaderContext && options.dataloaderContext.loaders.autogenerated) {
+    if (
+      options.dataloaderContext &&
+      options.dataloaderContext.loaders.autogenerated
+    ) {
       options.dataloaderContext.loaders.autogenerated.reset();
     }
   };
@@ -230,7 +270,7 @@ const init = (_options) => {
     resetCache,
     // use this to prime custom queries
     dataloaderContext: options.dataloaderContext,
-    errorHandler: errorHandler(options)
+    errorHandler: errorHandler(options),
   };
 };
 
@@ -241,3 +281,20 @@ const init = (_options) => {
 init.define = define;
 
 module.exports = init;
+
+/*
+rules: {
+  fetch: {
+    resources: [
+      {
+        model: "Job",
+        fields: ["id", "number"],
+        conditions: [
+          { field: "userId", ctx: "user.id" },
+          { field: "status", value: true },
+        ],
+      },
+    ];
+  }
+}
+*/

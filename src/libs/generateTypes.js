@@ -124,7 +124,7 @@ function generateIncludeArguments(includeArguments, existingTypes = {}, isInput 
 * @param {*} associations A collection of sequelize associations
 * @param {*} existingTypes Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
-function generateAssociationFields(associations, existingTypes = {}, isInput = false) {
+function generateAssociationFields(associations, existingTypes = {}, isInput = false, modelPermissions = {}) {
 
   const fields = {};
   const { nestedMutations } = options;
@@ -257,6 +257,20 @@ function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   const attributes = model.graphql.attributes || {};
   const modelAttributes = model.rawAttributes;
+  const excludeAttributes = attributes.exclude || [];
+  const onlyAttributes = [];
+  const permissions = !isInput ? (options.GC_PERMISSIONS?.rules?.fetch || []).find((resource) => resource.model == model.name) || {} : {};
+
+  permissions.fields = permissions.fields || [];
+  permissions.associations = permissions.associations || [];
+
+  permissions.fields.forEach((field) => {
+    if (field.startsWith('-')) {
+      excludeAttributes.push(field.replace('-', ''));
+    } else {
+      onlyAttributes.push(field);
+    }
+  });
 
   const renameFieldMap = Object.keys(modelAttributes).reduce((attributes, attributeName) => {
 
@@ -267,14 +281,33 @@ function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false
     return attributes;
   }, {});
 
-  const modelAttributeFields = attributeFields(model, Object.assign({}, { allowNull: Boolean(isInput), cache, commentToDescription: true, map: renameFieldMap, exclude: attributes.exclude }));
+  const modelAttributeFields = attributeFields(model, Object.assign({}, { allowNull: true, cache, commentToDescription: true, map: renameFieldMap, only: onlyAttributes.length ? onlyAttributes : null, exclude: excludeAttributes }));
+
+  const includeMode = permissions.associations.length && permissions.associations[0].startsWith('-') ? false : true;
+  const associations = Object.keys(model.associations).reduce((all, association) => {
+    
+    if (permissions.associations.length) {
+
+      if (!includeMode && !permissions.associations.includes('-' + association)) {
+        all[association] = model.associations[association];
+      } else if (includeMode && permissions.associations.includes(association)) {
+        all[association] = model.associations[association];
+      }
+
+    } else {
+      all[association] = model.associations[association];
+    }
+
+    return all;
+
+  }, {});
 
   return new GraphQLClass({
     name: isInput ? `${model.name}Input` : model.name,
     fields: () => Object.assign(
       {},
       modelAttributeFields,
-      generateAssociationFields(model.associations, existingTypes, isInput),
+      generateAssociationFields(associations, existingTypes, isInput, permissions),
       // Include attributes which are to be included in GraphQL Type but doesn't exist in Models.
       (attributes.include ? generateIncludeArguments(attributes.include, existingTypes, isInput) : {})
     )

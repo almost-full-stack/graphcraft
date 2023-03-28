@@ -22,6 +22,23 @@ const { generateSchema } = require('../src/index')({
   types: {
     customGlobalType: { id: 'id', key: 'string', value: 'string' },
   },
+  permissions: () => {
+    return Promise.resolve({
+      rules: {
+        fetch: [
+          {
+            model: 'Product',
+            fields: ['id', 'name'],
+            associations: ['Media'],
+            conditions: [
+              { field: 'userId', value: 'ctx.user.id' },
+              { field: 'status', value: true },
+            ],
+          },
+        ],
+      },
+    });
+  },
   queries: {
     customGlobalQuery: {
       input: 'customGlobalType',

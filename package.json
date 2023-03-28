@@ -48,8 +48,7 @@
     "cls-hooked": "^4.2.2",
     "dataloader-sequelize": "^2.3.3",
     "graphql-relay": "^0.6.0",
-    "graphql-request": "^3.4.0",
-    "graphql-sequelize": "^9.4.3",
+    "graphql-sequelize": "^9.5.1",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
