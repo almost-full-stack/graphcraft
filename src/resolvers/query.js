@@ -14,7 +14,7 @@ module.exports = (options) => {
     const isAssociation = Boolean(model.target);
     const realModel = isAssociation ? model.target : model;
     const graphql = realModel.graphql;
-    const { simpleAST } = queryOptions;
+    const { simpleAST, permissions } = queryOptions;
     const includes = getIncludes(simpleAST, realModel.name, models);
 
     // setup dataloader for resolver.
@@ -45,6 +45,9 @@ module.exports = (options) => {
       return beforeHookResponse;
     }
 
+    // see if a scope is specified to be applied to find queries.
+    const variablePath = { args, context, ctx: context };
+
     // sequelize-graphql before hook to parse orderby clause to make sure it supports multiple orderby
     const before = (findOptions, args) => {
       // hook coming from graphql.find.before
@@ -73,6 +76,25 @@ module.exports = (options) => {
         findOptions.include = includes;
       }
 
+      if (permissions.conditions) {
+        
+        const clauses = permissions.conditions.reduce((all, condition) => {
+
+          if (typeof condition.value === 'string' && condition.value.startsWith(':')) {
+            all[condition.field] = _.get(variablePath, condition.value.replace(':', ''));
+          } else {
+            all[condition.field] = condition.value;
+          }
+
+          return all;
+        }, {});
+
+        console.log(clauses);
+
+        findOptions.where = {...(findOptions.where || {}), ...clauses};
+
+      }
+
       findOptions.gqlContext = context;
 
       return findOptions;
@@ -80,8 +102,6 @@ module.exports = (options) => {
 
     const after = model.graphql?.find?.after;
 
-    // see if a scope is specified to be applied to find queries.
-    const variablePath = { args, context };
     const scope = Array.isArray(graphql.scopes) ? { method: [graphql.scopes[0], _.get(variablePath, graphql.scopes[1], graphql.scopes[2] || null)] } : graphql.scopes;
     const resolverOptions = {
       before,

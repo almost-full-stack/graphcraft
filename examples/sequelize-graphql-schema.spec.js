@@ -31,9 +31,12 @@ const { generateSchema } = require('../src/index')({
             fields: ['id', 'name'],
             associations: ['Media'],
             conditions: [
-              { field: 'userId', value: 'ctx.user.id' },
-              { field: 'status', value: true },
+              { field: 'isActive', value: true }
             ],
+          },
+          {
+            model: 'ProductMedia',
+            fields: ['imageId']
           },
         ],
       },

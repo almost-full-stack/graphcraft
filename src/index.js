@@ -76,7 +76,6 @@ const defaultOptions = {
   findOneQueries: false, // create a find one query for each model (i.e. ProductByPk), which takes primary key (i.e. id) as argument and returns one item. Can also pass an array of models to create for specific models only (i.e. ['Product', 'Image'])
   fetchDeleted: false, // Globally when using queries, this will allow to fetch both deleted and undeleted records (works only when tables have paranoid option enabled)
   restoreDeleted: false, // Applies globally, create restore endpoint for deleted records
-  noDefaults: true, // set it to false to generate empty default queries,
   /**
    * returns ...
    * {
@@ -290,7 +289,7 @@ rules: {
         model: "Job",
         fields: ["id", "number"],
         conditions: [
-          { field: "userId", ctx: "user.id" },
+          { field: "userId", value: ":ctx.user.id" },
           { field: "status", value: true },
         ],
       },
