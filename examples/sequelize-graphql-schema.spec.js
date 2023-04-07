@@ -39,6 +39,40 @@ const { generateSchema } = require('../src/index')({
             fields: ['imageId']
           },
         ],
+        create: [
+          {
+            model: 'Product',
+            fill: {
+              field: 'isActive', value: true
+            }
+          },
+          {
+            model: 'ProductMedia',
+            enable: false
+          },
+        ],
+        update: [
+          {
+            model: 'Product',
+            fields: ['name'],
+            associations: ['Media'],
+            conditions: [
+              { field: 'isActive', value: true }
+            ],
+          },
+        ],
+        delete: [
+          {
+            model: 'Product',
+            conditions: [
+              { field: 'isActive', value: false }
+            ],
+          },
+          {
+            model: 'ProductMedia',
+            enable: false
+          },
+        ],
       },
     });
   },
