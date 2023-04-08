@@ -89,8 +89,6 @@ module.exports = (options) => {
           return all;
         }, {});
 
-        console.log(clauses);
-
         findOptions.where = {...(findOptions.where || {}), ...clauses};
 
       }

@@ -27,8 +27,15 @@ module.exports = (options) => {
 
   const { query } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
-  const { naming, exposeOnly, fetchDeleted } = options;
+  const { naming, exposeOnly, fetchDeleted, GC_PERMISSIONS } = options;
   const pascalCase = naming.pascalCase;
+  const permissions = (GC_PERMISSIONS?.rules?.fetch || []).reduce((all, permission) => {
+    	
+    all[permission.model] = permission;
+
+    return all;
+
+  }, {})
 
   /**
   * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
@@ -50,6 +57,11 @@ module.exports = (options) => {
       const outputTypeName = modelName;
       const customQueryNames = Object.keys(model.graphql.queries || {});
       const modelQueryName = generateName(model.graphql.alias.fetch || naming.queries, { type: naming.type.get, name: outputTypeName }, { pascalCase });
+
+      model.graphql.excludeQueries = model.graphql.excludeQueries || [];
+
+      if (permissions[modelName]?.enable === false && !model.graphql.excludeQueries.includes('fetch')) model.graphql.excludeQueries.push('fetch');
+
       const toBeGenerated = [].concat(customQueryNames).concat(
         model.graphql.excludeQueries.includes('fetch') ? [] : modelQueryName
       );
@@ -83,7 +95,7 @@ module.exports = (options) => {
               throw Error(exposeOnly.throw);
             }
 
-            const permissions = filterPermissions(options?.GC_PERMISSIONS?.rules?.fetch, modelType.name);
+            const permissions = permissions[modelName] || {};
 
             return query(model, source, args, context, info, { simpleAST: null, permissions });
           },
