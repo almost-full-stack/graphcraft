@@ -35,7 +35,7 @@ module.exports = (options) => {
 
     return all;
 
-  }, {})
+  }, {});
 
   /**
   * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
@@ -83,15 +83,18 @@ module.exports = (options) => {
       const aliases = model.graphql.alias;
       const modelQueryName = generateName(aliases.fetch || naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase });
       const modelCountQueryName = generateName(aliases.count || naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase });
-      const modelFineOneQueryName = generateName(aliases.byPk || naming.queries, { type: naming.type.byPk, name: modelTypeName }, { pascalCase });
+      const modelFindOneQueryName = generateName(aliases.byPk || naming.queries, { type: naming.type.byPk, name: modelTypeName }, { pascalCase });
+      const modelPermissions = permissions[modelType.name];
 
-      if ((options.findOneQueries === true || (Array.isArray(options.findOneQueries) && options.findOneQueries.includes(modelType.name))) && isAvailable(exposeOnly.queries, [modelFineOneQueryName])) {
-        queries[modelFineOneQueryName] = {
+      const createFindOneQuery = (options.findOneQueries === true || (Array.isArray(options.findOneQueries) && options.findOneQueries.includes(modelType.name))) && isAvailable(exposeOnly.queries, [modelFindOneQueryName]);
+
+      if (createFindOneQuery && modelPermissions?.findOne !== false) {
+        queries[modelFindOneQueryName] = {
           type: modelType,
           args: _.omit(defaultArgs(model), ['where']),
           resolve: (source, args, context, info) => {
 
-            if (!isAvailable(exposeOnly.queries, [modelFineOneQueryName]) && exposeOnly.throw) {
+            if (!isAvailable(exposeOnly.queries, [modelFindOneQueryName]) && exposeOnly.throw) {
               throw Error(exposeOnly.throw);
             }
 
@@ -103,7 +106,7 @@ module.exports = (options) => {
         };
       }
 
-      if (models[modelType.name].graphql.excludeQueries.indexOf('count') === -1 && isAvailable(exposeOnly.queries, [modelCountQueryName])) {
+      if (models[modelType.name].graphql.excludeQueries.indexOf('count') === -1 && isAvailable(exposeOnly.queries, [modelCountQueryName])  && modelPermissions?.count !== false) {
         queries[modelCountQueryName] = {
           type: GraphQLInt,
           args: {

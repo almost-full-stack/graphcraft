@@ -127,7 +127,7 @@ function recursiveUpdateAssociations(graphqlParams, mutationOptions, options) {
 async function updateMutation (graphqlParams, mutationOptions) {
 
   const { args, context } = graphqlParams;
-  const { isBulk, where, modelTypeName, models, transaction, skipReturning } = mutationOptions;
+  const { isBulk, where, modelTypeName, models, transaction, skipReturning, permissions } = mutationOptions;
   const model = models[modelTypeName];
   const { returning } = Array.isArray(model.graphql.bulk) ? {} : model.graphql.bulk;
   const input = args[modelTypeName];
@@ -170,7 +170,18 @@ async function updateMutation (graphqlParams, mutationOptions) {
   const variablePath = { args, context };
   const scope = Array.isArray(model.graphql.scopes) ? { method: [model.graphql.scopes[0], _.get(variablePath, model.graphql.scopes[1], model.graphql.scopes[2] || null)] } : model.graphql.scopes;
 
-  await model.scope(scope).update(input, { where, transaction });
+  const clauses = (permissions.conditions || []).reduce((all, condition) => {
+
+    if (typeof condition.value === 'string' && condition.value.startsWith(':')) {
+      all[condition.field] = _.get(variablePath, condition.value.replace(':', ''));
+    } else {
+      all[condition.field] = condition.value;
+    }
+
+    return all;
+  }, {});
+
+  await model.scope(scope).update(input, { where: { ...(where || {}), ...clauses }, transaction });
   await recursiveUpdateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: input, parentModel: model });
 
   if (skipReturning) {

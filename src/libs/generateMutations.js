@@ -12,8 +12,23 @@ module.exports = (options) => {
 
   const { mutation } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
-  const { naming, exposeOnly, restoreDeleted } = options;
+  const { naming, exposeOnly, restoreDeleted, GC_PERMISSIONS } = options;
   const pascalCase = naming.pascalCase;
+  
+  const permissions = Object.keys(GC_PERMISSIONS?.rules || {}).reduce((all, rule) => {
+    
+    all[rule] = (GC_PERMISSIONS?.rules[rule] || []).reduce((ap, permission) => {
+    	
+      ap[permission.model] = permission;
+  
+      return ap;
+  
+    }, {});;
+
+
+    return all;
+
+  }, {});
 
   return (models, outputTypes = {}, inputTypes = {}) => {
 
@@ -31,6 +46,13 @@ module.exports = (options) => {
       const aliases = model.graphql.alias;
       const bulk = model.graphql.bulk;
       const bulkEnabled = Array.isArray(bulk) ? bulk : bulk.enabled;
+
+      model.graphql.excludeMutations = model.graphql.excludeMutations || [];
+
+      if (permissions.create[modelName]?.enable === false && !model.graphql.excludeMutations.includes('create')) model.graphql.excludeMutations.push('create');
+      if (permissions.update[modelName]?.enable === false && !model.graphql.excludeMutations.includes('update')) model.graphql.excludeMutations.push('update');
+      if (permissions.delete[modelName]?.enable === false && !model.graphql.excludeMutations.includes('destroy')) model.graphql.excludeMutations.push('destroy');
+      
       const bulkOptions = {
         create: bulkEnabled.includes('create') && !model.graphql.excludeMutations.includes('create'),
         update: bulkEnabled.includes('update') && !model.graphql.excludeMutations.includes('update'),
@@ -95,7 +117,7 @@ module.exports = (options) => {
           type: outputModelType,
           description: 'Create ' + modelTypeName,
           args: Object.assign({ [inputName]: { type: inputModelType } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].create)(source, args, context, info, { type: 'create', models, modelTypeName, inputName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].create)(source, args, context, info, { type: 'create', models, modelTypeName, inputName, permissions: permissions.create[modelTypeName] })
         };
       }
 
@@ -104,7 +126,7 @@ module.exports = (options) => {
           type: outputModelType || GraphQLInt,
           description: 'Update ' + modelTypeName,
           args: Object.assign({ [inputName]: { type: inputModelType } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].update)(source, args, context, info, { type: 'update', models, modelTypeName, inputName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].update)(source, args, context, info, { type: 'update', models, modelTypeName, inputName, permissions: permissions.update[modelTypeName] })
         };
       }
 
@@ -114,7 +136,7 @@ module.exports = (options) => {
           description: 'Delete ' + modelTypeName,
           // enhance this to support composite keys
           args: Object.assign({ [key]: { type: new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize)) } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].delete)(source, args, context, info, { type: 'destroy', models, modelTypeName, inputName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].delete)(source, args, context, info, { type: 'destroy', models, modelTypeName, inputName, permissions: permissions.delete[modelTypeName] })
         };
       }
 
@@ -136,7 +158,7 @@ module.exports = (options) => {
           type: (typeof bulk.bulkColumn === 'string' || bulk.returning) ? new GraphQLList(outputModelType) : GraphQLInt,
           description: 'Create bulk ' + modelTypeName + ' and return number of rows or created rows.',
           args: Object.assign({ [inputName]: { type: new GraphQLList(inputModelType) } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].createBulk)(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName, inputName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].createBulk)(source, args, context, info, { type: 'create', isBulk: true, models, modelTypeName, inputName, permissions: permissions.create[modelTypeName] })
         };
 
       }
@@ -147,7 +169,7 @@ module.exports = (options) => {
           type: bulk.returning ? new GraphQLList(outputModelType) : GraphQLInt,
           description: 'Update bulk ' + modelTypeName + ' and return number of rows modified or updated rows.',
           args: Object.assign({ [inputName]: { type: new GraphQLList(new GraphQLNonNull(inputModelType)) } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].updateBulk)(source, args, context, info, { type: 'update', isBulk: true, models, modelTypeName, inputName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].updateBulk)(source, args, context, info, { type: 'update', isBulk: true, models, modelTypeName, inputName, permissions: permissions.update[modelTypeName] })
         };
 
       }
@@ -158,7 +180,7 @@ module.exports = (options) => {
           type: GraphQLInt,
           description: 'Delete bulk ' + modelTypeName,
           args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize))) } }, includeArguments),
-          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].deleteBulk)(source, args, context, info, { type: 'destroy', isBulk: true, models, modelTypeName, inputName })
+          resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].deleteBulk)(source, args, context, info, { type: 'destroy', isBulk: true, models, modelTypeName, inputName, permissions: permissions.delete[modelTypeName] })
         };
 
       }

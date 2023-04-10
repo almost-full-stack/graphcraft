@@ -45,7 +45,7 @@ const { generateSchema } = require('../src/index')({
         create: [
           {
             model: 'Product',
-            fill: {
+            set: {
               field: 'isActive', value: true
             }
           },
