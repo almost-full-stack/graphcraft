@@ -49,15 +49,16 @@ module.exports = (options) => {
 
       model.graphql.excludeMutations = model.graphql.excludeMutations || [];
 
-      if (permissions.create[modelName]?.enable === false && !model.graphql.excludeMutations.includes('create')) model.graphql.excludeMutations.push('create');
-      if (permissions.update[modelName]?.enable === false && !model.graphql.excludeMutations.includes('update')) model.graphql.excludeMutations.push('update');
-      if (permissions.delete[modelName]?.enable === false && !model.graphql.excludeMutations.includes('destroy')) model.graphql.excludeMutations.push('destroy');
+      //if (permissions.create[modelName]?.enable === false && !model.graphql.excludeMutations.includes('create')) model.graphql.excludeMutations.push('create');
+      //if (permissions.update[modelName]?.enable === false && !model.graphql.excludeMutations.includes('update')) model.graphql.excludeMutations.push('update');
+      //if (permissions.delete[modelName]?.enable === false && !model.graphql.excludeMutations.includes('destroy')) model.graphql.excludeMutations.push('destroy');
       
       const bulkOptions = {
-        create: bulkEnabled.includes('create') && !model.graphql.excludeMutations.includes('create'),
-        update: bulkEnabled.includes('update') && !model.graphql.excludeMutations.includes('update'),
-        destroy: bulkEnabled.includes('destroy') && !model.graphql.excludeMutations.includes('destroy')
+        create: bulkEnabled.includes('create') && (!model.graphql.excludeMutations.includes('create') || permissions.create[modelName]?.enable === false),
+        update: bulkEnabled.includes('update') && (!model.graphql.excludeMutations.includes('update') || permissions.update[modelName]?.enable === false),
+        destroy: bulkEnabled.includes('destroy') && (!model.graphql.excludeMutations.includes('destroy') || permissions.delete[modelName]?.enable === false)
       };
+
       const modelMutationName = {
         create: generateName(aliases.create || options.naming.mutations, { type: naming.type.create, name: outputTypeName }, { pascalCase }),
         update: generateName(aliases.update || options.naming.mutations, { type: naming.type.update, name: outputTypeName }, { pascalCase }),
@@ -73,15 +74,15 @@ module.exports = (options) => {
 
       const customMutationNames = Object.keys(model.graphql.mutations || {});
       const toBeGenerated = [].concat(customMutationNames).concat(
-        model.graphql.excludeMutations.includes('create') ? [] : modelMutationName.create
+        (model.graphql.excludeMutations.includes('create') || permissions.create[modelName]?.enable === false) ? [] : modelMutationName.create
       ).concat(
         bulkOptions.create ? [] : modelMutationName.createBulk
       ).concat(
-        model.graphql.excludeMutations.includes('update') ? [] : modelMutationName.update
+        (model.graphql.excludeMutations.includes('update') || permissions.update[modelName]?.enable === false) ? [] : modelMutationName.update
       ).concat(
         bulkOptions.update ? [] : modelMutationName.updateBulk
       ).concat(
-        model.graphql.excludeMutations.includes('destroy') ? [] : modelMutationName.delete
+        (model.graphql.excludeMutations.includes('destroy') || permissions.delete[modelName]?.enable === false) ? [] : modelMutationName.delete
       ).concat(
         bulkOptions.destroy ? [] : modelMutationName.deleteBulk
       );
@@ -112,7 +113,7 @@ module.exports = (options) => {
       const key = model.primaryKeyAttributes[0];
       const inputName = generateName(naming.input, { name: modelTypeName }, { noCase: true });
 
-      if (!model.graphql.excludeMutations.includes('create') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].create)) {
+      if (!model.graphql.excludeMutations.includes('create') && permissions.create[modelTypeName]?.enable !== false && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].create)) {
         mutations[modelMutationNames[modelTypeName].create] = {
           type: outputModelType,
           description: 'Create ' + modelTypeName,
@@ -121,7 +122,7 @@ module.exports = (options) => {
         };
       }
 
-      if (!model.graphql.excludeMutations.includes('update') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].update)) {
+      if (!model.graphql.excludeMutations.includes('update') && permissions.update[modelTypeName]?.enable !== false && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].update)) {
         mutations[modelMutationNames[modelTypeName].update] = {
           type: outputModelType || GraphQLInt,
           description: 'Update ' + modelTypeName,
@@ -130,7 +131,7 @@ module.exports = (options) => {
         };
       }
 
-      if (!model.graphql.excludeMutations.includes('destroy') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].delete)) {
+      if (!model.graphql.excludeMutations.includes('destroy') && permissions.delete[modelTypeName]?.enable !== false && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].delete)) {
         mutations[modelMutationNames[modelTypeName].delete] = {
           type: GraphQLInt,
           description: 'Delete ' + modelTypeName,
@@ -140,7 +141,7 @@ module.exports = (options) => {
         };
       }
 
-      if ((!model.graphql.excludeMutations.includes('restore') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].restore)) && model.options.paranoid && (model.graphql.restoreDeleted || restoreDeleted)) {
+      if ((!model.graphql.excludeMutations.includes('restore') && permissions.delete[modelTypeName]?.enable !== false && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].restore)) && model.options.paranoid && (model.graphql.restoreDeleted || restoreDeleted)) {
         mutations[modelMutationNames[modelTypeName].restore] = {
           type: outputModelType,
           description: 'Restore ' + modelTypeName,
@@ -152,7 +153,7 @@ module.exports = (options) => {
       const bulk = model.graphql.bulk;
       const bulkOptions = modelBulkOptions[modelTypeName];
 
-      if (bulkOptions.create && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].createBulk)) {
+      if (bulkOptions.create && permissions.create[modelTypeName]?.enable !== false && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].createBulk)) {
 
         mutations[modelMutationNames[modelTypeName].createBulk] = {
           type: (typeof bulk.bulkColumn === 'string' || bulk.returning) ? new GraphQLList(outputModelType) : GraphQLInt,
@@ -163,7 +164,7 @@ module.exports = (options) => {
 
       }
 
-      if (bulkOptions.update && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].updateBulk)) {
+      if (bulkOptions.update && permissions.update[modelTypeName]?.enable !== false && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].updateBulk)) {
 
         mutations[modelMutationNames[modelTypeName].updateBulk] = {
           type: bulk.returning ? new GraphQLList(outputModelType) : GraphQLInt,
@@ -174,7 +175,7 @@ module.exports = (options) => {
 
       }
 
-      if (bulkOptions.destroy && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].deleteBulk)) {
+      if (bulkOptions.destroy && permissions.delete[modelTypeName]?.enable !== false && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].deleteBulk)) {
 
         mutations[modelMutationNames[modelTypeName].deleteBulk] = {
           type: GraphQLInt,

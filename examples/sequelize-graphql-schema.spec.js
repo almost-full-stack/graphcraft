@@ -30,7 +30,7 @@ const { generateSchema } = require('../src/index')({
             model: 'Product',
             fields: ['id', 'name'],
             associations: ['Media'],
-            enable: false,
+            enable: true,
             conditions: [
               { field: 'isActive', value: true }
             ],
