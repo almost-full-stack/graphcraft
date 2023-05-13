@@ -76,24 +76,20 @@ const defaultOptions = {
   findOneQueries: false, // create a find one query for each model (i.e. ProductByPk), which takes primary key (i.e. id) as argument and returns one item. Can also pass an array of models to create for specific models only (i.e. ['Product', 'Image'])
   fetchDeleted: false, // Globally when using queries, this will allow to fetch both deleted and undeleted records (works only when tables have paranoid option enabled)
   restoreDeleted: false, // Applies globally, create restore endpoint for deleted records
+  noDefaults: true, // set it to false to generate empty default queries
   /**
-   * returns ...
-   * {
-   *    strict: true | false // defaults to true: everything restricted except specified rules. In restrict mode if a mutation or query or a model doesn't exist in dictionary, it will be rejected by default. In non-restrict mode, everything is allowed unless specified otherwise
-   *    applySchema: false // schema is generated based on rules, a mutation or query will only be included in schema if it's allowed, similarly a field is only included in schema if it's allowed
-   *    rules: {
-   *      [MODEL_NAME0]: '*' // no restrictions
-   *      [MODEL_NAME1]: { fetch: ['name'], update: ['name'], delete: false, create: true } // only exposes name field from model1, only able to update name field, cannot delete but can create new record
-   *      [MODEL_NAME2]: { fetch: ['-name'], update: ['-name'], delete: true, create: false } // excludes name from model2 but includes everything else same for update, can delete but cannot create new
-   *      [MODEL_NAME3]: { fetch: ['-name, id'], update: '*', delete: false, create: false } // excludes name and only includes id from model2, can update all fields, cannot delete or create
-   *      [MUTATION_NAME]: true // allowed to call this mutation, false will not authorize
-   *      [QUERY_NAME]: false // not allowed to call this query, true will allow it
-   *    }
+   *
+   * rules: {
+   *  fetch: {
+   *    resources: [
+   *      ['MODEL_NAME0', 'name, id', 'userId>ctx.userId, status=false'],
+   *      ['MODEL_NAME1', '-name, -id', 'userId>ctx.userId, status=false']
+   *    ]
+   *  }
    * }
+   *
    */
-  permissions: (ctx) => {
-    return Promise.resolve({});
-  },
+  permissions: {},
   // executes after all queries/mutations
   logger() {
     return Promise.resolve();
