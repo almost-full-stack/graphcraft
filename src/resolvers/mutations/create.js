@@ -1,3 +1,4 @@
+const _ = require('lodash');
 const { v4: uuid } = require('uuid');
 const { keysWhichAreModelAssociations } = require('../../utils');
 
@@ -7,12 +8,25 @@ async function createMutation (graphqlParams, mutationOptions) {
    * skipReturning: will be passed when creating associations, in that case we can just skip returning options
    */
 
-  const { args } = graphqlParams;
-  const { isBulk, modelTypeName, models, transaction, skipReturning } = mutationOptions;
+  const { args, context } = graphqlParams;
+  const { isBulk, modelTypeName, models, transaction, skipReturning, permissions } = mutationOptions;
   const model = models[modelTypeName];
   const { bulkColumn, returning } = Array.isArray(model.graphql.bulk) ? {} : model.graphql.bulk;
   // if a column is provided in the table as bulk identifier, this would be used along with bulkColumn option
   const bulkIdentifier = uuid();
+
+  const variablePath = { args, context };
+  const setValues = (permissions.set || []).reduce((all, condition) => {
+
+    if (typeof condition.value === 'string' && condition.value.startsWith(':')) {
+      all[condition.field] = _.get(variablePath, condition.value.replace(':', ''));
+    } else {
+      all[condition.field] = condition.value;
+    }
+
+    return all;
+  }, {});
+
   let input = args[modelTypeName];
 
   if (isBulk) {
@@ -25,7 +39,7 @@ async function createMutation (graphqlParams, mutationOptions) {
 
         record[bulkColumn] = bulkIdentifier;
 
-        return record;
+        return { ...record, ...setValues };
       });
     }
 
@@ -56,7 +70,7 @@ async function createMutation (graphqlParams, mutationOptions) {
 
   }
 
-  const createdRecord = await model.create(input, { transaction });
+  const createdRecord = await model.create({ ...input, ...setValues }, { transaction });
 
   await recursiveCreateAssociations({ ...graphqlParams }, { ...mutationOptions }, { input, parentRecord: createdRecord, operation: createMutation, parentModel: model });
 

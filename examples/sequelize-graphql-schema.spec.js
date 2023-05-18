@@ -22,6 +22,63 @@ const { generateSchema } = require('../src/index')({
   types: {
     customGlobalType: { id: 'id', key: 'string', value: 'string' },
   },
+  permissions: () => {
+    return Promise.resolve({
+      rules: {
+        fetch: [
+          {
+            model: 'Product',
+            fields: ['id', 'name'],
+            associations: ['Media'],
+            enable: true,
+            conditions: [
+              { field: 'isActive', value: true }
+            ],
+            count: false,
+            findOne: false
+          },
+          {
+            model: 'ProductMedia',
+            fields: ['imageId']
+          },
+        ],
+        create: [
+          {
+            model: 'Product',
+            set: {
+              field: 'isActive', value: true
+            }
+          },
+          {
+            model: 'ProductMedia',
+            enable: false
+          },
+        ],
+        update: [
+          {
+            model: 'Product',
+            fields: ['name'],
+            associations: ['Media'],
+            conditions: [
+              { field: 'isActive', value: true }
+            ],
+          },
+        ],
+        delete: [
+          {
+            model: 'Product',
+            conditions: [
+              { field: 'isActive', value: false }
+            ],
+          },
+          {
+            model: 'ProductMedia',
+            enable: false
+          },
+        ],
+      },
+    });
+  },
   queries: {
     customGlobalQuery: {
       input: 'customGlobalType',
