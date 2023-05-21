@@ -28,7 +28,7 @@ module.exports = (options) => {
 
     return all;
 
-  }, {});
+  }, {create: {}, delete: {}, update: {}});
 
   return (models, outputTypes = {}, inputTypes = {}) => {
 

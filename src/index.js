@@ -89,7 +89,9 @@ const defaultOptions = {
    * }
    *
    */
-  permissions: {},
+  permissions: () => {
+    return Promise.resolve();
+  },
   // executes after all queries/mutations
   logger() {
     return Promise.resolve();

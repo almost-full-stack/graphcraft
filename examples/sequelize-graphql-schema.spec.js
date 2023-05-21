@@ -22,7 +22,7 @@ const { generateSchema } = require('../src/index')({
   types: {
     customGlobalType: { id: 'id', key: 'string', value: 'string' },
   },
-  permissions: () => {
+  permissionss: () => {
     return Promise.resolve({
       rules: {
         fetch: [
