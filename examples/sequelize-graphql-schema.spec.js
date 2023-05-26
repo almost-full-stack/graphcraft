@@ -22,13 +22,13 @@ const { generateSchema } = require('../src/index')({
   types: {
     customGlobalType: { id: 'id', key: 'string', value: 'string' },
   },
-  permissionss: () => {
+  permissions: () => {
     return Promise.resolve({
       rules: {
         fetch: [
           {
             model: 'Product',
-            fields: ['id', 'name'],
+            fields: [],
             associations: ['Media'],
             enable: true,
             conditions: [
@@ -42,7 +42,8 @@ const { generateSchema } = require('../src/index')({
             fields: ['imageId']
           },
         ],
-        create: [
+
+        /*create: [
           {
             model: 'Product',
             set: {
@@ -75,7 +76,7 @@ const { generateSchema } = require('../src/index')({
             model: 'ProductMedia',
             enable: false
           },
-        ],
+        ],*/
       },
     });
   },

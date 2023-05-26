@@ -235,7 +235,7 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
           return source[associationName];
         }
 
-        return queryResolver(options)(relation, source, args, context, info, true);
+        return queryResolver(options)(relation, source, args, context, info, { permissions: modelPermissions });
       };
 
     }
