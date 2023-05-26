@@ -19,7 +19,7 @@ module.exports = (options) => {
     
     all[rule] = (GC_PERMISSIONS?.rules[rule] || []).reduce((ap, permission) => {
     	
-      ap[permission.model] = permission;
+      ap[permission.model || permission.name] = permission;
   
       return ap;
   
@@ -28,7 +28,7 @@ module.exports = (options) => {
 
     return all;
 
-  }, {create: {}, delete: {}, update: {}});
+  }, {create: {}, delete: {}, update: {}, mutations: {}});
 
   return (models, outputTypes = {}, inputTypes = {}) => {
 
@@ -195,7 +195,7 @@ module.exports = (options) => {
     // Setup Custom Mutations
     for (const mutationName in allCustomMutations) {
 
-      if (isAvailable(exposeOnly.mutations, mutationName)) {
+      if (isAvailable(exposeOnly.mutations, mutationName) && permissions.mutations[mutationName]?.enable !== false) {
 
         const currentMutation = allCustomMutations[mutationName];
         const type = currentMutation.output ? generateGraphQLField(currentMutation.output, outputTypes) : GraphQLInt;

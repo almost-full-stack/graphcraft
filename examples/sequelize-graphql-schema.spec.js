@@ -25,6 +25,14 @@ const { generateSchema } = require('../src/index')({
   permissions: () => {
     return Promise.resolve({
       rules: {
+        mutations: [{
+          name: 'customGlobalMutation',
+          enable: true
+        }],
+        queries: [{
+          name: 'customGlobalQuery',
+          enable: false
+        }],
         fetch: [
           {
             model: 'Product',
