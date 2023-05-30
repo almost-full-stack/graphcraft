@@ -77,7 +77,7 @@ module.exports = (options) => {
       }
 
       if (!isAssociation && permissions?.conditions) {
-        
+
         const clauses = permissions.conditions.reduce((all, condition) => {
 
           if (typeof condition.value === 'string' && condition.value.startsWith(':')) {
