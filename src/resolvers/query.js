@@ -76,7 +76,7 @@ module.exports = (options) => {
         findOptions.include = includes;
       }
 
-      if (permissions && permissions.conditions) {
+      if (!isAssociation && permissions?.conditions) {
         
         const clauses = permissions.conditions.reduce((all, condition) => {
 
