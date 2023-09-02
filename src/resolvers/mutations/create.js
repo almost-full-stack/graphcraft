@@ -16,7 +16,7 @@ async function createMutation (graphqlParams, mutationOptions) {
   const bulkIdentifier = uuid();
 
   const variablePath = { args, context };
-  const setValues = (permissions.set || []).reduce((all, condition) => {
+  const setValues = ((permissions || {}).set || []).reduce((all, condition) => {
 
     if (typeof condition.value === 'string' && condition.value.startsWith(':')) {
       all[condition.field] = _.get(variablePath, condition.value.replace(':', ''));

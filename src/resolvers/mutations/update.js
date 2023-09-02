@@ -170,7 +170,7 @@ async function updateMutation (graphqlParams, mutationOptions) {
   const variablePath = { args, context };
   const scope = Array.isArray(model.graphql.scopes) ? { method: [model.graphql.scopes[0], _.get(variablePath, model.graphql.scopes[1], model.graphql.scopes[2] || null)] } : model.graphql.scopes;
 
-  const clauses = (permissions.conditions || []).reduce((all, condition) => {
+  const clauses = ((permissions || {}).conditions || []).reduce((all, condition) => {
 
     if (typeof condition.value === 'string' && condition.value.startsWith(':')) {
       all[condition.field] = _.get(variablePath, condition.value.replace(':', ''));

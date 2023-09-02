@@ -15,7 +15,7 @@ function destroyMutation(graphqlParams, mutationOptions) {
     throw Error('Invalid operation input.');
   }
 
-  const clauses = (permissions.conditions || []).reduce((all, condition) => {
+  const clauses = ((permissions || {}).conditions || []).reduce((all, condition) => {
 
     if (typeof condition.value === 'string' && condition.value.startsWith(':')) {
       all[condition.field] = _.get(variablePath, condition.value.replace(':', ''));
