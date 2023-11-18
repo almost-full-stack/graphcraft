@@ -1,6 +1,7 @@
 const { GraphQLSchema } = require('graphql');
 const express = require('express');
-const graphqlHTTP = require('express-graphql');
+const { createHandler } = require('graphql-http/lib/use/express');
+const expressPlayground = require('graphql-playground-middleware-express').default;
 const { JSONType } = require('graphql-sequelize');
 
 const { generateSchema } = require('../src/index')({
@@ -14,6 +15,8 @@ const { generateSchema } = require('../src/index')({
   },
   naming: {
     input: 'input',
+    rootQueries: 'RootQueryType',
+    rootMutations: 'RootMutationType'
   },
   findOneQueries: true,
   importTypes: {
@@ -23,70 +26,7 @@ const { generateSchema } = require('../src/index')({
     customGlobalType: { id: 'id', key: 'string', value: 'string' },
   },
   permissions: () => {
-    return Promise.resolve({
-      rules: {
-        mutations: [{
-          name: 'customGlobalMutation',
-          enable: true
-        }],
-        queries: [{
-          name: 'customGlobalQuery',
-          enable: false
-        }],
-        fetch: [
-          {
-            model: 'Product',
-            fields: [],
-            associations: ['Media'],
-            enable: true,
-            conditions: [
-              { field: 'isActive', value: true }
-            ],
-            count: false,
-            findOne: false
-          },
-          {
-            model: 'ProductMedia',
-            fields: ['imageId']
-          },
-        ],
-
-        /*create: [
-          {
-            model: 'Product',
-            set: {
-              field: 'isActive', value: true
-            }
-          },
-          {
-            model: 'ProductMedia',
-            enable: false
-          },
-        ],
-        update: [
-          {
-            model: 'Product',
-            fields: ['name'],
-            associations: ['Media'],
-            conditions: [
-              { field: 'isActive', value: true }
-            ],
-          },
-        ],
-        delete: [
-          {
-            model: 'Product',
-            conditions: [
-              { field: 'isActive', value: false }
-            ],
-          },
-          {
-            model: 'ProductMedia',
-            enable: false
-          },
-        ],*/
-      },
-    });
+    return Promise.resolve({});
   },
   queries: {
     customGlobalQuery: {
@@ -127,14 +67,18 @@ const { generateSchema } = require('../src/index')({
 const app = express();
 const models = require('./models');
 
-app.use('/', async (req, res) => {
+app.all('/', async (req, res) => {
   const schema = await generateSchema(models, req);
 
-  await graphqlHTTP({
+  const handler = createHandler({
     schema: new GraphQLSchema(schema),
     graphiql: true,
-  })(req, res);
+  });
+
+  handler(req, res);
 });
+
+app.get('/gql', expressPlayground({ endpoint: '/' }));
 
 app.listen(3000, () => {
   // eslint-disable-next-line no-console

@@ -19,8 +19,8 @@ const defaultOptions = {
     queries: '{name}{type}', // applied to auto generated queries
     mutations: '{name}{type}{bulk}', // applied to auto generated mutations
     input: '{name}', // applied to all input types
-    rootQueries: 'RootQueries',
-    rootMutations: 'RootMutations',
+    rootQueries: 'RootQueriesType',
+    rootMutations: 'RootMutationsType',
     // {type} and {bulk} will be replaced with one of the following
     type: {
       create: 'Create',

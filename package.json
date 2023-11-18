@@ -47,7 +47,7 @@
     "camelcase": "^5.3.1",
     "cls-hooked": "^4.2.2",
     "dataloader-sequelize": "^2.3.3",
-    "graphql-relay": "^0.6.0",
+    "graphql-relay": "^0.10.0",
     "graphql-sequelize": "^9.5.1",
     "uuid": "^8.3.2"
   },
@@ -59,21 +59,22 @@
     "eslint-plugin-node": "^8.0.0",
     "eslint-plugin-promise": "^4.0.1",
     "eslint-plugin-standard": "^4.0.0",
-    "prettier-eslint-cli": "^5.0.1",
+    "express": "^4.16.4",
+    "graphql": "^16.8.1",
+    "graphql-http": "^1.22.0",
+    "husky": "^1.1.4",
     "jest": "^27.5.1",
     "jest-cli": "^27.5.1",
-    "express": "^4.16.4",
-    "express-graphql": "^0.7.1",
-    "graphql": "^14.5.4",
-    "husky": "^1.1.4",
+    "prettier-eslint-cli": "^5.0.1",
     "sequelize": "^6.2.2",
     "sequelize-cli": "^6.1.0",
     "sqlite3": "^5.0.2",
     "stringifier": "^2.0.0",
-    "supertest": "^6.0.1"
+    "supertest": "^6.0.1",
+    "graphql-playground-middleware-express": "^1.7.23"
   },
   "peerDependencies": {
-    "graphql": "^15.1.0",
+    "graphql": "^16.0.0",
     "sequelize": "^6.2.2"
   },
   "jest": {
@@ -81,7 +82,6 @@
     "verbose": true
   },
   "husky": {
-    "hooks": {
-    }
+    "hooks": {}
   }
 }
