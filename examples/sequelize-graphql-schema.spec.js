@@ -67,18 +67,21 @@ const { generateSchema } = require('../src/index')({
 const app = express();
 const models = require('./models');
 
+app.get('/', expressPlayground({ endpoint: '/' }));
+
 app.all('/', async (req, res) => {
   const schema = await generateSchema(models, req);
 
   const handler = createHandler({
     schema: new GraphQLSchema(schema),
     graphiql: true,
+    context: {
+      req
+    }
   });
 
   handler(req, res);
 });
-
-app.get('/gql', expressPlayground({ endpoint: '/' }));
 
 app.listen(3000, () => {
   // eslint-disable-next-line no-console
