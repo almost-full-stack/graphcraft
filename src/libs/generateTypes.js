@@ -282,6 +282,15 @@ function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false
   }, {});
 
   const modelAttributeFields = attributeFields(model, Object.assign({}, { allowNull: true, cache, commentToDescription: true, map: renameFieldMap, only: onlyAttributes.length ? onlyAttributes : null, exclude: excludeAttributes }));
+  console.log(modelAttributeFields);
+
+  if (!isInput) {
+    Object.keys(modelAttributeFields).forEach((key) => {
+      modelAttributeFields[key].resolve = (value) => {
+        return value[key]
+      };
+    });
+  }
 
   const includeMode = permissions.associations.length && permissions.associations[0].startsWith('-') ? false : true;
   const associations = Object.keys(model.associations).reduce((all, association) => {
