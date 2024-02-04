@@ -14,43 +14,12 @@ const {
 } = require('graphql-sequelize');
 const { sanitizeField, generateName, isAvailable, whereQueryVarsToValues } = require('../utils');
 
-const filterPermissions = (rules, modelName) => {
-
-  if (rules && rules.length) {
-    return (rules || []).find((resource) => resource.model == modelName) || {};
-  }
-
-  return {};
-};
-
 module.exports = (options) => {
 
   const { query } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
-  const { naming, exposeOnly, fetchDeleted, GC_PERMISSIONS } = options;
+  const { naming, exposeOnly, fetchDeleted } = options;
   const pascalCase = naming.pascalCase;
-  /*const permissions = (GC_PERMISSIONS?.rules?.fetch || []).reduce((all, permission) => {
-    	
-    all[permission.model] = permission;
-
-    return all;
-
-  }, {});*/
-
-  const permissions = Object.keys(GC_PERMISSIONS?.rules || {}).reduce((all, rule) => {
-    
-    all[rule] = (GC_PERMISSIONS?.rules[rule] || []).reduce((ap, permission) => {
-    	
-      ap[permission.model || permission.name] = permission;
-  
-      return ap;
-  
-    }, {});;
-
-
-    return all;
-
-  }, {fetch: {}, queries: {}});
 
   /**
   * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
@@ -75,7 +44,7 @@ module.exports = (options) => {
 
       model.graphql.excludeQueries = model.graphql.excludeQueries || [];
 
-      if (permissions.fetch[modelName]?.enable === false && !model.graphql.excludeQueries.includes('fetch')) model.graphql.excludeQueries.push('fetch');
+      if (!model.graphql.excludeQueries.includes('fetch')) model.graphql.excludeQueries.push('fetch');
 
       const toBeGenerated = [].concat(customQueryNames).concat(
         model.graphql.excludeQueries.includes('fetch') ? [] : modelQueryName
@@ -99,11 +68,10 @@ module.exports = (options) => {
       const modelQueryName = generateName(aliases.fetch || naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase });
       const modelCountQueryName = generateName(aliases.count || naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase });
       const modelFindOneQueryName = generateName(aliases.byPk || naming.queries, { type: naming.type.byPk, name: modelTypeName }, { pascalCase });
-      const modelPermissions = permissions.fetch[modelType.name];
 
       const createFindOneQuery = (options.findOneQueries === true || (Array.isArray(options.findOneQueries) && options.findOneQueries.includes(modelType.name))) && isAvailable(exposeOnly.queries, [modelFindOneQueryName]);
 
-      if (createFindOneQuery && modelPermissions?.findOne !== false) {
+      if (createFindOneQuery) {
         queries[modelFindOneQueryName] = {
           type: modelType,
           args: _.omit(defaultArgs(model), ['where']),
@@ -113,15 +81,13 @@ module.exports = (options) => {
               throw Error(exposeOnly.throw);
             }
 
-            const permissions = permissions.fetch[modelName] || {};
-
-            return query(model, source, args, context, info, { simpleAST: null, permissions });
+            return query(model, source, args, context, info, { simpleAST: null });
           },
           description: `Returns one  ${modelType.name}.`
         };
       }
 
-      if (models[modelType.name].graphql.excludeQueries.indexOf('count') === -1 && isAvailable(exposeOnly.queries, [modelCountQueryName])  && modelPermissions?.count !== false) {
+      if (models[modelType.name].graphql.excludeQueries.indexOf('count') === -1 && isAvailable(exposeOnly.queries, [modelCountQueryName])) {
         queries[modelCountQueryName] = {
           type: GraphQLInt,
           args: {
@@ -152,15 +118,13 @@ module.exports = (options) => {
           args: Object.assign(defaultArgs(model), defaultListArguments, includeArguments, paranoidType),
           resolve: (source, args, context, info) => {
 
-            const permissions = filterPermissions(options?.GC_PERMISSIONS?.rules?.fetch, modelType.name);
-
             if (!isAvailable(exposeOnly.queries, [modelQueryName]) && exposeOnly.throw) {
               throw Error(exposeOnly.throw);
             }
 
             const simpleAST = simplifyAST(info.fieldASTs || info.fieldNodes, info).fields || {};
 
-            return query(model, source, args, context, info, { simpleAST, permissions });
+            return query(model, source, args, context, info, { simpleAST });
 
           }
         };
@@ -175,7 +139,7 @@ module.exports = (options) => {
     // Setup Custom Queries
     for (const query in allCustomQueries) {
 
-      if (isAvailable(exposeOnly.queries, query) && permissions.queries[query]?.enable !== false) {
+      if (isAvailable(exposeOnly.queries, query)) {
 
         const currentQuery = allCustomQueries[query];
         const type = currentQuery.output ? generateGraphQLField(currentQuery.output, outputTypes) : GraphQLInt;
