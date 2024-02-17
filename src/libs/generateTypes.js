@@ -151,6 +151,7 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
 
     // Add through table, this doesn't need resolver since this is already included when quering n:m relations.
     if (relation.associationType === 'BelongsToMany') {
+      console.log('here', relation.through.model.name, existingTypes[relation.through.model.name])
       fields[relation.through.model.name] = {
         type: existingTypes[relation.through.model.name]
       };

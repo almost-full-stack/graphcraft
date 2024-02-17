@@ -26,9 +26,9 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   Product.associate = (models) => {
-    Product.belongsToMany(models.Attribute, { through: models.ProductAttribute, foreignKey: 'productId' });
-    Product.belongsToMany(models.Image, { through: models.ProductMedia, as: 'Media', foreignKey: 'productId' });
-    Product.belongsToMany(models.Image, { through: models.ProductImage, foreignKey: 'productId' });
+    //Product.belongsToMany(models.Attribute, { through: models.ProductAttribute, foreignKey: 'productId' });
+    //Product.belongsToMany(models.Image, { through: models.ProductMedia, as: 'Media', foreignKey: 'productId' });
+    Product.belongsToMany(models.Image, { through: 'ProductImage', foreignKey: 'productId' });
   };
 
   Product.graphql = {
