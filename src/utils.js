@@ -1,6 +1,7 @@
 require('./jsdoc.def.js');
 const camelCase = require('camelcase');
 const { argsToFindOptions } = require('graphql-sequelize');
+const { sanitizeString, isFieldArray, isFieldRequired } = require('./utils/fields');
 const REVERSE_CLAUSE_STRING = 'reverse:';
 const ASC = 'ASC';
 const DESC = 'DESC';
@@ -15,29 +16,6 @@ const DESC = 'DESC';
 function define(model, opt) {
     model.graphql = opt;
 }
-
-function isFieldArray (name) {
-  if (name.startsWith('[') && name.endsWith('!]')) return 3;
-  if (name.startsWith('[') && name.endsWith(']!')) return 2;
-  if (name.startsWith('[') && name.endsWith(']')) return 1;
-
-  return 0;
-}
-
-function isFieldRequired (name) {
-  return name.indexOf('!') > -1;
-}
-
-const sanitizeField = (name = '') => {
-
-  if (name === '' || !name) throw Error('Invalid field name provided.');
-
-  name = name.replace('[', '').replace(']', '').replace('!', '');
-
-  if (name === '') throw Error('Invalid field name provided.');
-
-  return name;
-};
 
 const tokenizeTemplate = (template, all) => {
 
@@ -184,7 +162,7 @@ module.exports = {
   define,
   isFieldArray,
   isFieldRequired,
-  sanitizeField,
+  sanitizeField: sanitizeString,
   generateName,
   isAvailable,
   whereQueryVarsToValues,
