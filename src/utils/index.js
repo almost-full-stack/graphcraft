@@ -1,5 +1,8 @@
-const sanitizeString = require('./sanitizeString');
+const sanitizeString = require('./fields');
+const { validateModels, getSequelizeConnection } = require('./helpers');
 
 module.exports = {
-  sanitizeString
+  sanitizeString,
+  validateModels,
+  getSequelizeConnection
 };

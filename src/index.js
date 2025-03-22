@@ -1,14 +1,18 @@
 const assert = require('assert');
 const cls = require('cls-hooked');
-const TRANSACTION_NAMESPACE = 'sequelize-graphql-schema';
+const Sequelize = require('sequelize');
 const { createContext } = require('dataloader-sequelize');
-const { define } = require('./utils');
+const { define } = require('./utils/utils');
+const { validateModels, getSequelizeConnection } = require('./utils');
 
 const { defaultOptions, defaultModelGraphqlOptions } = require('./options');
 
 const GenerateQueries = require('./libs/generateQueries');
 const GenerateMutations = require('./libs/generateMutations');
 const GenerateTypes = require('./libs/generateTypes');
+
+const TRANSACTION_NAMESPACE = 'GRAPHCRAFT_TRANSACTION_NAMESPACE';
+
 const errorHandler = (options) => {
   return (error) => {
     for (const name in options.errorHandler) {
@@ -22,9 +26,51 @@ const errorHandler = (options) => {
   };
 };
 
+async function craft(options, context) {
+
+  const { models, permissions, permissionsOn, authenticate, enableDataloader } = options;
+
+  const { isValid, invalidModels } = validateModels(models);
+
+  if (!isValid) {
+    throw new Error(`Invalid models detected: ${invalidModels.join(', ')}`);
+  }
+
+  const sequelize = getSequelizeConnection(models);
+
+  if (permissions.get) {
+    if (typeof variable !== 'function') {
+      throw new Error('Permissions must be a function');
+    }
+  }
+
+  if (authenticate) {
+    if (typeof variable !== 'function') {
+      throw new Error('Authorizer must be a function');
+    }
+  }
+
+  if (enableDataloader) {
+    options.dataloaderContext = createContext(models.sequelize);
+  }
+
+  if (permissionsOn) {
+    const generatedPermissions = await permissions({
+      models,
+      ...context,
+    });
+
+    options._GC_PERMISSIONS = { strict: true, ...generatedPermissions };
+  }
+
+  if (options.autoTransactions) {
+    Sequelize.useCLS(cls.createNamespace(TRANSACTION_NAMESPACE));
+  }
+
+}
+
 function generateSchema(options) {
   return async (models, context) => {
-    assert(models.Sequelize, 'Sequelize not found as models.Sequelize.');
     assert(
       models.sequelize,
       'sequelize instance not found as models.sequelize.'
@@ -45,7 +91,7 @@ function generateSchema(options) {
 
     options.GC_PERMISSIONS = { strict: true, ...generatedPermissions };
 
-    options.Sequelize.useCLS(cls.createNamespace(TRANSACTION_NAMESPACE));
+    Sequelize.useCLS(cls.createNamespace(TRANSACTION_NAMESPACE));
 
     const { generateModelTypes } = GenerateTypes(options);
     const generateQueries = GenerateQueries(options);

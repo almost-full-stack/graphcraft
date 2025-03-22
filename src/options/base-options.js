@@ -1,10 +1,12 @@
 /**
- * Default configuration options for GraphQL models.
+ * Default configuration options for the Generation of GraphQL Schema.
  *
  * This object defines various settings related to GraphQL queries, mutations, permissions,
  * logging, transactions, and naming conventions.
  *
  * @constant {Object} defaultOptions
+ *
+ * @param {Object} models - An object where keys are model names and values are Sequelize models.
  *
  * @property {Object} naming - Defines the naming convention for queries, mutations, and types.
  * @property {boolean} naming.pascalCase - If true, uses PascalCase instead of camelCase.
@@ -48,13 +50,15 @@
  * @property {boolean} restoreDeleted - If true, creates restore endpoints for deleted records.
  * @property {boolean} noDefaults - If false, generates empty default queries.
  *
- * @property {Function} permissions - Function that returns a Promise to handle permission rules.
- * @returns {Promise<void>}
+ * @property {boolean} callPermissions - If once, only calls permissions once before generating schema, if set to always, calls permissions before each query/mutation.
  *
  * @property {Function} logger - Function that executes after all queries/mutations.
  * @returns {Promise<void>}
  *
- * @property {Function} authorizer - Function that executes before all queries/mutations.
+ * @property {Function} permissions - Function that returns a Promise to handle permission rules.
+ * @returns {Promise<void>}
+ *
+ * @property {Function} authenticate - Function that executes before all queries/mutations.
  * @param {Object} src - Source object.
  * @param {Object} arg - Arguments passed to the query/mutation.
  * @param {Object} ctx - GraphQL context.
@@ -67,6 +71,9 @@
  */
 
 const defaultOptions = {
+
+  models: {},
+
   naming: {
     pascalCase: true,
     queries: '{name}{type}',
@@ -103,7 +110,7 @@ const defaultOptions = {
 
   exclude: [],
   includeArguments: {},
-  dataloader: false,
+  enableDataloader: false,
   transactionedMutations: true,
 
   importTypes: {},
@@ -121,9 +128,11 @@ const defaultOptions = {
   restoreDeleted: false,
   noDefaults: true,
 
-  permissions: () => Promise.resolve(),
+  callPermissions: 'once',
+
   logger: () => Promise.resolve(),
-  authorizer: (src, arg, ctx) => Promise.resolve(),
+  permissions: () => Promise.resolve({}),
+  authenticate: () => Promise.resolve(),
 
   errorHandler: {
     ETIMEDOUT: { statusCode: 503 },

@@ -1,7 +1,7 @@
-require('./jsdoc.def.js');
+require('../jsdoc.def.js');
 const camelCase = require('camelcase');
 const { argsToFindOptions } = require('graphql-sequelize');
-const { sanitizeString, isFieldArray, isFieldRequired } = require('./utils/fields');
+const { sanitizeString, isFieldArray, isFieldRequired } = require('./fields.js');
 const REVERSE_CLAUSE_STRING = 'reverse:';
 const ASC = 'ASC';
 const DESC = 'DESC';
