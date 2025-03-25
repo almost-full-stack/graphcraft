@@ -80,7 +80,7 @@ function generateGraphQLField(fieldType, existingTypes = {}) {
     }
 
   } else if (isRequired) {
-    field = GraphQLNonNull(field);
+    field = new GraphQLNonNull(field);
   }
 
   return field;
