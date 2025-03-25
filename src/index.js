@@ -54,18 +54,31 @@ async function craft(options, context) {
     options.dataloaderContext = createContext(models.sequelize);
   }
 
-  if (permissionsOn) {
+  if (permissionsOn === 'once') {
     const generatedPermissions = await permissions({
       models,
       ...context,
     });
 
-    options._GC_PERMISSIONS = { strict: true, ...generatedPermissions };
+    options._GET_PERMISSIONS = async () => {
+
+      let gcPermissions = generatedPermissions;
+
+      if (permissionsOn === 'always') {
+        gcPermissions = await permissions({
+          models,
+          ...context,
+        });
+      }
+
+      return { permissions: gcPermissions, options: {} };
   }
 
   if (options.autoTransactions) {
     Sequelize.useCLS(cls.createNamespace(TRANSACTION_NAMESPACE));
   }
+
+  const { generateModelTypes } = GenerateTypes(models, options);
 
 }
 
@@ -83,6 +96,7 @@ function generateSchema(options) {
     options.Sequelize = models.Sequelize;
     options.sequelize = models.sequelize;
     options.models = models;
+
 
     const generatedPermissions = await options.permissions({
       models,
