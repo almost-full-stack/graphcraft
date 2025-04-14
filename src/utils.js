@@ -133,7 +133,8 @@ const getIncludes = (ast, modelName, models) => {
         model: associations[key].target,
         required: join === 'INNER',
         right: join === 'RIGHT',
-        include: fieldsAst ? getIncludes(fieldsAst, key, models) : []
+        as: key,
+        include: fieldsAst ? getIncludes(fieldsAst, associations[key].target.name, models) : []
       });
 
       includes.push(include);
