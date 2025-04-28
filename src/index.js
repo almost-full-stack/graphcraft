@@ -1,182 +1,14 @@
-const assert = require('assert');
-const cls = require('cls-hooked');
-const Sequelize = require('sequelize');
-const { createContext } = require('dataloader-sequelize');
 const { define } = require('./utils/utils');
-const { validateModels, getSequelizeConnection } = require('./utils');
 
-const { defaultOptions, defaultModelGraphqlOptions } = require('./options');
-
-const GenerateQueries = require('./libs/generateQueries');
-const GenerateMutations = require('./libs/generateMutations');
-const GenerateTypes = require('./libs/generateTypes');
-
-const TRANSACTION_NAMESPACE = 'GRAPHCRAFT_TRANSACTION_NAMESPACE';
-
-const errorHandler = (options) => {
-  return (error) => {
-    for (const name in options.errorHandler) {
-      if (error.message.indexOf(name) > -1) {
-        Object.assign(error, options.errorHandler[name]);
-        break;
-      }
-    }
-
-    return error;
-  };
-};
-
-async function craft(options, context) {
-
-  const { models, permissions, permissionsOn, authenticate, enableDataloader } = options;
-
-  const { isValid, invalidModels } = validateModels(models);
-
-  if (!isValid) {
-    throw new Error(`Invalid models detected: ${invalidModels.join(', ')}`);
-  }
-
-  const sequelize = getSequelizeConnection(models);
-
-  if (permissions.get) {
-    if (typeof variable !== 'function') {
-      throw new Error('Permissions must be a function');
-    }
-  }
-
-  if (authenticate) {
-    if (typeof variable !== 'function') {
-      throw new Error('Authorizer must be a function');
-    }
-  }
-
-  if (enableDataloader) {
-    options.dataloaderContext = createContext(models.sequelize);
-  }
-
-  if (permissionsOn === 'once') {
-    const generatedPermissions = await permissions({
-      models,
-      ...context,
-    });
-
-    options._GET_PERMISSIONS = async () => {
-
-      let gcPermissions = generatedPermissions;
-
-      if (permissionsOn === 'always') {
-        gcPermissions = await permissions({
-          models,
-          ...context,
-        });
-      }
-
-      return { permissions: gcPermissions, options: {} };
-  }
-
-  if (options.autoTransactions) {
-    Sequelize.useCLS(cls.createNamespace(TRANSACTION_NAMESPACE));
-  }
-
-  const { generateModelTypes } = GenerateTypes(models, options);
-
-}
-
-function generateSchema(options) {
-  return async (models, context) => {
-    assert(
-      models.sequelize,
-      'sequelize instance not found as models.sequelize.'
-    );
-
-    if (options.dataloader) {
-      options.dataloaderContext = createContext(models.sequelize);
-    }
-
-    options.Sequelize = models.Sequelize;
-    options.sequelize = models.sequelize;
-    options.models = models;
+const craftBase = require('./libs/craft');
+const { formatGraphQLError } = require('./libs/error');
+const { defaultOptions } = require('./options');
+const { copyMissing } = require('./utils');
 
 
-    const generatedPermissions = await options.permissions({
-      models,
-      ...context,
-    });
+const init = (options) => {
 
-    options.GC_PERMISSIONS = { strict: true, ...generatedPermissions };
-
-    Sequelize.useCLS(cls.createNamespace(TRANSACTION_NAMESPACE));
-
-    const { generateModelTypes } = GenerateTypes(options);
-    const generateQueries = GenerateQueries(options);
-    const generateMutations = GenerateMutations(options);
-    const modelsIncluded = {};
-
-    for (const modelName in models) {
-      const model = models[modelName];
-
-      if (
-        'name' in model &&
-        modelName !== 'Sequelize' &&
-        !options.exclude.includes(modelName)
-      ) {
-        model.graphql = model.graphql || defaultModelGraphqlOptions;
-        model.graphql.attributes = Object.assign(
-          {},
-          defaultModelGraphqlOptions.attributes,
-          model.graphql.attributes
-        );
-        model.graphql = Object.assign(
-          {},
-          defaultModelGraphqlOptions,
-          model.graphql
-        );
-        modelsIncluded[modelName] = model;
-      }
-    }
-
-    const modelTypes = generateModelTypes(modelsIncluded, {}, options);
-
-    return Promise.resolve({
-      query: generateQueries(
-        modelsIncluded,
-        modelTypes.outputTypes,
-        modelTypes.inputTypes
-      ),
-      mutation: generateMutations(
-        modelsIncluded,
-        modelTypes.outputTypes,
-        modelTypes.inputTypes
-      ),
-    });
-  };
-}
-
-const init = (_options) => {
-  const newOptions = { ..._options };
-
-  newOptions.naming = Object.assign(
-    {},
-    defaultOptions.naming,
-    newOptions.naming
-  );
-  newOptions.naming.type = Object.assign(
-    {},
-    defaultOptions.naming.type,
-    newOptions.naming.type
-  );
-  newOptions.exposeOnly = Object.assign(
-    {},
-    defaultOptions.exposeOnly,
-    newOptions.exposeOnly
-  );
-  newOptions.limits = Object.assign(
-    {},
-    defaultOptions.limits,
-    newOptions.limits
-  );
-
-  const options = Object.assign({}, defaultOptions, newOptions);
+  options = copyMissing(options, defaultOptions);
 
   options.dataloaderContext = null;
 
@@ -189,21 +21,23 @@ const init = (_options) => {
     }
   };
 
+  const craft = craftBase(options);
+
   return {
-    generateSchema: generateSchema(options),
+    craft,
+    generateSchema: craft,
     // reset dataloader cache, recommended to be used at the end of each request when working with aws lambda
     resetCache,
+    // Other utils that can be exported
+    // should be defined here
+    // TODO: maybe better to use a class
+    // export multiple things in the common way
+    define,
     // use this to prime custom queries
     dataloaderContext: options.dataloaderContext,
-    errorHandler: errorHandler(options),
+    errorHandler: formatGraphQLError
   };
 };
-
-// Other utils that can be exported
-// should be defined here
-// TODO: maybe better to use a class
-// export multiple things in the common way
-init.define = define;
 
 module.exports = init;
 

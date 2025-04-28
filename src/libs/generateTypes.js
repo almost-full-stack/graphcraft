@@ -11,7 +11,7 @@ const {
   defaultArgs
 } = require('graphql-sequelize');
 
-const { isFieldArray, isFieldRequired, sanitizeField } = require('../utils');
+const { isFieldArray, isFieldRequired, sanitizeString } = require('../utils');
 const constants = require('../constants');
 
 const stringToTypeMap = constants.STRINGTOTYPEMAP;
@@ -63,7 +63,7 @@ function generateGraphQLField(fieldType, existingTypes = {}) {
     return values;
   }
 
-  const sanitizedField = sanitizeField(fieldType);
+  const sanitizedField = sanitizeString(fieldType);
 
   let field = existingTypes[sanitizedField] || stringToTypeMap[sanitizedField.toLowerCase()] || stringToTypeMap['string'];
   const isArray = isFieldArray(fieldType);
@@ -313,7 +313,7 @@ function generateGraphQLTypeFromJson(typeJson, existingTypes = {}, allCustomType
 
   for (const fieldName in type) {
 
-    const sanitizedTypeName = sanitizeField(type[fieldName]);
+    const sanitizedTypeName = sanitizeString(type[fieldName]);
 
     // Recursively generate nested types
     if (allCustomTypes[sanitizedTypeName] && !existingTypes[sanitizedTypeName]) {
@@ -362,7 +362,7 @@ function generateModelTypes(models, remoteTypes = {}, options = {}) {
     const allOperations = Object.assign({}, model.graphql.queries, model.graphql.mutations, options.queries, options.mutations);
 
     for (const operation in allOperations) {
-      if (allOperations[operation].input) inputCustomTypes.push(sanitizeField(allOperations[operation].input));
+      if (allOperations[operation].input) inputCustomTypes.push(sanitizeString(allOperations[operation].input));
     }
 
   });

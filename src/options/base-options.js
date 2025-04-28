@@ -50,7 +50,7 @@
  * @property {boolean} restoreDeleted - If true, creates restore endpoints for deleted records.
  * @property {boolean} noDefaults - If false, generates empty default queries.
  *
- * @property {boolean} callPermissions - If once, only calls permissions once before generating schema, if set to always, calls permissions before each query/mutation.
+ * @property {boolean} permissionsOn - If once, only calls permissions once before generating schema, if set to always, calls permissions before each query/mutation.
  *
  * @property {Function} logger - Function that executes after all queries/mutations.
  * @returns {Promise<void>}
@@ -75,22 +75,29 @@ const defaultOptions = {
   models: {},
 
   naming: {
-    pascalCase: true,
-    queries: '{name}{type}',
-    mutations: '{name}{type}{bulk}',
-    input: '{name}',
-    rootQueries: 'RootQueriesType',
-    rootMutations: 'RootMutationsType',
-    type: {
-      create: 'Create',
-      update: 'Update',
-      delete: 'Delete',
-      restore: 'Restore',
-      byPk: 'ByPK',
-      get: '',
+    templates: {
+      query: '{name}{operation}',
+      mutation: '{name}{operation}{bulk}',
+      input: '{name}',
+      rootQueryType: 'RootQueriesType',
+      rootMutationType: 'RootMutationsType',
+    },
+    dictionary: {
+      operation: {
+        create: 'Create',
+        update: 'Update',
+        delete: 'Delete',
+        restore: 'Restore',
+        byPk: 'ByPK',
+        get: '',
+        count: 'Count',
+        default: '',
+      },
       bulk: 'Bulk',
-      count: 'Count',
-      default: 'Default',
+    },
+    options: {
+      pascalCase: true,
+      noCase: false,
     },
   },
 
@@ -112,6 +119,7 @@ const defaultOptions = {
   includeArguments: {},
   enableDataloader: false,
   transactionedMutations: true,
+  autoTransactions: true,
 
   importTypes: {},
   types: {},
@@ -128,7 +136,7 @@ const defaultOptions = {
   restoreDeleted: false,
   noDefaults: true,
 
-  callPermissions: 'once',
+  permissionsOn: 'once',
 
   logger: () => Promise.resolve(),
   permissions: () => Promise.resolve({}),

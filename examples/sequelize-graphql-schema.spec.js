@@ -15,9 +15,11 @@ const { generateSchema } = require('../src/index')({
     max: 0,
   },
   naming: {
-    input: 'input',
-    rootQueries: 'RootQueryType',
-    rootMutations: 'RootMutationType',
+    templates: {
+      input: 'input',
+      rootQueries: 'RootQueryType',
+      rootMutations: 'RootMutationType',
+    }
   },
   findOneQueries: true,
   importTypes: {

@@ -21,6 +21,8 @@ module.exports = (options) => {
   const { naming, exposeOnly, fetchDeleted } = options;
   const pascalCase = naming.pascalCase;
 
+  console.log(naming);
+
   /**
   * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
   *
@@ -40,7 +42,12 @@ module.exports = (options) => {
       const model = models[modelName];
       const outputTypeName = modelName;
       const customQueryNames = Object.keys(model.graphql.queries || {});
-      const modelQueryName = generateName(model.graphql.alias.fetch || naming.queries, { type: naming.type.get, name: outputTypeName }, { pascalCase });
+
+      const modelQueryName = generateName({
+        ...naming,
+        template: model.graphql.alias.fetch || naming.templates.query,
+        replacements: { operation: naming.dictionary.operation.get, name: outputTypeName }
+      });
 
       model.graphql.excludeQueries = model.graphql.excludeQueries || [];
 

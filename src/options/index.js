@@ -1,5 +1,5 @@
-const defaultOptions = require('./options/base-options');
-const defaultModelGraphqlOptions = require('./options/model-options');
+const defaultOptions = require('./base-options');
+const defaultModelGraphqlOptions = require('./model-options');
 
 module.exports = {
   defaultOptions,
