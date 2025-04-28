@@ -39,8 +39,6 @@ function generateName({
   options = { pascalCase: true, noCase: false },
 }) {
 
-  console.log('template', template);
-
   if (!template) {
     throw new Error('Template must be a non-empty string.');
   }

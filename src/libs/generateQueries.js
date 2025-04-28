@@ -21,8 +21,6 @@ module.exports = (options) => {
   const { naming, exposeOnly, fetchDeleted } = options;
   const pascalCase = naming.pascalCase;
 
-  console.log(naming);
-
   /**
   * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
   *
