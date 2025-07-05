@@ -253,7 +253,8 @@ function generateAssociationFields(associations, existingTypes = {}, isInput = f
 * @param {*} model The sequelize model used to create the `GraphQLObjectType`
 * @param {*} types Existing `GraphQLObjectType` types, created from all the Sequelize models
 */
-function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false, cache) {
+async function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false, cache) {
+
   const GraphQLClass = isInput ? GraphQLInputObjectType : GraphQLObjectType;
   const attributes = model.graphql.attributes || {};
   const modelAttributes = model.rawAttributes;
@@ -271,10 +272,18 @@ function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput = false
 
   const modelAttributeFields = attributeFields(model, Object.assign({}, { allowNull: true, cache, commentToDescription: true, map: renameFieldMap, only: onlyAttributes.length ? onlyAttributes : null, exclude: excludeAttributes }));
 
+  const PERMISSIONS = await options._GET_PERMISSIONS();
+
+  //console.log(PERMISSIONS);
+
   if (!isInput) {
     Object.keys(modelAttributeFields).forEach((key) => {
       modelAttributeFields[key].resolve = (value) => {
-        return value[key];
+        if (true) {
+          throw Error(`Unauthorized to access ${key}.`);
+        }
+
+return value[key];
       };
     });
   }
@@ -338,7 +347,7 @@ function generateGraphQLTypeFromJson(typeJson, existingTypes = {}, allCustomType
 * from Sequelize models.
 * @param {*} models The sequelize models used to create the types
 */
-function generateModelTypes(models, remoteTypes = {}, options = {}) {
+async function generateModelTypes(models, remoteTypes = {}, options = {}) {
 
   const customTypes = options.types;
   const importTypes = options.importTypes;
@@ -347,14 +356,14 @@ function generateModelTypes(models, remoteTypes = {}, options = {}) {
   const inputCustomTypes = [];
   const allCustomTypes = {};
 
-  Object.keys(models).forEach((modelName) => {
+  await Object.keys(models).forEach(async (modelName) => {
 
     const model = models[modelName];
     const cache = {};
 
     model.graphql = model.graphql || {};
-    outputTypes[modelName] = generateGraphQLTypeFromModel(model, outputTypes, false, cache);
-    inputTypes[modelName] = generateGraphQLTypeFromModel(model, inputTypes, true, cache);
+    outputTypes[modelName] = await generateGraphQLTypeFromModel(model, outputTypes, false, cache);
+    inputTypes[modelName] = await generateGraphQLTypeFromModel(model, inputTypes, true, cache);
 
     // accumulate all types from all models
     Object.assign(allCustomTypes, customTypes, model.graphql.types, customTypes, importTypes);

@@ -64,11 +64,28 @@ function copyMissing(target, source) {
       }
   }
 
-return target;
+  return target;
+}
+
+function isAvailable(exposed, toBeGenerated) {
+
+  const toGenerate = [].concat(toBeGenerated);
+
+  if (!exposed.length) return true;
+
+  for (let index = 0; index < toGenerate.length; index++) {
+    if (exposed.includes(toGenerate[index])) {
+      return true;
+    }
+  }
+
+  return false;
+
 }
 
 module.exports = {
   validateModels,
   getSequelizeConnection,
-  copyMissing
+  copyMissing,
+  isAvailable
 };

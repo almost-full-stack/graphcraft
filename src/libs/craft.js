@@ -84,7 +84,7 @@ function craft(options) {
       }
     }
 
-    const modelTypes = generateModelTypes(modelsIncluded, {}, options);
+    const modelTypes = await generateModelTypes(modelsIncluded, {}, options);
 
     return Promise.resolve({
       query: generateQueries(

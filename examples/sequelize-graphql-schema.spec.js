@@ -49,7 +49,7 @@ const { generateSchema } = require('../src/index')({
         fetch: [
           {
             model: 'Product',
-            fields: [],
+            fields: ['name', 'description'],
             associations: ['Media'],
             enable: true,
             conditions: [{ field: 'isActive', value: true }],

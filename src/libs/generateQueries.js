@@ -12,7 +12,7 @@ const {
   argsToFindOptions,
   simplifyAST
 } = require('graphql-sequelize');
-const { sanitizeField, generateName, isAvailable, whereQueryVarsToValues } = require('../utils');
+const { sanitizeString, generateName, isAvailable, whereQueryVarsToValues } = require('../utils');
 
 module.exports = (options) => {
 
@@ -70,9 +70,22 @@ module.exports = (options) => {
       const model = models[modelType.name];
       const paranoidType = model.options.paranoid && (model.graphql.paranoid || model.graphql.fetchDeleted || fetchDeleted) ? { fetchDeleted: { type: GraphQLBoolean } } : {};
       const aliases = model.graphql.alias;
-      const modelQueryName = generateName(aliases.fetch || naming.queries, { type: naming.type.get, name: modelTypeName }, { pascalCase });
-      const modelCountQueryName = generateName(aliases.count || naming.queries, { type: naming.type.count, name: modelTypeName }, { pascalCase });
-      const modelFindOneQueryName = generateName(aliases.byPk || naming.queries, { type: naming.type.byPk, name: modelTypeName }, { pascalCase });
+
+      const modelQueryName = generateName({
+        ...naming,
+        template: aliases.fetch || naming.templates.query,
+        replacements: { operation: naming.dictionary.operation.get, name: modelTypeName }
+      });
+      const modelCountQueryName = generateName({
+        ...naming,
+        template: aliases.count || naming.templates.query,
+        replacements: { operation: naming.dictionary.operation.count, name: modelTypeName }
+      });
+      const modelFindOneQueryName = generateName({
+        ...naming,
+        template: aliases.byPk || naming.templates.query,
+        replacements: { operation: naming.dictionary.operation.byPk, name: modelTypeName }
+      });
 
       const createFindOneQuery = (options.findOneQueries === true || (Array.isArray(options.findOneQueries) && options.findOneQueries.includes(modelType.name))) && isAvailable(exposeOnly.queries, [modelFindOneQueryName]);
 
@@ -149,8 +162,14 @@ module.exports = (options) => {
         const currentQuery = allCustomQueries[query];
         const type = currentQuery.output ? generateGraphQLField(currentQuery.output, outputTypes) : GraphQLInt;
         const description = currentQuery.description || undefined;
-        const input = currentQuery.input ? sanitizeField(currentQuery.input) : '';
-        const inputName = generateName(naming.input, { name: input });
+        const input = currentQuery.input ? sanitizeString(currentQuery.input) : '';
+
+        const inputName = generateName({
+          ...naming,
+          template: naming.templates.input,
+          replacements: { name: input }
+        });
+
         const args = Object.assign(
           {}, defaultListArguments, includeArguments,
           currentQuery.input ? { [inputName]: { type: generateGraphQLField(currentQuery.input, inputTypes) } } : {},
@@ -170,14 +189,26 @@ module.exports = (options) => {
           return currentQuery.resolver(source, args, context, info);
         };
 
-        fields[generateName(query, {}, { pascalCase })] = { type, description, args, resolve };
+        const fieldName = generateName({
+          ...naming,
+          template: naming.templates.field,
+          replacements: { name: query }
+        });
+
+        fields[fieldName] = { type, description, args, resolve };
 
       }
 
     }
 
+    const rootQueryName = generateName({
+      ...naming,
+      template: naming.templates.rootQueryType,
+      replacements: { }
+    });
+
     return new GraphQLObjectType({
-      name: naming.rootQueries,
+      name: rootQueryName,
       fields
     });
   };

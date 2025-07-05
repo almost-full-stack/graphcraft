@@ -33,10 +33,10 @@ const camelCase = require('camelcase');
  */
 
 function generateName({
-  template = '',
+  template = '{name}',
   replacements = {},
   dictionary = {},
-  options = { pascalCase: true, noCase: false },
+  options = { pascalCase: true, noCase: false }
 }) {
 
   if (!template) {
@@ -44,7 +44,7 @@ function generateName({
   }
 
   const filled = template.replace(/{([^}]+)}/g, (_, token) => {
-    const value = replacements[token] || dictionary[token];
+    const value = replacements[token] != null ? replacements[token] : dictionary[token];
 
     if (value === undefined) {
       throw new Error(`Missing value for token: "${token}"`);
