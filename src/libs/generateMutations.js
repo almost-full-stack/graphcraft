@@ -6,6 +6,7 @@ const {
   GraphQLNonNull
 } = require('graphql');
 const { typeMapper } = require('graphql-sequelize');
+const Sequelize = require('sequelize');
 const { sanitizeField, generateName, isAvailable } = require('../utils');
 
 module.exports = (options) => {
@@ -44,14 +45,16 @@ module.exports = (options) => {
         destroy: bulkEnabled.includes('destroy') && (!model.graphql.excludeMutations.includes('destroy'))
       };
 
+      const naming = options.naming;
+
       const modelMutationName = {
-        create: generateName(aliases.create || options.naming.mutations, { type: naming.type.create, name: outputTypeName }, { pascalCase }),
-        update: generateName(aliases.update || options.naming.mutations, { type: naming.type.update, name: outputTypeName }, { pascalCase }),
-        delete: generateName(aliases.destroy || options.naming.mutations, { type: naming.type.delete, name: outputTypeName }, { pascalCase }),
-        restore: generateName(aliases.restore || options.naming.mutations, { type: naming.type.restore, name: outputTypeName }, { pascalCase }),
-        createBulk: generateName(aliases.createBulk || options.naming.mutations, { type: naming.type.create, name: outputTypeName, bulk: naming.type.bulk }, { pascalCase }),
-        updateBulk: generateName(aliases.updateBulk || options.naming.mutations, { type: naming.type.update, name: outputTypeName, bulk: naming.type.bulk }, { pascalCase }),
-        deleteBulk: generateName(aliases.destroyBulk || options.naming.mutations, { type: naming.type.delete, name: outputTypeName, bulk: naming.type.bulk }, { pascalCase })
+        create: generateName({ ...naming, template: aliases.create || naming.templates.mutation, replacements: { operation: naming.dictionary.operation.create, name: outputTypeName, bulk: '' } }),
+        update: generateName({ ...naming, template: aliases.update || naming.templates.mutation, replacements: { operation: naming.dictionary.operation.update, name: outputTypeName, bulk: '' } }),
+        delete: generateName({ ...naming, template: aliases.destroy || naming.templates.mutation, replacements: { operation: naming.dictionary.operation.delete, name: outputTypeName, bulk: '' } }),
+        restore: generateName({ ...naming, template: aliases.restore || naming.templates.mutation, replacements: { operation: naming.dictionary.operation.restore, name: outputTypeName, bulk: '' } }),
+        createBulk: generateName({ ...naming, template: aliases.createBulk || naming.templates.mutation, replacements: { operation: naming.dictionary.operation.create, name: outputTypeName, bulk: naming.dictionary.operation.bulk } }),
+        updateBulk: generateName({ ...naming, template: aliases.updateBulk || naming.templates.mutation, replacements: { operation: naming.dictionary.operation.update, name: outputTypeName, bulk: naming.dictionary.operation.bulk } }),
+        deleteBulk: generateName({ ...naming, template: aliases.destroyBulk || naming.templates.mutation, replacements: { operation: naming.dictionary.operation.delete, name: outputTypeName, bulk: naming.dictionary.operation.bulk } })
       };
 
       modelBulkOptions[outputTypeName] = bulkOptions;
@@ -91,12 +94,18 @@ module.exports = (options) => {
 
     const fields = Object.keys(createMutationsFor).reduce((allMutations, modelTypeName) => {
 
+      console.log(modelTypeName, inputTypes);
+
       const mutations = {};
       const inputModelType = inputTypes[modelTypeName];
       const outputModelType = outputTypes[modelTypeName];
       const model = models[modelTypeName];
       const key = model.primaryKeyAttributes[0];
-      const inputName = generateName(naming.input, { name: modelTypeName }, { noCase: true });
+      const inputName = generateName({
+        ...naming,
+        template: naming.templates.input,
+        replacements: { name: modelTypeName }
+      });
 
       if (!model.graphql.excludeMutations.includes('create') && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].create)) {
         mutations[modelMutationNames[modelTypeName].create] = {
@@ -121,7 +130,7 @@ module.exports = (options) => {
           type: GraphQLInt,
           description: 'Delete ' + modelTypeName,
           // enhance this to support composite keys
-          args: Object.assign({ [key]: { type: new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize)) } }, includeArguments),
+          args: Object.assign({ [key]: { type: new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, Sequelize)) } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].delete)(source, args, context, info, { type: 'destroy', models, modelTypeName, inputName })
         };
       }
@@ -130,7 +139,7 @@ module.exports = (options) => {
         mutations[modelMutationNames[modelTypeName].restore] = {
           type: outputModelType,
           description: 'Restore ' + modelTypeName,
-          args: Object.assign({ [key]: { type: new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize)) } }, includeArguments),
+          args: Object.assign({ [key]: { type: new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, Sequelize)) } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].restore)(source, args, context, info, { type: 'restore', models, modelTypeName, inputName })
         };
       }
@@ -148,6 +157,7 @@ module.exports = (options) => {
         };
 
       }
+      console.log(inputModelType);
 
       if (bulkOptions.update && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].updateBulk)) {
 
@@ -165,7 +175,7 @@ module.exports = (options) => {
         mutations[modelMutationNames[modelTypeName].deleteBulk] = {
           type: GraphQLInt,
           description: 'Delete bulk ' + modelTypeName,
-          args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, options.Sequelize))) } }, includeArguments),
+          args: Object.assign({ [key]: { type: new GraphQLList(new GraphQLNonNull(typeMapper.toGraphQL(model.rawAttributes[key].type, Sequelize))) } }, includeArguments),
           resolve: (source, args, context, info) => mutationWrapper(modelMutationNames[modelTypeName].deleteBulk)(source, args, context, info, { type: 'destroy', isBulk: true, models, modelTypeName, inputName })
         };
 
@@ -186,7 +196,11 @@ module.exports = (options) => {
         const type = currentMutation.output ? generateGraphQLField(currentMutation.output, outputTypes) : GraphQLInt;
         const description = currentMutation.description || undefined;
         const input = currentMutation.input ? sanitizeField(currentMutation.input) : '';
-        const inputName = generateName(naming.input, { name: input }, { noCase: true });
+        const inputName = generateName({
+        ...naming,
+        template: naming.templates.input,
+        replacements: { name: input }
+      });
         const args = Object.assign(
           {}, includeArguments,
           currentMutation.input ? { [inputName]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},

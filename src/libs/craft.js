@@ -65,10 +65,6 @@ function craft(options) {
       Sequelize.useCLS(cls.createNamespace(TRANSACTION_NAMESPACE));
     }
 
-    const { generateModelTypes } = GenerateTypes(models, options);
-    const generateQueries = GenerateQueries(options);
-    const generateMutations = GenerateMutations(options);
-
     const modelsIncluded = {};
 
     for (const modelName in models) {
@@ -84,7 +80,13 @@ function craft(options) {
       }
     }
 
+    const { generateModelTypes } = GenerateTypes(models, options);
+
     const modelTypes = await generateModelTypes(modelsIncluded, {}, options);
+
+    const generateQueries = GenerateQueries(options, modelTypes.outputTypes, modelTypes.inputTypes);
+    const generateMutations = GenerateMutations(options, modelTypes.outputTypes, modelTypes.inputTypes);
+
 
     return Promise.resolve({
       query: generateQueries(

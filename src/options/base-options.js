@@ -88,12 +88,12 @@ const defaultOptions = {
         update: 'Update',
         delete: 'Delete',
         restore: 'Restore',
+        bulk: 'Bulk',
         byPk: 'ByPK',
         get: '',
         count: 'Count',
         default: '',
-      },
-      bulk: 'Bulk',
+      }
     },
     options: {
       pascalCase: true,
