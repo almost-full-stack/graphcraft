@@ -272,8 +272,6 @@ async function generateGraphQLTypeFromModel(model, existingTypes = {}, isInput =
 
   const modelAttributeFields = attributeFields(model, Object.assign({}, { allowNull: true, cache, commentToDescription: true, map: renameFieldMap, only: onlyAttributes.length ? onlyAttributes : null, exclude: excludeAttributes }));
 
-  const PERMISSIONS = await options._GET_PERMISSIONS();
-
   //console.log(PERMISSIONS);
 
   if (!isInput) {

@@ -7,14 +7,13 @@ const {
 } = require('graphql');
 const { typeMapper } = require('graphql-sequelize');
 const Sequelize = require('sequelize');
-const { sanitizeField, generateName, isAvailable } = require('../utils');
+const { sanitizeString, generateName, isAvailable } = require('../utils');
 
 module.exports = (options) => {
 
   const { mutation } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
   const { naming, exposeOnly, restoreDeleted } = options;
-  const pascalCase = naming.pascalCase;
 
   return (models, outputTypes = {}, inputTypes = {}) => {
 
@@ -94,8 +93,6 @@ module.exports = (options) => {
 
     const fields = Object.keys(createMutationsFor).reduce((allMutations, modelTypeName) => {
 
-      console.log(modelTypeName, inputTypes);
-
       const mutations = {};
       const inputModelType = inputTypes[modelTypeName];
       const outputModelType = outputTypes[modelTypeName];
@@ -157,7 +154,6 @@ module.exports = (options) => {
         };
 
       }
-      console.log(inputModelType);
 
       if (bulkOptions.update && isAvailable(exposeOnly.mutations, modelMutationNames[modelTypeName].updateBulk)) {
 
@@ -195,7 +191,7 @@ module.exports = (options) => {
         const currentMutation = allCustomMutations[mutationName];
         const type = currentMutation.output ? generateGraphQLField(currentMutation.output, outputTypes) : GraphQLInt;
         const description = currentMutation.description || undefined;
-        const input = currentMutation.input ? sanitizeField(currentMutation.input) : '';
+        const input = currentMutation.input ? sanitizeString(currentMutation.input) : '';
         const inputName = generateName({
         ...naming,
         template: naming.templates.input,
@@ -206,7 +202,13 @@ module.exports = (options) => {
           currentMutation.input ? { [inputName]: { type: generateGraphQLField(currentMutation.input, inputTypes) } } : {},
         );
 
-        fields[generateName(mutationName, {}, { pascalCase })] = {
+        const customMutationName = generateName({
+          ...naming,
+          template: naming.templates.mutation,
+          replacements: { name: mutationName, operation: '', bulk: '' }
+        });
+
+        fields[customMutationName] = {
           type,
           args,
           description,
@@ -218,7 +220,7 @@ module.exports = (options) => {
     }
 
     return new GraphQLObjectType({
-      name: options.naming.rootMutations,
+      name: naming.templates.rootMutationType,
       fields
     });
   };
