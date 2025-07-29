@@ -19,7 +19,6 @@ module.exports = (options) => {
   const { query } = require('../resolvers')(options);
   const { generateGraphQLField, generateIncludeArguments } = require('./generateTypes')(options);
   const { naming, exposeOnly, fetchDeleted } = options;
-  const pascalCase = naming.pascalCase;
 
   /**
   * Returns a root `GraphQLObjectType` used as query for `GraphQLSchema`.
