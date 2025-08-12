@@ -4,6 +4,7 @@ const craftBase = require('./libs/craft');
 const { formatGraphQLError } = require('./libs/error');
 const { defaultOptions } = require('./options');
 const { copyMissing } = require('./utils');
+const permissions = require('./permissions');
 
 
 const init = (options) => {
@@ -38,6 +39,8 @@ const init = (options) => {
     errorHandler: formatGraphQLError
   };
 };
+
+init.permissions = permissions;
 
 module.exports = init;
 
