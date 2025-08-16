@@ -1,7 +1,10 @@
 // demo.js
 const { loadPolicyFromFile } = require('./dslLoader');
 const { makeEngine } = require('./authEngine');
-const { buildWhereFragment } = require('./whereBuilder');
+const { parseRn } = require('./rnUtils');
+
+console.log(parseRn('rn::club:1::member:101::safeguarding:1'));
+return;
 
 function line(title = '') {
   console.log('\n' + '-'.repeat(40) + (title ? ' ' + title : ''));
@@ -14,16 +17,6 @@ function show(label, val) {
 (async function main() {
   const cfg = loadPolicyFromFile('./src/permissions/example.policy');
   const engine = makeEngine(cfg);
-
-  const { where, params } = buildWhereFragment(cfg, {
-  username: 'club1_admin',
-  permission: 'read',
-  tableAlias: 't',
-  rnColumn: 'resource_rn',
-  // tweak table/column names if yours differ
-});
-
-console.log(where, params);
 
   // Sanity summary
   line('SUMMARY');

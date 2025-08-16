@@ -23,7 +23,7 @@ function matchesRnPattern(pattern, rn) {
 
 const specificityOf = (pattern) => String(pattern).length;
 
-function makeEngine(cfg) {
+function authEngine(cfg) {
   const {
     roles = [],
     users = [],
@@ -245,4 +245,4 @@ function makeEngine(cfg) {
   };
 }
 
-module.exports = { makeEngine };
+module.exports = { authEngine };

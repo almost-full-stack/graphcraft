@@ -40,7 +40,7 @@ function loadPolicyFromFile(path) {
 
     // role <name> rank <n>
     if ((m = line.match(/^role\s+(\w+)\s+rank\s+(-?\d+)$/i))) {
-      roles.push({ name: m[1], rank: parseInt(m[2], 10) });
+      roles.push({ name: m[1], rank: parseInt(m[2]) });
 
     // user <username> as <role>
     } else if ((m = line.match(/^user\s+(\w+)\s+as\s+(\w+)$/i))) {
