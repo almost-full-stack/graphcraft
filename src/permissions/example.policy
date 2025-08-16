@@ -1,0 +1,29 @@
+# roles
+role admin rank 100
+role manager rank 50
+role staff rank 20
+
+# users
+user alice_admin as admin
+user bob_manager as manager
+user carol_staff as staff
+
+# resources (RN -> owner)
+resource rn::class:1 model Class owner bob_manager
+resource rn::class:1::group:1 model Group owner carol_staff
+resource rn::class:1::group:1::student:1 model Student owner carol_staff
+resource rn::class:2 model Class owner alice_admin
+
+# resource-level (comma-separated RN patterns)
+allow edit   on rn::class:1                                 to manager
+allow read   on rn::class:1::group:1                        to staff
+deny  edit   on rn::class:1::group:1                        to staff
+allow manage on rn::class:*                                 to admin
+allow read   on rn::class:*::group:*,rn::*::group:1         to manager
+
+# field-level (comma-separated fields)
+allow read  fields *            of Student on rn::class:1           to manager
+deny  read  fields ssn          of Student on rn::class:1           to manager
+allow write fields grade        of Student on rn::class:1           to manager
+allow read  fields name,grade   of Student on rn::class:1::group:1  to staff
+allow read  fields *            of Student on rn::class:*           to admin
