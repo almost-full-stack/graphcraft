@@ -1,29 +1,64 @@
-# roles
-role admin rank 100
-role manager rank 50
-role staff rank 20
+# ===== ROLES =====
+role GIAdmin   rank 100
+role ClubAdmin rank 60
+role Viewer    rank 10
 
-# users
-user alice_admin as admin
-user bob_manager as manager
-user carol_staff as staff
+# ===== USERS =====
+user gi_root      as GIAdmin
+user club1_admin  as ClubAdmin
+user viewer_joe   as Viewer
 
-# resources (RN -> owner)
-resource rn::class:1 model Class owner bob_manager
-resource rn::class:1::group:1 model Group owner carol_staff
-resource rn::class:1::group:1::student:1 model Student owner carol_staff
-resource rn::class:2 model Class owner alice_admin
+# ===== RESOURCES (RN -> owner) =====
+# Club 1 hierarchy owned by club1_admin
+resource rn::club:1 owner club1_admin
+resource rn::club:1::member:101 owner club1_admin
+resource rn::club:1::member:101::safeguarding:1 owner club1_admin
+resource rn::club:1::discipline:1 owner club1_admin
+resource rn::club:1::event:1 owner club1_admin
+resource rn::club:1::event:1::competition:1 owner club1_admin
+resource rn::club:1::event:1::competition:1::category:1 owner club1_admin
+resource rn::club:1::event:1::competition:1::entry:1 owner club1_admin
 
-# resource-level (comma-separated RN patterns)
-allow edit   on rn::class:1                                 to manager
-allow read   on rn::class:1::group:1                        to staff
-deny  edit   on rn::class:1::group:1                        to staff
-allow manage on rn::class:*                                 to admin
-allow read   on rn::class:*::group:*,rn::*::group:1         to manager
+# Club 2 (no special owner perms in this demo)
+resource rn::club:2 owner gi_root
 
-# field-level (comma-separated fields)
-allow read  fields *            of Student on rn::class:1           to manager
-deny  read  fields ssn          of Student on rn::class:1           to manager
-allow write fields grade        of Student on rn::class:1           to manager
-allow read  fields name,grade   of Student on rn::class:1::group:1  to staff
-allow read  fields *            of Student on rn::class:*           to admin
+# ===== RESOURCE-LEVEL POLICIES =====
+# GIAdmin can do everything
+allow manage on rn::* to GIAdmin
+
+# ClubAdmin: manage members & their safeguarding (or owner)
+allow manage on rn::club:*::member:*,rn::club:*::member:*::safeguarding:* to ClubAdmin or owner
+
+# ClubAdmin: read-only across wider club structure (or owner)
+allow read on rn::club:*::discipline:*,
+               rn::club:*::event:*,
+               rn::club:*::event:*::competition:*,
+               rn::club:*::event:*::competition:*::category:*,
+               rn::club:*::event:*::competition:*::entry:* to ClubAdmin or owner
+
+# Explicitly block ClubAdmin from editing non-member areas (defensive)
+deny  edit   on rn::club:*::discipline:*,
+               rn::club:*::event:*,
+               rn::club:*::event:*::competition:*,
+               rn::club:*::event:*::competition:*::category:*,
+               rn::club:*::event:*::competition:*::entry:* to ClubAdmin
+
+# Viewer: read-only everywhere (no owner override)
+allow read on rn::* to Viewer
+
+# ===== FIELD-LEVEL POLICIES =====
+# GIAdmin sees all fields on these models anywhere
+allow read  fields * of Member              on rn::* to GIAdmin
+allow read  fields * of Safeguarding        on rn::* to GIAdmin
+allow read  fields * of Competition         on rn::* to GIAdmin
+allow read  fields * of CompetitionCategory on rn::* to GIAdmin
+allow read  fields * of Entry               on rn::* to GIAdmin
+
+# ClubAdmin: can read common member fields at their clubs; hide sensitive ones
+allow read  fields name,email,phone,status,dob of Member on rn::club:* to ClubAdmin
+deny  read  fields ssn,national_id,medical_notes of Member on rn::club:* to ClubAdmin
+# ClubAdmin: can update basic profile fields
+allow write fields name,email,phone,status of Member on rn::club:* to ClubAdmin
+
+# Owner-only example for fields: owner of a competition can read private_notes
+allow read fields private_notes of Competition on rn::club:*::event:*::competition:* to Viewer or owner
