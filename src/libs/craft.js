@@ -14,7 +14,7 @@ const TRANSACTION_NAMESPACE = 'GRAPHCRAFT_TRANSACTION_NAMESPACE';
 function craft(options) {
 
   return async (models, context) => {
-    const { permissions, permissionsOn, authenticate, enableDataloader } = options;
+    const { policies, permissionsOn, authenticate, enableDataloader } = options;
 
     const { isValid, invalidModels } = validateModels(models);
 
@@ -24,9 +24,9 @@ function craft(options) {
 
     const sequelize = getSequelizeConnection(models);
 
-    if (permissions) {
-      if (typeof permissions !== 'function') {
-        throw new Error('Permissions must be a function');
+    if (policies) {
+      if (typeof policies !== 'function') {
+        throw new Error('Policies must be a function');
       }
     }
 
@@ -41,23 +41,23 @@ function craft(options) {
     }
 
     if (permissionsOn === 'once') {
-      const generatedPermissions = await permissions({
+      const policy = await policies({
         models,
         ...context,
       });
 
-      options._GET_PERMISSIONS = async () => {
+      options._GET_POLICY = async () => {
 
-        let gcPermissions = generatedPermissions;
+        let gcPolicies = policy;
 
         if (permissionsOn === 'always') {
-          gcPermissions = await permissions({
+          gcPolicies = await policies({
             models,
             ...context,
           });
         }
 
-        return { permissions: gcPermissions, options: {} };
+        return { policies: gcPolicies, options: {} };
       };
     }
 

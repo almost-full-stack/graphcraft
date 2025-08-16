@@ -55,8 +55,8 @@
  * @property {Function} logger - Function that executes after all queries/mutations.
  * @returns {Promise<void>}
  *
- * @property {Function} permissions - Function that returns a Promise to handle permission rules.
- * @returns {Promise<void>}
+ * @property {Function} policies - Function that returns a Promise to handle policy rules.
+ * @returns {Promise<string>} - Returns a string with policy rules.
  *
  * @property {Function} authenticate - Function that executes before all queries/mutations.
  * @param {Object} src - Source object.
@@ -139,7 +139,7 @@ const defaultOptions = {
   permissionsOn: 'once',
 
   logger: () => Promise.resolve(),
-  permissions: () => Promise.resolve({}),
+  policies: () => Promise.resolve(''),
   authenticate: () => Promise.resolve(),
 
   errorHandler: {

@@ -2,13 +2,14 @@ const { define } = require('./utils/utils');
 
 const craftBase = require('./libs/craft');
 const { formatGraphQLError } = require('./libs/error');
-const { defaultOptions } = require('./options');
-const { copyMissing } = require('./utils');
+const { configure, getConfig } = require('./options');
 
 
-const init = (options) => {
+const init = (userOptions) => {
 
-  options = copyMissing(options, defaultOptions);
+  configure(userOptions);
+
+  const options = getConfig();
 
   options.dataloaderContext = null;
 

@@ -1,6 +1,4 @@
 // dslLoader.js
-const fs = require('fs');
-
 const parseCSV = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
 
 // Join wrapped statements so you can break RN lists across lines
@@ -12,27 +10,28 @@ function normalizeStatements(text) {
   for (const lineRaw of raw) {
     const line = lineRaw.trim();
 
-    if (!line || line.startsWith('#')) continue;
-    buf += (buf ? ' ' : '') + line;
-    // End heuristics: role/user/resource lines are single statements; policy lines end with " to <role>" or " to <role> or owner"
-    if ((/^(role|user|resource)\b/i).test(line) || (/\s+to\s+\w+(?:\s+or\s+owner)?$/i).test(buf)) {
-      out.push(buf);
-      buf = '';
+    if (line && !line.startsWith('#')) {
+      buf += (buf ? ' ' : '') + line;
+      // End heuristics: role/user/resource lines are single statements; policy lines end with " to <role>" or " to <role> or owner"
+      if ((/^(role|user|resource)\b/i).test(line) || (/\s+to\s+\w+(?:\s+or\s+owner)?$/i).test(buf)) {
+        out.push(buf);
+        buf = '';
+      }
     }
   }
   if (buf) out.push(buf);
 
-return out;
+  return out;
 }
 
-function loadPolicyFromFile(path) {
+function loadPolicy(policyText) {
   const roles = [];
   const users = [];
   const resourceIndex = [];
   const permissionAssignments = [];
   const fieldPolicies = [];
 
-  const text = fs.readFileSync(path, 'utf8');
+  const text = policyText;
   const lines = normalizeStatements(text);
 
   for (const line of lines) {
@@ -85,4 +84,4 @@ function loadPolicyFromFile(path) {
   return { roles, users, resourceIndex, permissionAssignments, fieldPolicies };
 }
 
-module.exports = { loadPolicyFromFile };
+module.exports = { loadPolicy };

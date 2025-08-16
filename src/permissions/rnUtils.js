@@ -1,4 +1,3 @@
-// rnUtils.js
 function toModelCase(s) {
   // 'discipline' -> 'Discipline', 'competition_category' -> 'CompetitionCategory'
   return String(s).
