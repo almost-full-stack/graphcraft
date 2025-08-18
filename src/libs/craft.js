@@ -3,7 +3,7 @@ const Sequelize = require('sequelize');
 const { createContext } = require('dataloader-sequelize');
 const { validateModels, getSequelizeConnection, copyMissing } = require('../utils');
 
-const { defaultModelGraphqlOptions } = require('../options');
+const { defaultModelGraphqlOptions, getConfig, setOption } = require('../options');
 
 const GenerateQueries = require('./generateQueries');
 const GenerateMutations = require('./generateMutations');
@@ -11,7 +11,9 @@ const GenerateTypes = require('./generateTypes');
 
 const TRANSACTION_NAMESPACE = 'GRAPHCRAFT_TRANSACTION_NAMESPACE';
 
-function craft(options) {
+function craft() {
+
+  const options = getConfig();
 
   return async (models, context) => {
     const { policies, permissionsOn, authenticate, enableDataloader } = options;
@@ -37,28 +39,7 @@ function craft(options) {
     }
 
     if (enableDataloader) {
-      options.dataloaderContext = createContext(sequelize);
-    }
-
-    if (permissionsOn === 'once') {
-      const policy = await policies({
-        models,
-        ...context,
-      });
-
-      options._GET_POLICY = async () => {
-
-        let gcPolicies = policy;
-
-        if (permissionsOn === 'always') {
-          gcPolicies = await policies({
-            models,
-            ...context,
-          });
-        }
-
-        return { policies: gcPolicies, options: {} };
-      };
+      setOption('dataloaderContext', createContext(sequelize));
     }
 
     if (options.autoTransactions) {

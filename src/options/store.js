@@ -1,13 +1,27 @@
-const defaultOptions = require('./base-options');
+// config/store.js
+// Shared configuration store for the library.
+//
+// How to use:
+//   1) Call `configure(userOptions)` once at startup.
+//   2) Anywhere else, call `getConfig()` to read the current frozen config.
+//   3) If you need to tweak a FEW safe fields later, use `setOption(path, value)`
+//      or `updateOptions(patch)` — only whitelisted paths are allowed.
+//   4) Internal-only helpers (derived from config) are available via `getInternal()`.
+//      Example: `_GET_POLICIES` wraps the user’s `policies` function based on `permissionsOn`.
 
-// helpers
-const isPlain = (v) => Object.prototype.toString.call(v) === '[object Object]';
+import { defaultOptions } from "./base-options.js";
 
+/* ----------------------------- utilities ----------------------------- */
+
+const isPlain = (v) => Object.prototype.toString.call(v) === "[object Object]";
+
+// Deep merge where plain objects merge; arrays / functions / primitives replace.
 function deepMerge(base, override) {
-  if (!isPlain(base) || !isPlain(override)) return override || base;
+  if (!isPlain(base) || !isPlain(override)) return override ?? base;
   const out = { ...base };
   for (const k of Object.keys(override)) {
-    const bv = base[k], ov = override[k];
+    const bv = base[k];
+    const ov = override[k];
     if (ov === undefined) continue;
     if (Array.isArray(ov)) out[k] = ov.slice();
     else if (isPlain(ov) && isPlain(bv)) out[k] = deepMerge(bv, ov);
@@ -16,6 +30,7 @@ function deepMerge(base, override) {
   return out;
 }
 
+// Deep-freeze only plain objects/arrays. (Functions/instances stay as-is.)
 function deepFreeze(obj) {
   if (obj && (Array.isArray(obj) || isPlain(obj))) {
     Object.freeze(obj);
@@ -24,114 +39,25 @@ function deepFreeze(obj) {
   return obj;
 }
 
-function getAtPath(obj, path) {
-  return path.split('.').reduce((acc, k) => (acc == null ? acc : acc[k]), obj);
+// Safe nested get: "a.b.c"
+function getAt(obj, path) {
+  return path.split(".").reduce((acc, k) => (acc == null ? acc : acc[k]), obj);
 }
 
-function setAtPath(obj, path, value) {
-  const parts = path.split('.');
+// Safe nested set: creates missing objects on the path
+function setAt(obj, path, value) {
+  const parts = path.split(".");
   let cur = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const p = parts[i];
-    cur[p] ||= {};
-    if (!isPlain(cur[p])) throw new Error(`Cannot set through non-object at '${parts.slice(0, i+1).join('.')}'`);
+    if (!isPlain(cur[p])) cur[p] = {};
     cur = cur[p];
   }
   cur[parts[parts.length - 1]] = value;
 }
 
-// ---------- store ----------
-let _frozenBase = deepFreeze({ ...defaultOptions });
-let _locked = false;
-
-// The *only* mutable bit after init: a small overlay object with just the fields you allow to change.
-let _overlay = {};         // NOT frozen
-let _version = 0;          // increments on each edit
-let _cachedMerged = null;  // cache merged view
-let _cachedVersion = -1;
-
-// 1) init once
-function configure(userOptions = {}) {
-  if (_locked) throw new Error('Config already initialized');
-  _frozenBase = deepFreeze(deepMerge(defaultOptions, userOptions));
-  _overlay = {}; // reset overlay on init
-  _locked = true;
-  _version++;
-  return getConfig();
-}
-
-// 2) read view (base + overlay)
-function getConfig() {
-  if (_cachedMerged && _cachedVersion === _version) return _cachedMerged;
-  _cachedMerged = deepFreeze(deepMerge(_frozenBase, _overlay));
-  _cachedVersion = _version;
-  return _cachedMerged;
-}
-
-// Whitelist: only these paths can change after init.
-const ALLOWED = new Set([
-  'dataloaderContext',
-  'limits.default',
-  'limits.max',
-  'debug',
-  'exposeOnly.throw',
-  'errorHandler.ETIMEDOUT.statusCode'
-]);
-
-// Optional per-path validators
-const VALIDATORS = {
-  'limits.default': (v, cfg) => {
-    const max = Number(getAtPath(cfg, 'limits.max'));
-    if (!Number.isFinite(v) || v <= 0) throw new Error('limits.default must be a positive number');
-    if (Number.isFinite(max) && v > max) throw new Error('limits.default cannot exceed limits.max');
-  },
-  'limits.max': (v) => {
-    if (!Number.isFinite(v) || v <= 0) throw new Error('limits.max must be a positive number');
-  },
-  'debug': (v) => { if (typeof v !== 'boolean') throw new Error('debug must be boolean'); },
-  'exposeOnly.throw': (v) => { if (typeof v !== 'boolean') throw new Error('exposeOnly.throw must be boolean'); },
-  'errorHandler.ETIMEDOUT.statusCode': (v) => {
-    if (!Number.isInteger(v) || v < 100 || v > 599) throw new Error('statusCode must be an HTTP status');
-  },
-};
-
-// Single setter for a path (whitelisted only)
-function setOption(path, value) {
-  if (!_locked) throw new Error('Call configure() before setOption()');
-  if (!ALLOWED.has(path)) throw new Error(`Editing '${path}' is not allowed`);
-
-  // Validate against current merged config to enforce invariants
-  const current = getConfig();
-  const validator = VALIDATORS[path];
-  if (validator) validator(value, current);
-
-  // Apply to overlay, not base
-  setAtPath(_overlay, path, value);
-  _version++;           // bump version to invalidate cache
-  return getConfig();   // return the new effective config (frozen)
-}
-
-function updateOptions(patchObj) {
-  // Validate all first using a temp overlay copy
-  const tempOverlay = structuredClone(_overlay);
-  for (const [path, value] of Object.entries(flatten(patchObj))) {
-    if (!ALLOWED.has(path)) throw new Error(`Editing '${path}' is not allowed`);
-    setAtPath(tempOverlay, path, value);
-  }
-  // Run validators against a simulated merged config
-  const simulated = deepMerge(_frozenBase, tempOverlay);
-  for (const [path, validator] of Object.entries(VALIDATORS)) {
-    const flat = flatten(patchObj);
-    if (flat[path] !== undefined) validator(flat[path], simulated);
-  }
-  // Commit
-  _overlay = tempOverlay;
-  _version++;
-  return getConfig();
-}
-
-// Tiny helper to flatten a nested object to 'a.b.c': value
-function flatten(obj, prefix = '', out = {}) {
+// Flatten nested object to {"a.b.c": value}
+function flatten(obj, prefix = "", out = {}) {
   for (const [k, v] of Object.entries(obj || {})) {
     const p = prefix ? `${prefix}.${k}` : k;
     if (isPlain(v)) flatten(v, p, out);
@@ -140,4 +66,189 @@ function flatten(obj, prefix = '', out = {}) {
   return out;
 }
 
-module.exports = { configure, getConfig, setOption, updateOptions };
+/* ------------------------------- state -------------------------------- */
+
+// Frozen base set by `configure()`
+let _base = deepFreeze({ ...defaultOptions });
+
+// Small mutable overlay for post-init edits (only whitelisted paths)
+let _overlay = {};
+
+// Versioning & caches
+let _locked = false;         // has configure() been called?
+let _version = 0;            // bump to invalidate caches
+let _cachedConfig = null;    // frozen effective config (base + overlay)
+let _cachedVersion = -1;
+
+// Derived/internal helpers (rebuilt when version changes)
+let _derived = null;
+let _derivedVersion = -1;
+
+// Recompute caches if stale
+function ensureCaches() {
+  if (!_cachedConfig || _cachedVersion !== _version) {
+    _cachedConfig = deepFreeze(deepMerge(_base, _overlay));
+    _cachedVersion = _version;
+  }
+  if (!_derived || _derivedVersion !== _version) {
+    _derived = buildDerived(_cachedConfig);
+    _derivedVersion = _version;
+  }
+}
+
+/* ------------------------------ public API ---------------------------- */
+
+// Initialize once; merges user options over defaults and freezes.
+export function configure(userOptions = {}) {
+  if (_locked) throw new Error("Config already initialized");
+  _base = deepFreeze(deepMerge(defaultOptions, userOptions));
+  _overlay = {};
+  _locked = true;
+  _version++;
+  _cachedConfig = null;
+  _derived = null;
+  return getConfig();
+}
+
+// Read the current frozen effective config.
+export function getConfig() {
+  ensureCaches();
+  return _cachedConfig;
+}
+
+// Convenience: get a nested value with fallback.
+export function get(path, fallback) {
+  const v = getAt(getConfig(), path);
+  return v === undefined ? fallback : v;
+}
+
+/* ------------------ tight, whitelisted post-init edits ---------------- */
+
+// Only these paths may change after initialization. Keep short.
+const ALLOWED = new Set([
+  "limits.default",
+  "limits.max",
+  "debug",
+  "exposeOnly.throw",
+  "errorHandler.ETIMEDOUT.statusCode",
+  "permissionsOn" // controls internal _GET_POLICIES behavior
+]);
+
+// Validators for allowed paths (type/range/invariants)
+const VALIDATORS = {
+  "limits.default": (v, cfg) => {
+    const max = Number(getAt(cfg, "limits.max"));
+    if (!Number.isFinite(v) || v <= 0) throw new Error("limits.default must be a positive number");
+    if (Number.isFinite(max) && v > max) throw new Error("limits.default cannot exceed limits.max");
+  },
+  "limits.max": (v) => {
+    if (!Number.isFinite(v) || v <= 0) throw new Error("limits.max must be a positive number");
+  },
+  "debug": (v) => {
+    if (typeof v !== "boolean") throw new Error("debug must be boolean");
+  },
+  "exposeOnly.throw": (v) => {
+    if (typeof v !== "boolean") throw new Error("exposeOnly.throw must be boolean");
+  },
+  "errorHandler.ETIMEDOUT.statusCode": (v) => {
+    if (!Number.isInteger(v) || v < 100 || v > 599) throw new Error("statusCode must be 100–599");
+  },
+  "permissionsOn": (v) => {
+    if (!["once", "always", "cacheByKey"].includes(v)) {
+      throw new Error('permissionsOn must be "once", "always", or "cacheByKey"');
+    }
+  }
+};
+
+// Set a single allowed option after init.
+export function setOption(path, value) {
+  if (!_locked) throw new Error("Call configure() before setOption()");
+  if (!ALLOWED.has(path)) throw new Error(`Editing "${path}" is not allowed`);
+  const cfg = getConfig();
+  const validate = VALIDATORS[path];
+  if (validate) validate(value, cfg);
+  setAt(_overlay, path, value);
+  _version++;
+  _cachedConfig = null;
+  _derived = null; // force rebuild of internal helpers
+  return getConfig();
+}
+
+// Batch update multiple options atomically.
+export function updateOptions(patch) {
+  if (!_locked) throw new Error("Call configure() before updateOptions()");
+
+  // Dry-run into a temp overlay and validate
+  const nextOverlay = structuredClone(_overlay);
+  const flat = flatten(patch);
+
+  for (const path of Object.keys(flat)) {
+    if (!ALLOWED.has(path)) throw new Error(`Editing "${path}" is not allowed`);
+    setAt(nextOverlay, path, flat[path]);
+  }
+
+  const simulated = deepMerge(_base, nextOverlay);
+  for (const [path, validator] of Object.entries(VALIDATORS)) {
+    if (flat[path] !== undefined) validator(flat[path], simulated);
+  }
+
+  // Commit
+  _overlay = nextOverlay;
+  _version++;
+  _cachedConfig = null;
+  _derived = null;
+  return getConfig();
+}
+
+/* ------------------------- internal / derived API ---------------------- */
+
+// Build internal helpers derived from the current config.
+// These are NOT user-settable and are rebuilt on every version change.
+function buildDerived(cfg) {
+  // Wrap user-provided `policies` according to `permissionsOn`.
+  function makePoliciesWrapper() {
+    const userPolicies = cfg.policies || (async () => "");
+    const mode = cfg.permissionsOn || "once";
+
+    if (mode === "once") {
+      // Compute once per config version.
+      let memo;
+      let seenVersion = _version;
+      return async (...args) => {
+        if (memo !== undefined && seenVersion === _version) return memo;
+        memo = await userPolicies(...args);
+        seenVersion = _version;
+        return memo;
+      };
+    }
+
+    if (mode === "always") {
+      return (...args) => userPolicies(...args);
+    }
+
+    // Fallback: pass-through
+    return (...args) => userPolicies(...args);
+  }
+
+  return Object.freeze({
+    _GET_POLICIES: makePoliciesWrapper()
+  });
+}
+
+// Internal-only view for use inside the project.
+export function getInternal() {
+  ensureCaches();
+  return _derived;
+}
+
+/* --------------------------- test-only reset --------------------------- */
+
+// Reset the store to defaults (use in tests only; do not expose publicly).
+export function __resetForTests() {
+  _base = deepFreeze({ ...defaultOptions });
+  _overlay = {};
+  _locked = false;
+  _version++;
+  _cachedConfig = null;
+  _derived = null;
+}

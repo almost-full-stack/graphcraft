@@ -2,7 +2,7 @@ const { define } = require('./utils/utils');
 
 const craftBase = require('./libs/craft');
 const { formatGraphQLError } = require('./libs/error');
-const { configure, getConfig } = require('./options');
+const { configure, getConfig, setOption } = require('./options');
 
 
 const init = (userOptions) => {
@@ -11,7 +11,7 @@ const init = (userOptions) => {
 
   const options = getConfig();
 
-  options.dataloaderContext = null;
+  setOption('dataloaderContext', null);
 
   const resetCache = () => {
     if (
@@ -22,7 +22,7 @@ const init = (userOptions) => {
     }
   };
 
-  const craft = craftBase(options);
+  const craft = craftBase();
 
   return {
     craft,
