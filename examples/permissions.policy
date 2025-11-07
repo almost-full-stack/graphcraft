@@ -1,0 +1,12 @@
+# ===== ROLES =====
+role Admin   rank 100
+role User rank 60
+role Viewer    rank 10
+
+# ===== USERS =====
+user root      as Admin
+user doe  as User
+user joe   as Viewer
+
+# ===== RESOURCES (RN -> owner) =====
+resource rn::product:1 owner root

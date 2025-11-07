@@ -16,7 +16,7 @@ function craft() {
   const options = getConfig();
 
   return async (models, context) => {
-    const { policies, permissionsOn, authenticate, enableDataloader } = options;
+    const { policies, authenticate, enableDataloader } = options;
 
     const { isValid, invalidModels } = validateModels(models);
 

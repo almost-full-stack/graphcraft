@@ -1,9 +1,12 @@
 const { GraphQLSchema } = require('graphql');
+const { readFileSync } = require('fs');
 const express = require('express');
 const { createHandler } = require('graphql-http/lib/use/express');
 const expressPlayground = require('graphql-playground-middleware-express').
   default;
 const { JSONType } = require('graphql-sequelize');
+
+const policyText = readFileSync('./examples/permissions.policy', 'utf8');
 
 const { generateSchema } = require('../src/index')({
   exclude: [],
@@ -27,6 +30,9 @@ const { generateSchema } = require('../src/index')({
   },
   types: {
     customGlobalType: { id: 'id', key: 'string', value: 'string' },
+  },
+  policies: () => {
+    return Promise.resolve(policyText);
   },
   permissions: () => {
     return Promise.resolve({

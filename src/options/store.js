@@ -9,11 +9,13 @@
 //   4) Internal-only helpers (derived from config) are available via `getInternal()`.
 //      Example: `_GET_POLICIES` wraps the user’s `policies` function based on `permissionsOn`.
 
-import { defaultOptions } from "./base-options.js";
+import _ from 'lodash';
+import defaultOptions from './base-options.js';
+import { loadPolicy } from '../permissions/dslLoader.js';
 
 /* ----------------------------- utilities ----------------------------- */
 
-const isPlain = (v) => Object.prototype.toString.call(v) === "[object Object]";
+const isPlain = (v) => Object.prototype.toString.call(v) === '[object Object]';
 
 // Deep merge where plain objects merge; arrays / functions / primitives replace.
 function deepMerge(base, override) {
@@ -39,25 +41,28 @@ function deepFreeze(obj) {
   return obj;
 }
 
-// Safe nested get: "a.b.c"
+// Safe nested get: 'a.b.c'
 function getAt(obj, path) {
-  return path.split(".").reduce((acc, k) => (acc == null ? acc : acc[k]), obj);
+  return _.get(obj, path);
+  //return path.split('.').reduce((acc, k) => (acc == null ? acc : acc[k]), obj);
 }
 
 // Safe nested set: creates missing objects on the path
 function setAt(obj, path, value) {
-  const parts = path.split(".");
+  _.set(obj, path, value);
+  /*
+  const parts = path.split('.');
   let cur = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const p = parts[i];
     if (!isPlain(cur[p])) cur[p] = {};
     cur = cur[p];
   }
-  cur[parts[parts.length - 1]] = value;
+  cur[parts[parts.length - 1]] = value;*/
 }
 
-// Flatten nested object to {"a.b.c": value}
-function flatten(obj, prefix = "", out = {}) {
+// Flatten nested object to {'a.b.c': value}
+function flatten(obj, prefix = '', out = {}) {
   for (const [k, v] of Object.entries(obj || {})) {
     const p = prefix ? `${prefix}.${k}` : k;
     if (isPlain(v)) flatten(v, p, out);
@@ -100,7 +105,7 @@ function ensureCaches() {
 
 // Initialize once; merges user options over defaults and freezes.
 export function configure(userOptions = {}) {
-  if (_locked) throw new Error("Config already initialized");
+  if (_locked) throw new Error('Config already initialized');
   _base = deepFreeze(deepMerge(defaultOptions, userOptions));
   _overlay = {};
   _locked = true;
@@ -126,35 +131,35 @@ export function get(path, fallback) {
 
 // Only these paths may change after initialization. Keep short.
 const ALLOWED = new Set([
-  "limits.default",
-  "limits.max",
-  "debug",
-  "exposeOnly.throw",
-  "errorHandler.ETIMEDOUT.statusCode",
-  "permissionsOn" // controls internal _GET_POLICIES behavior
+  'limits.default',
+  'limits.max',
+  'debug',
+  'exposeOnly.throw',
+  'errorHandler.ETIMEDOUT.statusCode',
+  'dataloaderContext',
+  'permissionsOn' // controls internal _GET_POLICIES behavior
 ]);
 
-// Validators for allowed paths (type/range/invariants)
 const VALIDATORS = {
-  "limits.default": (v, cfg) => {
-    const max = Number(getAt(cfg, "limits.max"));
-    if (!Number.isFinite(v) || v <= 0) throw new Error("limits.default must be a positive number");
-    if (Number.isFinite(max) && v > max) throw new Error("limits.default cannot exceed limits.max");
+  'limits.default': (v, cfg) => {
+    const max = Number(getAt(cfg, 'limits.max'));
+    if (!Number.isFinite(v) || v <= 0) throw new Error('limits.default must be a positive number');
+    if (Number.isFinite(max) && v > max) throw new Error('limits.default cannot exceed limits.max');
   },
-  "limits.max": (v) => {
-    if (!Number.isFinite(v) || v <= 0) throw new Error("limits.max must be a positive number");
+  'limits.max': (v) => {
+    if (!Number.isFinite(v) || v <= 0) throw new Error('limits.max must be a positive number');
   },
-  "debug": (v) => {
-    if (typeof v !== "boolean") throw new Error("debug must be boolean");
+  'debug': (v) => {
+    if (typeof v !== 'boolean') throw new Error('debug must be boolean');
   },
-  "exposeOnly.throw": (v) => {
-    if (typeof v !== "boolean") throw new Error("exposeOnly.throw must be boolean");
+  'exposeOnly.throw': (v) => {
+    if (typeof v !== 'boolean') throw new Error('exposeOnly.throw must be boolean');
   },
-  "errorHandler.ETIMEDOUT.statusCode": (v) => {
-    if (!Number.isInteger(v) || v < 100 || v > 599) throw new Error("statusCode must be 100–599");
+  'errorHandler.ETIMEDOUT.statusCode': (v) => {
+    if (!Number.isInteger(v) || v < 100 || v > 599) throw new Error('statusCode must be 100-599');
   },
-  "permissionsOn": (v) => {
-    if (!["once", "always", "cacheByKey"].includes(v)) {
+  'permissionsOn': (v) => {
+    if (!['once', 'always', 'cacheByKey'].includes(v)) {
       throw new Error('permissionsOn must be "once", "always", or "cacheByKey"');
     }
   }
@@ -162,8 +167,8 @@ const VALIDATORS = {
 
 // Set a single allowed option after init.
 export function setOption(path, value) {
-  if (!_locked) throw new Error("Call configure() before setOption()");
-  if (!ALLOWED.has(path)) throw new Error(`Editing "${path}" is not allowed`);
+  if (!_locked) throw new Error('Call configure() before setOption()');
+  if (!ALLOWED.has(path)) throw new Error(`Editing '${path}' is not allowed`);
   const cfg = getConfig();
   const validate = VALIDATORS[path];
   if (validate) validate(value, cfg);
@@ -176,14 +181,14 @@ export function setOption(path, value) {
 
 // Batch update multiple options atomically.
 export function updateOptions(patch) {
-  if (!_locked) throw new Error("Call configure() before updateOptions()");
+  if (!_locked) throw new Error('Call configure() before updateOptions()');
 
   // Dry-run into a temp overlay and validate
   const nextOverlay = structuredClone(_overlay);
   const flat = flatten(patch);
 
   for (const path of Object.keys(flat)) {
-    if (!ALLOWED.has(path)) throw new Error(`Editing "${path}" is not allowed`);
+    if (!ALLOWED.has(path)) throw new Error(`Editing '${path}' is not allowed`);
     setAt(nextOverlay, path, flat[path]);
   }
 
@@ -205,12 +210,27 @@ export function updateOptions(patch) {
 // Build internal helpers derived from the current config.
 // These are NOT user-settable and are rebuilt on every version change.
 function buildDerived(cfg) {
-  // Wrap user-provided `policies` according to `permissionsOn`.
-  function makePoliciesWrapper() {
-    const userPolicies = cfg.policies || (async () => "");
-    const mode = cfg.permissionsOn || "once";
+  
+  console.log('Building derived config...');
 
-    if (mode === "once") {
+  function makePoliciesWrapper() {
+    const userPolicies = async () => {
+      const policies = await cfg.policies();
+
+      if (policies) {
+
+        const parsedPolicy = loadPolicy(policies);
+        console.log('Parsed Policy:', parsedPolicy);
+
+        return parsedPolicy;
+      }
+
+      return {};
+    }
+
+    const mode = cfg.permissionsOn || 'once';
+
+    if (mode === 'once') {
       // Compute once per config version.
       let memo;
       let seenVersion = _version;
@@ -222,7 +242,7 @@ function buildDerived(cfg) {
       };
     }
 
-    if (mode === "always") {
+    if (mode === 'always') {
       return (...args) => userPolicies(...args);
     }
 

@@ -2,20 +2,33 @@ const _ = require('lodash');
 const { resolver, argsToFindOptions } = require('graphql-sequelize');
 const { EXPECTED_OPTIONS_KEY } = require('dataloader-sequelize');
 const hooks = require('./hooks');
-const { getIncludes, getOrderBy } = require('../utils');
+const { getIncludes, getOrderBy } = require('../utils/utils');
 const QUERY_TYPE = 'fetch';
+const { getConfig, getInternal } = require('../options');
+const { rnUtils, authEngine } = require('../permissions');
 
 module.exports = (options) => {
 
-  const { dataloaderContext, limits, globalHooks, models } = options;
+  const { models } = options;
+  const { dataloaderContext, limits, globalHooks, authenticate } = getConfig(options);
+  const internals = getInternal();
 
   return async (model, source, args, context, info, queryOptions) => {
+
+    const policies = await internals._GET_POLICIES();
+    const authEng = authEngine(policies);
 
     const isAssociation = Boolean(model.target);
     const realModel = isAssociation ? model.target : model;
     const graphql = realModel.graphql;
     const { simpleAST, permissions } = queryOptions;
     const includes = getIncludes(simpleAST, realModel.name, models);
+
+    const modelRn = rnUtils.buildRn(model.name);
+
+    console.log(modelRn, 'modelRn in fetch resolver');
+
+    console.log(authEng.hasPermission({username: 'gi_root', resourceRn: modelRn, permission: 'read' }));
 
     // setup dataloader for resolver.
     resolver.contextToOptions = { [EXPECTED_OPTIONS_KEY]: EXPECTED_OPTIONS_KEY };
@@ -27,7 +40,7 @@ module.exports = (options) => {
     }
 
     // No need to call authorizer again on associations
-    if (!isAssociation) await options.authorizer(source, args, context, info);
+    if (!isAssociation) await authenticate(source, args, context, info);
 
     if (globalHooks.before.fetch) {
       await globalHooks.before.fetch(source, args, context, info);

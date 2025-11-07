@@ -1,5 +1,3 @@
-// makeEngine.js (no `continue`, same semantics)
-
 function buildAncestry(rn) {
   const parts = String(rn).split('::');
   const out = [];
@@ -31,6 +29,8 @@ function authEngine(cfg) {
     permissionAssignments = [],
     fieldPolicies = [],
   } = cfg || {};
+
+  console.log(cfg);
 
   const findRole = (name) => roles.find((r) => r && r.name === name);
   const findUser = (username) => users.find((u) => u && u.username === username);
